@@ -4,44 +4,30 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 
-	"github.com/dylanbr0wn/clockr/internal/db"
-	"github.com/dylanbr0wn/clockr/internal/db/sqlc"
-	"github.com/dylanbr0wn/clockr/internal/seed"
+	"github.com/dylanbr0wn/clockr/internal/service"
 )
 
 // App struct
 type App struct {
-	ctx     context.Context
-	conn    *sql.DB
-	Queries *sqlc.Queries
+	ctx  context.Context
+	conn *sql.DB
+	Svc  *service.Service
 }
 
-// NewApp creates a new App application struct
-func NewApp() *App {
-	return &App{}
+// NewApp creates a new App over an already-open database connection. The
+// connection is opened, migrated, and seeded in main before binding, so Svc is
+// live at bind time (Wails reflects bound instances up front).
+func NewApp(conn *sql.DB) *App {
+	return &App{
+		conn: conn,
+		Svc:  service.New(conn),
+	}
 }
 
-// startup is called when the app starts. The context is saved so we can call
-// the runtime methods. It also opens the local database, self-migrates to the
-// latest schema, and seeds core data on first run.
+// startup is called when the app starts; saves the context for runtime calls.
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-
-	conn, err := db.OpenDefault()
-	if err != nil {
-		log.Fatalf("open database: %v", err)
-	}
-	if err := db.Migrate(conn); err != nil {
-		log.Fatalf("migrate database: %v", err)
-	}
-	if err := seed.Core(ctx, conn); err != nil {
-		log.Fatalf("seed database: %v", err)
-	}
-
-	a.conn = conn
-	a.Queries = sqlc.New(conn)
 }
 
 // shutdown is called on app exit; close the database cleanly.

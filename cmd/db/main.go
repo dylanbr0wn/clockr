@@ -35,7 +35,7 @@ type CLI struct {
 	Version VersionCmd `cmd:"" help:"Print the current schema version."`
 	Create  CreateCmd  `cmd:"" help:"Scaffold a new SQL migration."`
 	Seed    SeedCmd    `cmd:"" help:"Seed core data (use --dev for a sample period + calendar)."`
-	Nuke    NukeCmd     `cmd:"" help:"Delete the database file (destructive)."`
+	Nuke    NukeCmd    `cmd:"" help:"Delete the database file (destructive)."`
 }
 
 func main() {
