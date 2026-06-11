@@ -6,6 +6,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--dir", "frontend", "dev", "--port", "5199", "--strictPort"],
       "port": 5199
+    },
+    {
+      "name": "design-mockups",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "4173", "--directory", "design-mockups"],
+      "port": 4173
     }
   ]
 }

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Clockr — Period Schedule</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="window">
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="cluster">
+      <div class="logo">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#fafafa" stroke-width="2"/><path d="M12 6v6l4 2" stroke="#fafafa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <span class="app-name">Clockr</span>
+      <div class="vdiv"></div>
+      <div class="period-nav">
+        <button class="btn ghost icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m15 18-6-6 6-6" stroke="#71717a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <span class="period-label">Jun 1 – Jun 14, 2026</span>
+        <span class="badge">Bi-weekly</span>
+        <button class="btn ghost icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m9 18 6-6-6-6" stroke="#71717a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+    </div>
+    <div class="cluster right">
+      <span class="badge privacy"><span class="dot"></span>Private · on-device</span>
+      <button class="btn outline">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" stroke="#18181b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Sync <span class="hint">· 5m ago</span>
+      </button>
+      <div class="segmented">
+        <span class="seg">1d</span>
+        <span class="seg active">7d</span>
+        <span class="seg">14d</span>
+      </div>
+      <button class="btn primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#fafafa" stroke-width="2" stroke-linecap="round"/></svg>
+        Add block
+      </button>
+      <button class="btn ghost icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="#71717a" stroke-width="2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" stroke="#71717a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+  </header>
+
+  <!-- Body -->
+  <div class="body">
+
+    <!-- Scheduler -->
+    <section class="scheduler">
+      <div class="day-headers">
+        <div class="axis-spacer"></div>
+        <div class="day-h"><span class="dnum">8</span><span class="dname">Mon</span></div>
+        <div class="day-h"><span class="dnum">9</span><span class="dname">Tue</span></div>
+        <div class="day-h today"><span class="dnum">10</span><span class="dname">Wed · Today</span></div>
+        <div class="day-h"><span class="dnum">11</span><span class="dname">Thu</span></div>
+        <div class="day-h"><span class="dnum">12</span><span class="dname">Fri</span></div>
+        <div class="day-h weekend"><span class="dnum">13</span><span class="dname">Sat</span></div>
+        <div class="day-h weekend"><span class="dnum">14</span><span class="dname">Sun</span></div>
+      </div>
+      <div class="grid-scroll">
+        <div class="grid-inner">
+          <div class="time-axis">
+            <span class="tlabel" style="top:56px">8:00</span>
+            <span class="tlabel" style="top:112px">9:00</span>
+            <span class="tlabel" style="top:168px">10:00</span>
+            <span class="tlabel" style="top:224px">11:00</span>
+            <span class="tlabel" style="top:280px">12:00</span>
+            <span class="tlabel" style="top:336px">13:00</span>
+            <span class="tlabel" style="top:392px">14:00</span>
+            <span class="tlabel" style="top:448px">15:00</span>
+            <span class="tlabel" style="top:504px">16:00</span>
+            <span class="tlabel" style="top:560px">17:00</span>
+            <span class="tlabel" style="top:616px">18:00</span>
+            <span class="tlabel" style="top:672px">19:00</span>
+          </div>
+
+          <!-- Mon 8 -->
+          <div class="day-col">
+            <div class="nonwork" style="top:0;height:56px"></div>
+            <div class="nonwork" style="top:616px;bottom:0"></div>
+            <div class="hour-line" style="top:56px"></div><div class="hour-line" style="top:112px"></div><div class="hour-line" style="top:168px"></div><div class="hour-line" style="top:224px"></div><div class="hour-line" style="top:280px"></div><div class="hour-line" style="top:336px"></div><div class="hour-line" style="top:392px"></div><div class="hour-line" style="top:448px"></div><div class="hour-line" style="top:504px"></div><div class="hour-line" style="top:560px"></div><div class="hour-line" style="top:616px"></div><div class="hour-line" style="top:672px"></div>
+            <div class="event sky" style="top:84px;height:84px;right:50%">
+              <div class="etitle">Sprint planning</div>
+              <div class="etime">8:30 – 10:00</div>
+              <div class="ecat">Product</div>
+            </div>
+            <div class="event rose" style="top:126px;height:70px;left:51%">
+              <div class="etitle">Design review</div>
+              <div class="etime">9:15 – 10:30</div>
+            </div>
+            <div class="event emerald" style="top:336px;height:168px">
+              <div class="etitle">Implementation</div>
+              <div class="etime">13:00 – 16:00 · 3h</div>
+              <div class="ecat">Engineering · gap fill</div>
+            </div>
+          </div>
+
+          <!-- Tue 9 -->
+          <div class="day-col">
+            <div class="nonwork" style="top:0;height:56px"></div>
+            <div class="nonwork" style="top:616px;bottom:0"></div>
+            <div class="hour-line" style="top:56px"></div><div class="hour-line" style="top:112px"></div><div class="hour-line" style="top:168px"></div><div class="hour-line" style="top:224px"></div><div class="hour-line" style="top:280px"></div><div class="hour-line" style="top:336px"></div><div class="hour-line" style="top:392px"></div><div class="hour-line" style="top:448px"></div><div class="hour-line" style="top:504px"></div><div class="hour-line" style="top:560px"></div><div class="hour-line" style="top:616px"></div><div class="hour-line" style="top:672px"></div>
+            <div class="event sky" style="top:140px;height:28px;padding:3px 8px">
+              <div class="etitle">Standup · 9:30</div>
+            </div>
+            <div class="event gap" style="top:196px;height:112px;padding:8px">
+              <div class="etitle">2h gap</div>
+              <div class="etime">10:30 – 12:30</div>
+              <span class="chip">Assign category</span>
+            </div>
+            <div class="event sky" style="top:392px;height:56px">
+              <div class="etitle">1:1 with Sarah</div>
+              <div class="etime">14:00 – 15:00</div>
+            </div>
+            <div class="event emerald" style="top:448px;height:140px">
+              <div class="etitle">Feature work</div>
+              <div class="etime">15:00 – 17:30 · 2.5h</div>
+              <div class="ecat">Engineering</div>
+            </div>
+          </div>
+
+          <!-- Wed 10 (today) -->
+          <div class="day-col">
+            <div class="nonwork" style="top:0;height:56px"></div>
+            <div class="nonwork" style="top:616px;bottom:0"></div>
+            <div class="hour-line" style="top:56px"></div><div class="hour-line" style="top:112px"></div><div class="hour-line" style="top:168px"></div><div class="hour-line" style="top:224px"></div><div class="hour-line" style="top:280px"></div><div class="hour-line" style="top:336px"></div><div class="hour-line" style="top:392px"></div><div class="hour-line" style="top:448px"></div><div class="hour-line" style="top:504px"></div><div class="hour-line" style="top:560px"></div><div class="hour-line" style="top:616px"></div><div class="hour-line" style="top:672px"></div>
+            <div class="event sky" style="top:0;height:56px">
+              <div class="etitle">Vendor call</div>
+              <div class="etime">7:00 – 8:00</div>
+              <div class="ecat">Operations</div>
+            </div>
+            <div class="event suggest" style="top:112px;height:168px;padding:8px">
+              <div class="etitle">✦ Suggested: Engineering</div>
+              <div class="etime">9:00 – 12:00 · 3h gap</div>
+              <div class="ecat" style="gap:6px;margin-top:auto">
+                <span class="chip accept">Accept</span>
+                <span class="chip">Edit</span>
+              </div>
+            </div>
+            <div class="event sky" style="top:336px;height:56px">
+              <div class="etitle">Team sync</div>
+              <div class="etime">13:00 – 14:00</div>
+            </div>
+            <div class="now-line" style="top:420px"></div>
+          </div>
+
+          <!-- Thu 11 -->
+          <div class="day-col">
+            <div class="nonwork" style="top:0;height:56px"></div>
+            <div class="nonwork" style="top:616px;bottom:0"></div>
+            <div class="hour-line" style="top:56px"></div><div class="hour-line" style="top:112px"></div><div class="hour-line" style="top:168px"></div><div class="hour-line" style="top:224px"></div><div class="hour-line" style="top:280px"></div><div class="hour-line" style="top:336px"></div><div class="hour-line" style="top:392px"></div><div class="hour-line" style="top:448px"></div><div class="hour-line" style="top:504px"></div><div class="hour-line" style="top:560px"></div><div class="hour-line" style="top:616px"></div><div class="hour-line" style="top:672px"></div>
+            <div class="event rose" style="top:168px;height:112px">
+              <div class="etitle">Client workshop</div>
+              <div class="etime">10:00 – 12:00 · 2h</div>
+              <div class="ecat">Client</div>
+            </div>
+            <div class="event emerald" style="top:336px;height:224px">
+              <div class="etitle">Deep work</div>
+              <div class="etime">13:00 – 17:00 · 4h</div>
+              <div class="ecat">Engineering</div>
+            </div>
+          </div>
+
+          <!-- Fri 12 -->
+          <div class="day-col">
+            <div class="nonwork" style="top:0;height:56px"></div>
+            <div class="nonwork" style="top:616px;bottom:0"></div>
+            <div class="hour-line" style="top:56px"></div><div class="hour-line" style="top:112px"></div><div class="hour-line" style="top:168px"></div><div class="hour-line" style="top:224px"></div><div class="hour-line" style="top:280px"></div><div class="hour-line" style="top:336px"></div><div class="hour-line" style="top:392px"></div><div class="hour-line" style="top:448px"></div><div class="hour-line" style="top:504px"></div><div class="hour-line" style="top:560px"></div><div class="hour-line" style="top:616px"></div><div class="hour-line" style="top:672px"></div>
+            <div class="event emerald" style="top:112px;height:84px">
+              <div class="etitle">Code review</div>
+              <div class="etime">9:00 – 10:30</div>
+              <div class="ecat">Engineering</div>
+            </div>
+            <div class="event gap" style="top:224px;height:112px;padding:8px">
+              <div class="etitle">2h gap</div>
+              <div class="etime">11:00 – 13:00</div>
+              <span class="chip">Assign category</span>
+            </div>
+            <div class="event amber" style="top:616px;height:70px">
+              <div class="etitle">Timesheet notes</div>
+              <div class="etime">18:00 – 19:15</div>
+              <div class="ecat">Admin · manual</div>
+            </div>
+          </div>
+
+          <!-- Sat 13 -->
+          <div class="day-col weekend">
+            <div class="hour-line" style="top:56px"></div><div class="hour-line" style="top:112px"></div><div class="hour-line" style="top:168px"></div><div class="hour-line" style="top:224px"></div><div class="hour-line" style="top:280px"></div><div class="hour-line" style="top:336px"></div><div class="hour-line" style="top:392px"></div><div class="hour-line" style="top:448px"></div><div class="hour-line" style="top:504px"></div><div class="hour-line" style="top:560px"></div><div class="hour-line" style="top:616px"></div><div class="hour-line" style="top:672px"></div>
+          </div>
+
+          <!-- Sun 14 -->
+          <div class="day-col weekend">
+            <div class="hour-line" style="top:56px"></div><div class="hour-line" style="top:112px"></div><div class="hour-line" style="top:168px"></div><div class="hour-line" style="top:224px"></div><div class="hour-line" style="top:280px"></div><div class="hour-line" style="top:336px"></div><div class="hour-line" style="top:392px"></div><div class="hour-line" style="top:448px"></div><div class="hour-line" style="top:504px"></div><div class="hour-line" style="top:560px"></div><div class="hour-line" style="top:616px"></div><div class="hour-line" style="top:672px"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="card">
+        <h3>Period progress</h3>
+        <span class="sub">4 working days left</span>
+        <div class="progress-row">
+          <span class="big">52.5 <span>/ 80 hrs</span></span>
+          <span class="sub" style="font-weight:600;color:var(--foreground)">66%</span>
+        </div>
+        <div class="progressbar"><div class="fill" style="width:66%"></div></div>
+      </div>
+
+      <div class="card">
+        <h3>Totals by category</h3>
+        <div class="totals">
+          <div class="trow"><span class="cdot" style="background:var(--emerald)"></span><span class="tname">Engineering</span><span class="tbar"><i style="width:80%;background:var(--emerald)"></i></span><span class="thours">24.5h</span></div>
+          <div class="trow"><span class="cdot" style="background:var(--rose)"></span><span class="tname">Client</span><span class="tbar"><i style="width:42%;background:var(--rose)"></i></span><span class="thours">12.0h</span></div>
+          <div class="trow"><span class="cdot" style="background:var(--sky)"></span><span class="tname">Product</span><span class="tbar"><i style="width:32%;background:var(--sky)"></i></span><span class="thours">9.0h</span></div>
+          <div class="trow"><span class="cdot" style="background:var(--violet)"></span><span class="tname">Operations</span><span class="tbar"><i style="width:16%;background:var(--violet)"></i></span><span class="thours">4.5h</span></div>
+          <div class="trow"><span class="cdot" style="background:var(--amber)"></span><span class="tname">Admin</span><span class="tbar"><i style="width:9%;background:var(--amber)"></i></span><span class="thours">2.5h</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Needs attention</h3>
+        <div class="attn">
+          <div class="attn-row">
+            <div class="aicon amber"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" stroke="#b45309" stroke-width="2" stroke-linejoin="round"/><path d="M12 9v4M12 17h.01" stroke="#b45309" stroke-width="2" stroke-linecap="round"/></svg></div>
+            <div class="atext"><div class="atitle">1 overlapping event</div><div class="asub">Mon · Sprint planning / Design review</div></div>
+            <button class="btn outline sm">Resolve</button>
+          </div>
+          <div class="attn-row">
+            <div class="aicon sky"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="#0369a1" stroke-width="2"/><path d="M16 2v4M8 2v4M3 10h18" stroke="#0369a1" stroke-width="2" stroke-linecap="round"/></svg></div>
+            <div class="atext"><div class="atitle">2 unfilled gaps</div><div class="asub">5.0 hrs uncategorized</div></div>
+            <button class="btn outline sm">Fill</button>
+          </div>
+          <div class="attn-row">
+            <div class="aicon rose"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#be123c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div class="atext"><div class="atitle">1 deleted event</div><div class="asub">Was categorized · review removal</div></div>
+            <button class="btn outline sm">Review</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="export-actions">
+        <button class="btn outline full">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="#18181b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Export CSV
+        </button>
+        <button class="btn primary full">Finalize period</button>
+      </div>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

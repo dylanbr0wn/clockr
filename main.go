@@ -8,6 +8,7 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
 
 	"github.com/dylanbr0wn/clockr/internal/db"
 	"github.com/dylanbr0wn/clockr/internal/seed"
@@ -41,9 +42,15 @@ func main() {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
-		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
-		OnStartup:        app.startup,
-		OnShutdown:       app.shutdown,
+		Frameless:        false,
+		BackgroundColour: &options.RGBA{R: 0, G: 0, B: 0, A: 0},
+		Mac: &mac.Options{
+			TitleBar:             mac.TitleBarHiddenInset(),
+			WebviewIsTransparent: true,
+			WindowIsTranslucent:  true,
+		},
+		OnStartup:  app.startup,
+		OnShutdown: app.shutdown,
 		Bind: []interface{}{
 			app,
 			app.Svc,

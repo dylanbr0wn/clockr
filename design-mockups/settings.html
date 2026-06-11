@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Clockr — Settings · AI Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="window">
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="cluster">
+      <div class="logo">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#fafafa" stroke-width="2"/><path d="M12 6v6l4 2" stroke="#fafafa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <span class="app-name">Clockr</span>
+      <div class="vdiv"></div>
+      <span class="period-label" style="color:var(--muted-foreground)">Settings</span>
+    </div>
+    <div class="cluster right">
+      <button class="btn ghost">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M18 6 6 18M6 6l12 12" stroke="#71717a" stroke-width="2" stroke-linecap="round"/></svg>
+        Close
+      </button>
+    </div>
+  </header>
+
+  <div class="settings-body">
+    <!-- Settings nav -->
+    <nav class="snav">
+      <span class="slabel">Settings</span>
+      <a href="#"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 8v4l2.5 2.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>General</a>
+      <a href="#"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Calendars</a>
+      <a href="#"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M7 7h.01M7 3h5a2 2 0 0 1 1.4.6l7 7a2 2 0 0 1 0 2.8l-5 5a2 2 0 0 1-2.8 0l-7-7A2 2 0 0 1 5 10V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Categories</a>
+      <a href="#" class="active"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>AI Model</a>
+      <a href="#"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>Privacy</a>
+      <a href="#"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Export</a>
+    </nav>
+
+    <!-- Content -->
+    <main class="scontent">
+      <h2>AI Model</h2>
+      <p class="desc">Bring your own model. Point Clockr at a local model or supply a cloud key — categorization suggestions run through whichever endpoint you choose.</p>
+
+      <div class="ssection">
+        <h4>Detected endpoints</h4>
+        <div class="endpoint selected">
+          <div class="eicon">OL</div>
+          <div class="etext">
+            <div class="ename">Ollama <span class="pill local">Local · private</span></div>
+            <div class="eurl">http://localhost:11434 · llama3.3:70b</div>
+          </div>
+          <span class="radio on"></span>
+        </div>
+        <div class="endpoint">
+          <div class="eicon">LM</div>
+          <div class="etext">
+            <div class="ename">LM Studio <span class="pill off">Not running</span></div>
+            <div class="eurl">http://localhost:1234</div>
+          </div>
+          <span class="radio"></span>
+        </div>
+        <div class="endpoint">
+          <div class="eicon">⚙</div>
+          <div class="etext">
+            <div class="ename">Custom endpoint <span class="pill cloud">Cloud · leaves device</span></div>
+            <div class="eurl">OpenAI-compatible base URL + API key, or Anthropic</div>
+          </div>
+          <span class="radio"></span>
+        </div>
+      </div>
+
+      <div class="ssection">
+        <h4>Connection</h4>
+        <div class="fieldrow">
+          <div class="field">
+            <label>Base URL</label>
+            <div class="input mono">http://localhost:11434/v1</div>
+          </div>
+          <div class="field">
+            <label>API key <span style="color:var(--muted-foreground);font-weight:400">(optional)</span></label>
+            <div class="input mono"><span class="placeholder">Not required for local models</span></div>
+          </div>
+        </div>
+        <div class="fieldrow">
+          <div class="field">
+            <label>Model</label>
+            <div class="input select">llama3.3:70b
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="m6 9 6 6 6-6" stroke="#71717a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+          <div class="field" style="flex:0 0 auto;display:flex;align-items:flex-end">
+            <button class="btn outline" style="height:36px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Validated
+            </button>
+          </div>
+        </div>
+
+        <div class="callout">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex:none;margin-top:1px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" stroke="#064e3b" stroke-width="2" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" stroke="#064e3b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div>
+            <div class="ctitle">Private — on-device</div>
+            <div class="cbody">This endpoint resolves to your machine. Full event context is shared with the model and never leaves your computer.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ssection">
+        <h4>Data shared with cloud models</h4>
+        <p class="desc" style="margin-bottom:8px">Only applies when a cloud endpoint is selected. Local models always get full context.</p>
+        <div class="switchrow">
+          <div><div class="swtitle">Event titles</div><div class="swsub">Required for useful suggestions</div></div>
+          <span class="switch"></span>
+        </div>
+        <div class="switchrow">
+          <div><div class="swtitle">Attendee domains</div><div class="swsub">Domains only — never email addresses</div></div>
+          <span class="switch"></span>
+        </div>
+        <div class="switchrow">
+          <div><div class="swtitle">Event descriptions</div><div class="swsub">Higher leak risk, low added signal</div></div>
+          <span class="switch off"></span>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+</body>
+</html>

@@ -213,8 +213,8 @@ function App() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-zinc-50 text-zinc-950">
-      <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-5 px-5 py-5">
+    <main className="app-drag-region app-window h-screen overflow-hidden bg-zinc-50 text-zinc-950 relative">
+      <div className="mx-auto flex h-full w-full max-w-375 flex-col gap-5 px-5 pb-5 pt-12">
         <header className="flex flex-col gap-3 border-b border-zinc-200 pb-4 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-sm font-medium text-zinc-500">Clockr</p>
@@ -222,7 +222,7 @@ function App() {
               Period Schedule
             </h1>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="app-no-drag flex flex-wrap items-center gap-2">
             <div className="flex rounded-md border border-zinc-200 bg-white p-1">
               {[1, 7, 14].map((count) => (
                 <Button
@@ -326,7 +326,7 @@ function App() {
                   {...scheduler.getRootProps({
                     ref: schedulerViewportRef,
                     className:
-                      "max-h-[calc(100vh-170px)] min-h-[520px] overflow-auto rounded-md border border-zinc-200 bg-white shadow-sm",
+                      "app-no-drag max-h-94 min-h-[520px] overflow-auto rounded-md border border-zinc-200 bg-white shadow-sm",
                   })}
                 >
                   <div
@@ -473,7 +473,7 @@ function App() {
             }}
           </Scheduler>
 
-          <aside className="space-y-4 rounded-md border border-zinc-200 bg-white p-4 shadow-sm">
+          <aside className="app-no-drag space-y-4 rounded-md border border-zinc-200 bg-white p-4 shadow-sm">
             <div>
               <h2 className="text-sm font-semibold text-zinc-950">Totals</h2>
               <div className="mt-3 space-y-2">

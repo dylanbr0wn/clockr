@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Clockr — Review Queue</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { background: #3f3f46; }
+  .stage { width: 1280px; height: 832px; display: flex; align-items: center; justify-content: center; background: rgba(9,9,11,0.45); }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="modal">
+    <div class="modal-h">
+      <h2>Review queue</h2>
+      <p>3 items need a decision after the last sync. Safe changes were applied automatically.</p>
+    </div>
+    <div class="modal-body">
+
+      <div class="rq-item">
+        <div class="rq-top">
+          <span class="rq-tag overlap">Overlap</span>
+          <span class="rq-title">Sprint planning ↔ Design review</span>
+        </div>
+        <div class="rq-sub">Mon Jun 8 · 9:15 – 10:00 overlaps (45m). Pick which category owns this interval — no double-counting.</div>
+        <div class="rq-options">
+          <div class="rq-opt selected"><span class="radio on"></span><span><b>Product</b> · Sprint planning</span></div>
+          <div class="rq-opt"><span class="radio"></span><span><b>Client</b> · Design review</span></div>
+          <div class="rq-opt"><span class="radio"></span><span>Split at 9:30</span></div>
+        </div>
+      </div>
+
+      <div class="rq-item">
+        <div class="rq-top">
+          <span class="rq-tag deleted">Removed</span>
+          <span class="rq-title">Marketing check-in</span>
+        </div>
+        <div class="rq-sub">Deleted from your calendar but already categorized as <b>Product</b> (1.0h on Tue Jun 9). Suggest dropping the entry.</div>
+        <div class="rq-actions">
+          <button class="btn outline sm">Keep entry</button>
+          <button class="btn primary sm">Drop 1.0h</button>
+        </div>
+      </div>
+
+      <div class="rq-item">
+        <div class="rq-top">
+          <span class="rq-tag conflict">Gap conflict</span>
+          <span class="rq-title">New event inside a filled gap</span>
+        </div>
+        <div class="rq-sub">"Incident triage" (Wed 9:30 – 10:30) landed inside a gap you already filled with <b>Engineering</b>. Keeping both would double-count 1.0h.</div>
+        <div class="rq-actions">
+          <button class="btn outline sm">Keep gap fill</button>
+          <button class="btn primary sm">Use event, shrink fill</button>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-f">
+      <button class="btn ghost">Remind me later</button>
+      <div style="display:flex;gap:8px">
+        <span class="sub" style="align-self:center;color:var(--muted-foreground);font-size:12px">1 of 3 resolved</span>
+        <button class="btn primary">Apply decisions</button>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
