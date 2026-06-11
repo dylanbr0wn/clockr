@@ -1,4 +1,4 @@
-export type SchedulerInteraction = "move" | "resize-start" | "resize-end";
+export type SchedulerInteraction = "move" | "resize-start" | "resize-end" | "create";
 
 export interface SchedulerItem<TMetadata = unknown> {
   id: string;
@@ -28,6 +28,12 @@ export interface SchedulerConfig {
   maxDays: number;
   workingStartMinutes: number;
   workingEndMinutes: number;
+  /** Pixels the pointer must travel before a drag starts. Keeps clicks from becoming drags. */
+  dragThresholdPx: number;
+  /** Allow dragging on empty column space to create a range. Click-to-create always works. */
+  dragToCreate: boolean;
+  /** Arrow-key move/resize on focused items. */
+  keyboard: boolean;
 }
 
 export interface SchedulerCreateRequest {
@@ -58,14 +64,25 @@ export interface SchedulerLayoutItem<TMetadata = unknown> {
   isPreview: boolean;
 }
 
-export interface SchedulerOptions<TMetadata = unknown> {
-  days: SchedulerDay[];
-  items: SchedulerItem<TMetadata>[];
+export interface SchedulerOptions<TItemMetadata = unknown, TDayMetadata = unknown> {
+  days: SchedulerDay<TDayMetadata>[];
+  items: SchedulerItem<TItemMetadata>[];
   config?: Partial<SchedulerConfig>;
   onCreate?: (request: SchedulerCreateRequest) => void;
-  onPreviewChange?: (change: SchedulerChange<TMetadata>) => void;
-  onCommitChange?: (change: SchedulerChange<TMetadata>) => void;
+  onPreviewChange?: (change: SchedulerChange<TItemMetadata>) => void;
+  onCommitChange?: (change: SchedulerChange<TItemMetadata>) => void;
+  /**
+   * Constrain or reject a pending change before it is previewed or committed.
+   * Return the change (possibly adjusted, e.g. snapped to neighbours) to accept it,
+   * or null to reject it and keep the previous state.
+   */
+  transformChange?: (
+    change: SchedulerChange<TItemMetadata>,
+  ) => SchedulerChange<TItemMetadata> | null;
 }
+
+/** id of the synthetic item injected into layouts while drag-creating. */
+export const CREATE_PREVIEW_ITEM_ID = "__scheduler-create-preview__";
 
 export const DEFAULT_SCHEDULER_CONFIG: SchedulerConfig = {
   slotMinutes: 15,
@@ -74,4 +91,7 @@ export const DEFAULT_SCHEDULER_CONFIG: SchedulerConfig = {
   maxDays: 14,
   workingStartMinutes: 8 * 60,
   workingEndMinutes: 18 * 60,
+  dragThresholdPx: 4,
+  dragToCreate: true,
+  keyboard: true,
 };

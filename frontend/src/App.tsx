@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import "@/index.css";
 import { Button } from "@/components/ui/button";
 import {
+  CREATE_PREVIEW_ITEM_ID,
   Scheduler,
   SchedulerItemLayer,
   formatMinutes,
@@ -309,6 +310,22 @@ function App() {
                         <SchedulerItemLayer scheduler={scheduler} day={day}>
                           {(layoutItem) => {
                             const item = layoutItem.item;
+
+                            if (item.id === CREATE_PREVIEW_ITEM_ID) {
+                              return (
+                                <div
+                                  key={item.id}
+                                  {...scheduler.getItemProps(layoutItem, {
+                                    className:
+                                      "pointer-events-none z-20 flex flex-col justify-center rounded-md border-2 border-dashed border-zinc-400 bg-zinc-100/80 px-2 py-1 text-xs text-zinc-600",
+                                  })}
+                                >
+                                  {formatMinutes(item.startMinutes)}-
+                                  {formatMinutes(item.endMinutes)}
+                                </div>
+                              );
+                            }
+
                             const metadata = item.metadata;
                             const itemClass = metadata
                               ? kindClasses(metadata.kind)
@@ -318,8 +335,7 @@ function App() {
                               <div
                                 key={item.id}
                                 {...scheduler.getItemProps(layoutItem, {
-                                  onClick: (event) => {
-                                    event.preventDefault();
+                                  onClick: () => {
                                     console.log("Clicked item", item);
                                   },
                                   className: [

@@ -8,9 +8,20 @@ import {
 export const MINUTES_PER_DAY = 24 * 60;
 
 export function normalizeConfig(config?: Partial<SchedulerConfig>): SchedulerConfig {
-  return {
+  const merged = {
     ...DEFAULT_SCHEDULER_CONFIG,
     ...config,
+  };
+
+  const slotMinutes = clamp(Math.floor(merged.slotMinutes) || 1, 1, MINUTES_PER_DAY);
+
+  return {
+    ...merged,
+    slotMinutes,
+    minDurationMinutes: clamp(merged.minDurationMinutes, 1, MINUTES_PER_DAY),
+    createDurationMinutes: clamp(merged.createDurationMinutes, 1, MINUTES_PER_DAY),
+    maxDays: Math.max(1, merged.maxDays),
+    dragThresholdPx: Math.max(0, merged.dragThresholdPx),
   };
 }
 
@@ -22,6 +33,14 @@ export function snapMinutes(value: number, slotMinutes: number) {
   return clamp(Math.round(value / slotMinutes) * slotMinutes, 0, MINUTES_PER_DAY);
 }
 
+export function snapMinutesDown(value: number, slotMinutes: number) {
+  return clamp(Math.floor(value / slotMinutes) * slotMinutes, 0, MINUTES_PER_DAY);
+}
+
+export function snapMinutesUp(value: number, slotMinutes: number) {
+  return clamp(Math.ceil(value / slotMinutes) * slotMinutes, 0, MINUTES_PER_DAY);
+}
+
 export function formatMinutes(totalMinutes: number) {
   const minutes = clamp(totalMinutes, 0, MINUTES_PER_DAY);
   const hours = Math.floor(minutes / 60);
@@ -30,8 +49,8 @@ export function formatMinutes(totalMinutes: number) {
 }
 
 export function addDays(date: string, offset: number) {
-  const next = new Date(`${date}T00:00:00`);
-  next.setDate(next.getDate() + offset);
+  const [year, month, day] = date.split("-").map(Number);
+  const next = new Date(Date.UTC(year, month - 1, day + offset));
   return next.toISOString().slice(0, 10);
 }
 
@@ -50,14 +69,9 @@ export function calculateVisibleRange<TMetadata>(
     },
   );
 
-  const startMinutes = snapMinutes(
-    Math.min(config.workingStartMinutes, range.startMinutes),
-    config.slotMinutes,
-  );
-  const endMinutes = snapMinutes(
-    Math.max(config.workingEndMinutes, range.endMinutes),
-    config.slotMinutes,
-  );
+  // Floor the start and ceil the end so items at the edges are never clipped.
+  const startMinutes = snapMinutesDown(range.startMinutes, config.slotMinutes);
+  const endMinutes = snapMinutesUp(range.endMinutes, config.slotMinutes);
 
   return {
     startMinutes: clamp(startMinutes, 0, MINUTES_PER_DAY - config.slotMinutes),

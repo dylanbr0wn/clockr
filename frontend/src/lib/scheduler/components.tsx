@@ -7,59 +7,63 @@ import type {
   SchedulerOptions,
 } from "./types";
 
-export interface SchedulerProps<TMetadata = unknown>
-  extends SchedulerOptions<TMetadata> {
-  children: (scheduler: SchedulerApi<TMetadata>) => ReactNode;
+export interface SchedulerProps<TItemMetadata = unknown, TDayMetadata = unknown>
+  extends SchedulerOptions<TItemMetadata, TDayMetadata> {
+  children: (scheduler: SchedulerApi<TItemMetadata, TDayMetadata>) => ReactNode;
 }
 
-export function Scheduler<TMetadata = unknown>({
+export function Scheduler<TItemMetadata = unknown, TDayMetadata = unknown>({
   children,
   ...options
-}: SchedulerProps<TMetadata>) {
+}: SchedulerProps<TItemMetadata, TDayMetadata>) {
   const scheduler = useScheduler(options);
   return <>{children(scheduler)}</>;
 }
 
-export interface SchedulerRootProps<TMetadata = unknown>
+export interface SchedulerRootProps<TItemMetadata = unknown, TDayMetadata = unknown>
   extends HTMLAttributes<HTMLDivElement> {
-  scheduler: SchedulerApi<TMetadata>;
+  scheduler: SchedulerApi<TItemMetadata, TDayMetadata>;
 }
 
-export function SchedulerRoot<TMetadata = unknown>({
+export function SchedulerRoot<TItemMetadata = unknown, TDayMetadata = unknown>({
   scheduler,
   ...props
-}: SchedulerRootProps<TMetadata>) {
+}: SchedulerRootProps<TItemMetadata, TDayMetadata>) {
   return <div {...scheduler.getRootProps(props)} />;
 }
 
-export interface SchedulerDayColumnProps<TMetadata = unknown>
-  extends HTMLAttributes<HTMLDivElement> {
-  scheduler: SchedulerApi<TMetadata>;
-  day: SchedulerDay;
+export interface SchedulerDayColumnProps<
+  TItemMetadata = unknown,
+  TDayMetadata = unknown,
+> extends HTMLAttributes<HTMLDivElement> {
+  scheduler: SchedulerApi<TItemMetadata, TDayMetadata>;
+  day: SchedulerDay<TDayMetadata>;
 }
 
-export function SchedulerDayColumn<TMetadata = unknown>({
+export function SchedulerDayColumn<TItemMetadata = unknown, TDayMetadata = unknown>({
   scheduler,
   day,
   ...props
-}: SchedulerDayColumnProps<TMetadata>) {
+}: SchedulerDayColumnProps<TItemMetadata, TDayMetadata>) {
   return <div {...scheduler.getDayColumnProps(day, props)} />;
 }
 
-export interface SchedulerItemLayerProps<TMetadata = unknown>
-  extends Omit<HTMLAttributes<HTMLDivElement>, "children"> {
-  scheduler: SchedulerApi<TMetadata>;
-  day: SchedulerDay;
-  children: (layoutItem: SchedulerLayoutItem<TMetadata>) => ReactNode;
+export interface SchedulerItemLayerProps<
+  TItemMetadata = unknown,
+  TDayMetadata = unknown,
+> extends Omit<HTMLAttributes<HTMLDivElement>, "children"> {
+  scheduler: SchedulerApi<TItemMetadata, TDayMetadata>;
+  day: SchedulerDay<TDayMetadata>;
+  children: (layoutItem: SchedulerLayoutItem<TItemMetadata>) => ReactNode;
 }
 
-export function SchedulerItemLayer<TMetadata = unknown>({
+export function SchedulerItemLayer<TItemMetadata = unknown, TDayMetadata = unknown>({
   scheduler,
   day,
   children,
   style,
   ...props
-}: SchedulerItemLayerProps<TMetadata>) {
+}: SchedulerItemLayerProps<TItemMetadata, TDayMetadata>) {
   const items = scheduler.layoutsByDay[day.date] ?? [];
 
   return (
@@ -77,24 +81,27 @@ export function SchedulerItemLayer<TMetadata = unknown>({
   );
 }
 
-export interface SchedulerTimeAxisProps<TMetadata = unknown>
-  extends Omit<HTMLAttributes<HTMLDivElement>, "children"> {
-  scheduler: SchedulerApi<TMetadata>;
+export interface SchedulerTimeAxisProps<
+  TItemMetadata = unknown,
+  TDayMetadata = unknown,
+> extends Omit<HTMLAttributes<HTMLDivElement>, "children"> {
+  scheduler: SchedulerApi<TItemMetadata, TDayMetadata>;
   stepMinutes?: number;
   children?: (minutes: number, label: string) => ReactNode;
 }
 
-export function SchedulerTimeAxis<TMetadata = unknown>({
+export function SchedulerTimeAxis<TItemMetadata = unknown, TDayMetadata = unknown>({
   scheduler,
   stepMinutes = 60,
   children,
   ...props
-}: SchedulerTimeAxisProps<TMetadata>) {
+}: SchedulerTimeAxisProps<TItemMetadata, TDayMetadata>) {
+  const step = Math.max(1, stepMinutes);
   const marks: number[] = [];
   for (
     let minute = scheduler.visibleRange.startMinutes;
     minute <= scheduler.visibleRange.endMinutes;
-    minute += stepMinutes
+    minute += step
   ) {
     marks.push(minute);
   }

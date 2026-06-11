@@ -6,6 +6,7 @@ import {
   useState,
   type CSSProperties,
   type HTMLAttributes,
+  type KeyboardEvent as ReactKeyboardEvent,
   type MutableRefObject,
   type PointerEvent as ReactPointerEvent,
   type Ref,
@@ -18,24 +19,41 @@ import {
   normalizeConfig,
   snapMinutes,
 } from "./time";
-import type {
-  SchedulerChange,
-  SchedulerConfig,
-  SchedulerCreateRequest,
-  SchedulerDay,
-  SchedulerInteraction,
-  SchedulerItem,
-  SchedulerLayoutItem,
-  SchedulerOptions,
-  SchedulerVisibleRange,
+import {
+  CREATE_PREVIEW_ITEM_ID,
+  type SchedulerChange,
+  type SchedulerConfig,
+  type SchedulerCreateRequest,
+  type SchedulerDay,
+  type SchedulerInteraction,
+  type SchedulerItem,
+  type SchedulerLayoutItem,
+  type SchedulerOptions,
+  type SchedulerVisibleRange,
 } from "./types";
 
-interface ActiveInteraction<TMetadata> {
+interface ItemInteraction<TMetadata> {
+  kind: "item";
   interaction: SchedulerInteraction;
   item: SchedulerItem<TMetadata>;
   pointerStartMinute: number;
+  startClientX: number;
+  startClientY: number;
+  activated: boolean;
   lastChange: SchedulerChange<TMetadata>;
 }
+
+interface CreateInteraction {
+  kind: "create";
+  day: string;
+  anchorMinute: number;
+  startClientX: number;
+  startClientY: number;
+  activated: boolean;
+  lastRange: SchedulerCreateRequest | null;
+}
+
+type ActiveInteraction<TMetadata> = ItemInteraction<TMetadata> | CreateInteraction;
 
 type ElementProps<TElement extends HTMLElement> = HTMLAttributes<TElement> & {
   ref?: Ref<TElement>;
@@ -82,42 +100,87 @@ function toItemChange<TMetadata>(
   };
 }
 
-export interface SchedulerApi<TMetadata = unknown> {
-  days: SchedulerDay[];
-  items: SchedulerItem<TMetadata>[];
+function sameRange(
+  a: { day: string; startMinutes: number; endMinutes: number },
+  b: { day: string; startMinutes: number; endMinutes: number },
+) {
+  return (
+    a.day === b.day &&
+    a.startMinutes === b.startMinutes &&
+    a.endMinutes === b.endMinutes
+  );
+}
+
+function isWithinThreshold(
+  event: PointerEvent,
+  startClientX: number,
+  startClientY: number,
+  thresholdPx: number,
+) {
+  return (
+    Math.abs(event.clientX - startClientX) < thresholdPx &&
+    Math.abs(event.clientY - startClientY) < thresholdPx
+  );
+}
+
+function targetInsideItem(target: EventTarget | null) {
+  return target instanceof Element && target.closest("[data-scheduler-item]") !== null;
+}
+
+export interface SchedulerApi<TItemMetadata = unknown, TDayMetadata = unknown> {
+  days: SchedulerDay<TDayMetadata>[];
+  items: SchedulerItem<TItemMetadata>[];
   visibleRange: SchedulerVisibleRange;
   config: SchedulerConfig;
-  previewChange: SchedulerChange<TMetadata> | null;
-  layoutsByDay: Record<string, SchedulerLayoutItem<TMetadata>[]>;
+  previewChange: SchedulerChange<TItemMetadata> | null;
+  createPreview: SchedulerCreateRequest | null;
+  layoutsByDay: Record<string, SchedulerLayoutItem<TItemMetadata>[]>;
   getRootProps: <TElement extends HTMLElement>(
     props?: ElementProps<TElement>,
   ) => ElementProps<TElement>;
   getDayColumnProps: <TElement extends HTMLElement>(
-    day: SchedulerDay,
+    day: SchedulerDay<TDayMetadata>,
     props?: ElementProps<TElement>,
   ) => ElementProps<TElement>;
   getItemProps: <TElement extends HTMLElement>(
-    layoutItem: SchedulerLayoutItem<TMetadata>,
+    layoutItem: SchedulerLayoutItem<TItemMetadata>,
     props?: ElementProps<TElement>,
   ) => ElementProps<TElement>;
   getResizeHandleProps: <TElement extends HTMLElement>(
-    layoutItem: SchedulerLayoutItem<TMetadata>,
+    layoutItem: SchedulerLayoutItem<TItemMetadata>,
     edge: "start" | "end",
     props?: ElementProps<TElement>,
   ) => ElementProps<TElement>;
 }
 
-export function useScheduler<TMetadata = unknown>({
+export function useScheduler<TItemMetadata = unknown, TDayMetadata = unknown>({
   days,
   items,
   config: configOverrides,
   onCreate,
   onPreviewChange,
   onCommitChange,
-}: SchedulerOptions<TMetadata>): SchedulerApi<TMetadata> {
+  transformChange,
+}: SchedulerOptions<TItemMetadata, TDayMetadata>): SchedulerApi<
+  TItemMetadata,
+  TDayMetadata
+> {
   const config = useMemo(
     () => normalizeConfig(configOverrides),
-    [configOverrides],
+    // Depend on primitive fields so an inline config object doesn't invalidate
+    // every memo (and resubscribe window listeners) on each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      configOverrides?.slotMinutes,
+      configOverrides?.minDurationMinutes,
+      configOverrides?.createDurationMinutes,
+      configOverrides?.maxDays,
+      configOverrides?.workingStartMinutes,
+      configOverrides?.workingEndMinutes,
+      configOverrides?.dragThresholdPx,
+      configOverrides?.dragToCreate,
+      configOverrides?.keyboard,
+    ],
   );
   const activeDays = useMemo(
     () => days.slice(0, config.maxDays),
@@ -128,10 +191,12 @@ export function useScheduler<TMetadata = unknown>({
     [activeDays],
   );
   const dayRefs = useRef(new Map<string, HTMLElement>());
-  const activeRef = useRef<ActiveInteraction<TMetadata> | null>(null);
+  const activeRef = useRef<ActiveInteraction<TItemMetadata> | null>(null);
   const suppressColumnClickUntilRef = useRef(0);
   const [previewChange, setPreviewChange] =
-    useState<SchedulerChange<TMetadata> | null>(null);
+    useState<SchedulerChange<TItemMetadata> | null>(null);
+  const [createPreview, setCreatePreview] =
+    useState<SchedulerCreateRequest | null>(null);
 
   const visibleRange = useMemo(
     () => calculateVisibleRange(items, config),
@@ -156,18 +221,31 @@ export function useScheduler<TMetadata = unknown>({
   }, [items, previewChange]);
 
   const layoutsByDay = useMemo(() => {
-    return activeDays.reduce<Record<string, SchedulerLayoutItem<TMetadata>[]>>(
+    const layoutItems = createPreview
+      ? [
+          ...previewItems,
+          {
+            id: CREATE_PREVIEW_ITEM_ID,
+            day: createPreview.day,
+            startMinutes: createPreview.startMinutes,
+            endMinutes: createPreview.endMinutes,
+          } as SchedulerItem<TItemMetadata>,
+        ]
+      : previewItems;
+    const previewId = previewChange?.itemId ?? (createPreview ? CREATE_PREVIEW_ITEM_ID : undefined);
+
+    return activeDays.reduce<Record<string, SchedulerLayoutItem<TItemMetadata>[]>>(
       (layouts, day) => {
         layouts[day.date] = packOverlaps(
-          previewItems.filter((item) => item.day === day.date),
+          layoutItems.filter((item) => item.day === day.date),
           visibleRange,
-          previewChange?.itemId,
+          previewId,
         );
         return layouts;
       },
       {},
     );
-  }, [activeDays, previewChange?.itemId, previewItems, visibleRange]);
+  }, [activeDays, createPreview, previewChange?.itemId, previewItems, visibleRange]);
 
   const pointToMinutes = useCallback(
     (clientY: number, day: string) => {
@@ -203,19 +281,8 @@ export function useScheduler<TMetadata = unknown>({
     [dayDates],
   );
 
-  const emitPreview = useCallback(
-    (change: SchedulerChange<TMetadata>) => {
-      activeRef.current = activeRef.current
-        ? { ...activeRef.current, lastChange: change }
-        : null;
-      setPreviewChange(change);
-      onPreviewChange?.(change);
-    },
-    [onPreviewChange],
-  );
-
   const calculateChange = useCallback(
-    (event: PointerEvent, active: ActiveInteraction<TMetadata>) => {
+    (event: PointerEvent, active: ItemInteraction<TItemMetadata>) => {
       const item = active.item;
       const duration = item.endMinutes - item.startMinutes;
       const targetDay =
@@ -274,9 +341,34 @@ export function useScheduler<TMetadata = unknown>({
     [config.minDurationMinutes, config.slotMinutes, dayAtX, pointToMinutes],
   );
 
+  const calculateCreateRange = useCallback(
+    (event: PointerEvent, active: CreateInteraction): SchedulerCreateRequest => {
+      const pointerMinute = pointToMinutes(event.clientY, active.day);
+      let startMinutes = Math.min(active.anchorMinute, pointerMinute);
+      let endMinutes = Math.max(active.anchorMinute, pointerMinute);
+
+      if (endMinutes - startMinutes < config.minDurationMinutes) {
+        endMinutes = startMinutes + config.minDurationMinutes;
+        if (endMinutes > MINUTES_PER_DAY) {
+          endMinutes = MINUTES_PER_DAY;
+          startMinutes = endMinutes - config.minDurationMinutes;
+        }
+      }
+
+      return { day: active.day, startMinutes, endMinutes };
+    },
+    [config.minDurationMinutes, pointToMinutes],
+  );
+
   const suppressColumnClick = useCallback(() => {
     suppressColumnClickUntilRef.current = window.performance.now() + 350;
   }, []);
+
+  const applyTransform = useCallback(
+    (change: SchedulerChange<TItemMetadata>) =>
+      transformChange ? transformChange(change) : change,
+    [transformChange],
+  );
 
   useEffect(() => {
     const handlePointerMove = (event: PointerEvent) => {
@@ -285,7 +377,31 @@ export function useScheduler<TMetadata = unknown>({
         return;
       }
 
-      emitPreview(calculateChange(event, active));
+      if (
+        !active.activated &&
+        isWithinThreshold(event, active.startClientX, active.startClientY, config.dragThresholdPx)
+      ) {
+        return;
+      }
+      active.activated = true;
+
+      if (active.kind === "create") {
+        const range = calculateCreateRange(event, active);
+        if (active.lastRange && sameRange(range, active.lastRange)) {
+          return;
+        }
+        active.lastRange = range;
+        setCreatePreview(range);
+        return;
+      }
+
+      const change = applyTransform(calculateChange(event, active));
+      if (!change || sameRange(change, active.lastChange)) {
+        return;
+      }
+      active.lastChange = change;
+      setPreviewChange(change);
+      onPreviewChange?.(change);
     };
 
     const handlePointerUp = () => {
@@ -294,10 +410,24 @@ export function useScheduler<TMetadata = unknown>({
         return;
       }
 
-      onCommitChange?.(active.lastChange);
-      suppressColumnClick();
       activeRef.current = null;
+
+      if (active.kind === "create") {
+        setCreatePreview(null);
+        if (active.activated && active.lastRange) {
+          suppressColumnClick();
+          onCreate?.(active.lastRange);
+        }
+        return;
+      }
+
       setPreviewChange(null);
+      if (active.activated) {
+        suppressColumnClick();
+        if (!sameRange(active.lastChange, active.item)) {
+          onCommitChange?.(active.lastChange);
+        }
+      }
     };
 
     window.addEventListener("pointermove", handlePointerMove);
@@ -309,37 +439,124 @@ export function useScheduler<TMetadata = unknown>({
       window.removeEventListener("pointerup", handlePointerUp);
       window.removeEventListener("pointercancel", handlePointerUp);
     };
-  }, [calculateChange, emitPreview, onCommitChange, suppressColumnClick]);
+  }, [
+    applyTransform,
+    calculateChange,
+    calculateCreateRange,
+    config.dragThresholdPx,
+    onCommitChange,
+    onCreate,
+    onPreviewChange,
+    suppressColumnClick,
+  ]);
 
   const startInteraction = useCallback(
     (
       interaction: SchedulerInteraction,
-      item: SchedulerItem<TMetadata>,
+      item: SchedulerItem<TItemMetadata>,
       event: ReactPointerEvent<HTMLElement>,
     ) => {
-      if (item.disabled) {
+      if (item.disabled || event.button !== 0) {
         return;
       }
 
       event.preventDefault();
       event.stopPropagation();
 
-      const initialChange = toItemChange(
-        item,
-        interaction,
-        item.day,
-        item.startMinutes,
-        item.endMinutes,
-      );
       activeRef.current = {
+        kind: "item",
         interaction,
         item,
         pointerStartMinute: pointToMinutes(event.clientY, item.day),
-        lastChange: initialChange,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        activated: false,
+        lastChange: toItemChange(
+          item,
+          interaction,
+          item.day,
+          item.startMinutes,
+          item.endMinutes,
+        ),
       };
-      suppressColumnClick();
     },
-    [pointToMinutes, suppressColumnClick],
+    [pointToMinutes],
+  );
+
+  const commitKeyboardChange = useCallback(
+    (change: SchedulerChange<TItemMetadata>) => {
+      const final = applyTransform(change);
+      if (!final || sameRange(final, change.item)) {
+        return;
+      }
+      onCommitChange?.(final);
+    },
+    [applyTransform, onCommitChange],
+  );
+
+  const handleItemKeyDown = useCallback(
+    (item: SchedulerItem<TItemMetadata>, event: ReactKeyboardEvent<HTMLElement>) => {
+      if (!config.keyboard || event.defaultPrevented || item.disabled) {
+        return;
+      }
+
+      const slot = config.slotMinutes;
+      const duration = item.endMinutes - item.startMinutes;
+      let change: SchedulerChange<TItemMetadata> | null = null;
+
+      switch (event.key) {
+        case "ArrowUp":
+        case "ArrowDown": {
+          const direction = event.key === "ArrowUp" ? -1 : 1;
+          if (event.shiftKey) {
+            const endMinutes = clamp(
+              item.endMinutes + direction * slot,
+              item.startMinutes + config.minDurationMinutes,
+              MINUTES_PER_DAY,
+            );
+            change = toItemChange(item, "resize-end", item.day, item.startMinutes, endMinutes);
+          } else if (event.altKey) {
+            const startMinutes = clamp(
+              item.startMinutes + direction * slot,
+              0,
+              item.endMinutes - config.minDurationMinutes,
+            );
+            change = toItemChange(item, "resize-start", item.day, startMinutes, item.endMinutes);
+          } else {
+            const startMinutes = clamp(
+              item.startMinutes + direction * slot,
+              0,
+              MINUTES_PER_DAY - duration,
+            );
+            change = toItemChange(
+              item,
+              "move",
+              item.day,
+              startMinutes,
+              startMinutes + duration,
+            );
+          }
+          break;
+        }
+        case "ArrowLeft":
+        case "ArrowRight": {
+          const offset = event.key === "ArrowLeft" ? -1 : 1;
+          const dayIndex = dayDates.indexOf(item.day);
+          const targetDay = dayDates[dayIndex + offset];
+          if (dayIndex === -1 || !targetDay) {
+            return;
+          }
+          change = toItemChange(item, "move", targetDay, item.startMinutes, item.endMinutes);
+          break;
+        }
+        default:
+          return;
+      }
+
+      event.preventDefault();
+      commitKeyboardChange(change);
+    },
+    [commitKeyboardChange, config.keyboard, config.minDurationMinutes, config.slotMinutes, dayDates],
   );
 
   const getRootProps = useCallback(
@@ -356,11 +573,39 @@ export function useScheduler<TMetadata = unknown>({
 
   const getDayColumnProps = useCallback(
     <TElement extends HTMLElement>(
-      day: SchedulerDay,
+      day: SchedulerDay<TDayMetadata>,
       props: ElementProps<TElement> = {},
     ): ElementProps<TElement> => {
+      const handlePointerDown = (event: ReactPointerEvent<TElement>) => {
+        if (
+          event.defaultPrevented ||
+          event.button !== 0 ||
+          day.disabled ||
+          !onCreate ||
+          !config.dragToCreate ||
+          targetInsideItem(event.target)
+        ) {
+          return;
+        }
+
+        activeRef.current = {
+          kind: "create",
+          day: day.date,
+          anchorMinute: pointToMinutes(event.clientY, day.date),
+          startClientX: event.clientX,
+          startClientY: event.clientY,
+          activated: false,
+          lastRange: null,
+        };
+      };
+
       const handleClick = (event: React.MouseEvent<TElement>) => {
-        if (event.defaultPrevented || day.disabled) {
+        if (
+          event.defaultPrevented ||
+          day.disabled ||
+          !onCreate ||
+          targetInsideItem(event.target)
+        ) {
           return;
         }
 
@@ -375,12 +620,11 @@ export function useScheduler<TMetadata = unknown>({
           0,
           MINUTES_PER_DAY - config.createDurationMinutes,
         );
-        const request: SchedulerCreateRequest = {
+        onCreate({
           day: day.date,
           startMinutes,
           endMinutes: startMinutes + config.createDurationMinutes,
-        };
-        onCreate?.(request);
+        });
       };
 
       const style: CSSProperties = {
@@ -403,15 +647,16 @@ export function useScheduler<TMetadata = unknown>({
         "aria-disabled": day.disabled || undefined,
         "data-scheduler-day": day.date,
         style,
+        onPointerDown: composeHandlers(props.onPointerDown, handlePointerDown),
         onClick: composeHandlers(props.onClick, handleClick),
       };
     },
-    [config.createDurationMinutes, onCreate, pointToMinutes],
+    [config.createDurationMinutes, config.dragToCreate, onCreate, pointToMinutes],
   );
 
   const getItemProps = useCallback(
     <TElement extends HTMLElement>(
-      layoutItem: SchedulerLayoutItem<TMetadata>,
+      layoutItem: SchedulerLayoutItem<TItemMetadata>,
       props: ElementProps<TElement> = {},
     ): ElementProps<TElement> => {
       const item = layoutItem.item;
@@ -436,14 +681,17 @@ export function useScheduler<TMetadata = unknown>({
         onPointerDown: composeHandlers(props.onPointerDown, (event) =>
           startInteraction("move", item, event),
         ),
+        onKeyDown: composeHandlers(props.onKeyDown, (event) =>
+          handleItemKeyDown(item, event),
+        ),
       };
     },
-    [startInteraction],
+    [handleItemKeyDown, startInteraction],
   );
 
   const getResizeHandleProps = useCallback(
     <TElement extends HTMLElement>(
-      layoutItem: SchedulerLayoutItem<TMetadata>,
+      layoutItem: SchedulerLayoutItem<TItemMetadata>,
       edge: "start" | "end",
       props: ElementProps<TElement> = {},
     ): ElementProps<TElement> => {
@@ -470,6 +718,7 @@ export function useScheduler<TMetadata = unknown>({
     visibleRange,
     config,
     previewChange,
+    createPreview,
     layoutsByDay,
     getRootProps,
     getDayColumnProps,
