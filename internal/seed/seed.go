@@ -37,6 +37,8 @@ var defaultSettings = map[string]string{
 	"events.all_day":      `"flag"`,
 	"period.cadence":      `"bi-weekly"`,
 	"period.target_hours": `8`,
+	// Default working-window start (local time-of-day). Window length = target hours.
+	"window.start": `"09:00"`,
 	"ai.base_url":         `""`,
 	"ai.model":           `""`,
 }

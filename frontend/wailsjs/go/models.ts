@@ -58,6 +58,88 @@ export namespace service {
 	        this.isDefaultGap = source["isDefaultGap"];
 	    }
 	}
+	export class Interval {
+	    // Go type: time
+	    start: any;
+	    // Go type: time
+	    end: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new Interval(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.start = this.convertValues(source["start"], null);
+	        this.end = this.convertValues(source["end"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class DayTimeline {
+	    date: string;
+	    tz: string;
+	    // Go type: time
+	    windowStart: any;
+	    // Go type: time
+	    windowEnd: any;
+	    events: Interval[];
+	    filled: Interval[];
+	    gaps: Interval[];
+	    coveredHours: number;
+	    gapHours: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DayTimeline(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.date = source["date"];
+	        this.tz = source["tz"];
+	        this.windowStart = this.convertValues(source["windowStart"], null);
+	        this.windowEnd = this.convertValues(source["windowEnd"], null);
+	        this.events = this.convertValues(source["events"], Interval);
+	        this.filled = this.convertValues(source["filled"], Interval);
+	        this.gaps = this.convertValues(source["gaps"], Interval);
+	        this.coveredHours = source["coveredHours"];
+	        this.gapHours = source["gapHours"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class Event {
 	    id: number;
 	    periodId: number;
@@ -238,6 +320,7 @@ export namespace service {
 		    return a;
 		}
 	}
+	
 	export class Period {
 	    id: number;
 	    startDate: string;

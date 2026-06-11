@@ -3,6 +3,8 @@
 import {context} from '../models';
 import {service} from '../models';
 
+export function ComputeGaps(arg1:context.Context,arg2:number):Promise<Array<service.DayTimeline>>;
+
 export function GetCategory(arg1:context.Context,arg2:number):Promise<service.Category>;
 
 export function GetEvent(arg1:context.Context,arg2:number):Promise<service.Event>;
