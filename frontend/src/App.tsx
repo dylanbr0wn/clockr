@@ -13,6 +13,7 @@ import {
 } from "@/lib/scheduler";
 import { Clock } from "lucide-react";
 import { Separator } from "./components/ui/separator";
+import { Environment } from "../wailsjs/runtime/runtime";
 
 type ScheduleKind = "calendar" | "gap" | "manual" | "review";
 
@@ -31,6 +32,8 @@ const WORKING_START_MINUTES = 8 * 60;
 const WORKING_END_MINUTES = 18 * 60;
 const INITIAL_SCROLL_CONTEXT_MINUTES = 2 * 60;
 const TIMELINE_HOUR_HEIGHT = 56;
+const MAC_TITLEBAR_PADDING_CLASS = "pl-24";
+const DEFAULT_TITLEBAR_PADDING_CLASS = "pl-3";
 
 const initialItems: DemoItem[] = [
   {
@@ -142,15 +145,24 @@ function durationLabel(item: DemoItem) {
   return formatDuration(item.endMinutes - item.startMinutes);
 }
 
+function getInitialPlatform() {
+  return navigator.platform.toLowerCase().includes("mac") ? "darwin" : "";
+}
+
 function App() {
   const [dayCount, setDayCount] = useState(7);
   const [items, setItems] = useState<DemoItem[]>(initialItems);
   const [preview, setPreview] = useState<SchedulerChange<ScheduleMetadata> | null>(
     null,
   );
+  const [platform, setPlatform] = useState(getInitialPlatform);
   const schedulerViewportRef = useRef<HTMLDivElement | null>(null);
   const didSetInitialScrollRef = useRef(false);
   const days = useMemo(() => buildDays(dayCount), [dayCount]);
+  const titlebarPaddingClass =
+    platform === "darwin"
+      ? MAC_TITLEBAR_PADDING_CLASS
+      : DEFAULT_TITLEBAR_PADDING_CLASS;
   const totals = useMemo(() => {
     return items.reduce<Record<string, number>>((next, item) => {
       const key = item.metadata?.category ?? "Unassigned";
@@ -214,10 +226,33 @@ function App() {
     didSetInitialScrollRef.current = true;
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadEnvironment = async () => {
+      try {
+        const environment = await Environment();
+        if (isMounted) {
+          setPlatform(environment.platform);
+        }
+      } catch {
+        // The Wails runtime is not present when rendering in plain Vite.
+      }
+    };
+
+    void loadEnvironment();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
-    <main className="app-drag-region app-window relative h-screen overflow-hidden bg-zinc-50 text-zinc-950">
-      <div className="mx-auto flex h-full min-h-0 w-full max-w-375 flex-col gap-5 p-3 pt-2">
-        <header className="shrink-0 flex items-center gap-3 border-b border-zinc-200 pb-4 pl-21">
+    <main className="app-drag-region app-window relative h-screen overflow-hidden overscroll-none bg-background text-foreground">
+      <div className="mx-auto flex h-full min-h-0 w-full flex-col">
+        <header
+          className={`shrink-0 flex items-center gap-3 py-2 pr-3 ${titlebarPaddingClass}`}
+        >
           <div className="bg-primary rounded-md text-accent p-1.5">
             <Clock className="size-4" />
           </div>
@@ -257,8 +292,8 @@ function App() {
             </Button>
           </div>
         </header>
-
-        <section className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <Separator />
+        <section className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px] p-3 bg-muted">
           <Scheduler
             days={days}
             items={items}
@@ -277,7 +312,7 @@ function App() {
                 scheduler.visibleRange.endMinutes -
                 scheduler.visibleRange.startMinutes;
               const slotPercent =
-                (scheduler.config.slotMinutes / visibleDuration) * 100;
+                (60 / visibleDuration) * 100;
               const timelineHeight = Math.max(
                 (visibleDuration / 60) * TIMELINE_HOUR_HEIGHT,
                 760,
@@ -302,7 +337,6 @@ function App() {
                 `repeating-linear-gradient(to bottom, transparent 0, transparent calc(${slotPercent}% - 1px), rgb(228 228 231) calc(${slotPercent}% - 1px), rgb(228 228 231) ${slotPercent}%)`,
                 `linear-gradient(to bottom, rgb(250 250 250) 0%, rgb(250 250 250) ${workingStartPercent}%, transparent ${workingStartPercent}%, transparent ${workingEndPercent}%, rgb(250 250 250) ${workingEndPercent}%, rgb(250 250 250) 100%)`,
               ].join(", ");
-              const timeAxisBackground = `linear-gradient(to bottom, rgb(244 244 245) 0%, rgb(244 244 245) ${workingStartPercent}%, rgb(250 250 250) ${workingStartPercent}%, rgb(250 250 250) ${workingEndPercent}%, rgb(244 244 245) ${workingEndPercent}%, rgb(244 244 245) 100%)`;
               const timelineMarks: number[] = [];
 
               for (
@@ -330,7 +364,7 @@ function App() {
                   {...scheduler.getRootProps({
                     ref: schedulerViewportRef,
                     className:
-                      "app-no-drag h-full min-h-0 overflow-auto rounded-md border border-zinc-200 bg-white shadow-sm",
+                      "app-no-drag h-full min-h-0 overflow-auto overscroll-none rounded-md border border-border bg-background shadow-sm",
                   })}
                 >
                   <div
@@ -341,11 +375,11 @@ function App() {
                       gridTemplateRows: `52px ${timelineHeight}px`,
                     }}
                   >
-                    <div className="sticky left-0 top-0 z-40 border-b border-r border-zinc-200 bg-zinc-100" />
+                    <div className="sticky left-0 top-0 z-40 border-b border-r border-border bg-background" />
                     {scheduler.days.map((day) => (
                       <div
                         key={day.date}
-                        className="sticky top-0 z-30 flex items-center border-b border-r border-zinc-200 bg-zinc-100 px-3"
+                        className="sticky top-0 z-30 flex items-center border-b border-r border-border bg-background px-3"
                       >
                         <div>
                           <p className="text-sm font-semibold text-zinc-950">
@@ -357,8 +391,7 @@ function App() {
                     ))}
 
                     <div
-                      className="sticky left-0 z-20 border-r border-zinc-200"
-                      style={{ backgroundImage: timeAxisBackground }}
+                      className="sticky left-0 z-20 border-r border-zinc-200 bg-background"
                     >
                       {timelineMarks.map((minute) => (
                         <div
@@ -388,7 +421,7 @@ function App() {
                         {[workingStartPercent, workingEndPercent].map((percent) => (
                           <div
                             key={percent}
-                            className="pointer-events-none absolute inset-x-0 z-[1] border-t border-zinc-400/50"
+                            className="pointer-events-none absolute inset-x-0 z-1 border-t border-border"
                             style={{ top: `${percent}%` }}
                           />
                         ))}
@@ -477,7 +510,7 @@ function App() {
             }}
           </Scheduler>
 
-          <aside className="app-no-drag min-h-0 space-y-4 overflow-auto rounded-md border border-zinc-200 bg-white p-4 shadow-sm">
+          <aside className="app-no-drag min-h-0 space-y-4 overflow-auto overscroll-none rounded-md border border-zinc-200 bg-white p-4 shadow-sm">
             <div>
               <h2 className="text-sm font-semibold text-zinc-950">Totals</h2>
               <div className="mt-3 space-y-2">
