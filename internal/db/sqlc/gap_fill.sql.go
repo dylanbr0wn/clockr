@@ -52,13 +52,21 @@ func (q *Queries) CreateGapFill(ctx context.Context, arg CreateGapFillParams) (G
 	return i, err
 }
 
-const deleteGapFill = `-- name: DeleteGapFill :exec
-DELETE FROM gap_fill WHERE id = ?
+const deleteManualGapFill = `-- name: DeleteManualGapFill :execrows
+DELETE FROM gap_fill WHERE id = ? AND period_id = ? AND source = 'manual'
 `
 
-func (q *Queries) DeleteGapFill(ctx context.Context, id int64) error {
-	_, err := q.db.ExecContext(ctx, deleteGapFill, id)
-	return err
+type DeleteManualGapFillParams struct {
+	ID       int64 `json:"id"`
+	PeriodID int64 `json:"period_id"`
+}
+
+func (q *Queries) DeleteManualGapFill(ctx context.Context, arg DeleteManualGapFillParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteManualGapFill, arg.ID, arg.PeriodID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const listGapFillsForDay = `-- name: ListGapFillsForDay :many

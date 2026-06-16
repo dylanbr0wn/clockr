@@ -1,10 +1,21 @@
 import { useEffect, useRef } from "react";
+import { CopyIcon, PencilIcon, PlusIcon, RotateCcwIcon, Trash2Icon } from "lucide-react";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import { cn } from "@/lib/utils";
 import {
   CREATE_PREVIEW_ITEM_ID,
   Scheduler,
   SchedulerItemLayer,
+  MINUTES_PER_DAY,
+  clamp,
   formatMinutes,
+  snapMinutes,
   type SchedulerCreateRequest,
 } from "@/lib/scheduler";
 import {
@@ -27,24 +38,33 @@ import {
 interface ScheduleTimelineProps {
   days: ScheduleDay[];
   items: ScheduleItem[];
+  resettableDays: ReadonlySet<string>;
   visibleDayCount: number;
   onCreate: (request: SchedulerCreateRequest) => void;
   onPreviewChange: (change: ScheduleChange | null) => void;
   onCommitChange: (change: ScheduleChange) => void;
   onEditItem: (item: ScheduleItem) => void;
+  onDuplicateItem: (item: ScheduleItem) => void;
+  onRemoveItem: (item: ScheduleItem) => void;
+  onResetDay: (day: string) => void;
 }
 
 export function ScheduleTimeline({
   days,
   items,
+  resettableDays,
   visibleDayCount,
   onCreate,
   onPreviewChange,
   onCommitChange,
   onEditItem,
+  onDuplicateItem,
+  onRemoveItem,
+  onResetDay,
 }: ScheduleTimelineProps) {
   const schedulerViewportRef = useRef<HTMLDivElement | null>(null);
   const didSetInitialScrollRef = useRef(false);
+  const backgroundRequestRef = useRef<SchedulerCreateRequest | null>(null);
 
   useEffect(() => {
     const viewport = schedulerViewportRef.current;
@@ -188,132 +208,226 @@ export function ScheduleTimeline({
 
               {scheduler.days.map((day) => {
                 const isWeekend = day.metadata?.isWeekend;
+                const canResetDay = resettableDays.has(day.date);
 
                 return (
-                  <div
-                    key={day.date}
-                    {...scheduler.getDayColumnProps(day, {
-                      className: cn([
-                        "relative not-last:border-r border-border",
-                        isWeekend ? "bg-muted" : "bg-background",
-                      ]),
-                      style: {
-                        height: `${timelineHeight}px`,
-                        backgroundImage: hourGridBackground,
-                      },
-                    })}
-                  >
-                    {!isWeekend && (
-                      <>
-                        <div
-                          className="pointer-events-none absolute inset-x-0 top-0 z-0"
-                          style={{
-                            height: `${workingStartPercent}%`,
-                            background: nonWorkingHoursBackground,
-                          }}
-                        />
-                        <div
-                          className="pointer-events-none absolute inset-x-0 bottom-0 z-0"
-                          style={{
-                            top: `${workingEndPercent}%`,
-                            background: nonWorkingHoursBackground,
-                          }}
-                        />
-                        {[workingStartPercent, workingEndPercent].map(
-                          (percent) => (
+                  <ContextMenu key={day.date}>
+                    <ContextMenuTrigger asChild>
+                      <div
+                        {...scheduler.getDayColumnProps(day, {
+                          onContextMenu: (event) => {
+                            const target = event.target;
+
+                            if (
+                              event.defaultPrevented ||
+                              !(target instanceof Element) ||
+                              target.closest(
+                                "[data-scheduler-item], [data-scheduler-ignore-create]",
+                              )
+                            ) {
+                              return;
+                            }
+
+                            const rect = event.currentTarget.getBoundingClientRect();
+                            const percent =
+                              rect.height <= 0
+                                ? 0
+                                : clamp((event.clientY - rect.top) / rect.height, 0, 1);
+                            const rawMinutes =
+                              scheduler.visibleRange.startMinutes +
+                              percent *
+                                (scheduler.visibleRange.endMinutes -
+                                  scheduler.visibleRange.startMinutes);
+                            const startMinutes = clamp(
+                              snapMinutes(rawMinutes, scheduler.config.slotMinutes),
+                              0,
+                              MINUTES_PER_DAY - scheduler.config.createDurationMinutes,
+                            );
+
+                            backgroundRequestRef.current = {
+                              day: day.date,
+                              startMinutes,
+                              endMinutes:
+                                startMinutes + scheduler.config.createDurationMinutes,
+                            };
+                          },
+                          className: cn([
+                            "relative not-last:border-r border-border",
+                            isWeekend ? "bg-muted" : "bg-background",
+                          ]),
+                          style: {
+                            height: `${timelineHeight}px`,
+                            backgroundImage: hourGridBackground,
+                          },
+                        })}
+                      >
+                        {!isWeekend && (
+                          <>
                             <div
-                              key={percent}
-                              className="pointer-events-none absolute inset-x-0 z-1 border-t border-border"
-                              style={{ top: `${percent}%` }}
+                              className="pointer-events-none absolute inset-x-0 top-0 z-0"
+                              style={{
+                                height: `${workingStartPercent}%`,
+                                background: nonWorkingHoursBackground,
+                              }}
                             />
-                          ),
+                            <div
+                              className="pointer-events-none absolute inset-x-0 bottom-0 z-0"
+                              style={{
+                                top: `${workingEndPercent}%`,
+                                background: nonWorkingHoursBackground,
+                              }}
+                            />
+                            {[workingStartPercent, workingEndPercent].map(
+                              (percent) => (
+                                <div
+                                  key={percent}
+                                  className="pointer-events-none absolute inset-x-0 z-1 border-t border-border"
+                                  style={{ top: `${percent}%` }}
+                                />
+                              ),
+                            )}
+                          </>
                         )}
-                      </>
-                    )}
-                    <SchedulerItemLayer scheduler={scheduler} day={day}>
-                      {(layoutItem) => {
-                        const item = layoutItem.item;
+                        <SchedulerItemLayer scheduler={scheduler} day={day}>
+                          {(layoutItem) => {
+                            const item = layoutItem.item;
 
-                        if (item.id === CREATE_PREVIEW_ITEM_ID) {
-                          return (
-                            <div
-                              key={item.id}
-                              {...scheduler.getItemProps(layoutItem, {
-                                className:
-                                  "pointer-events-none select-none z-20 flex flex-col justify-center rounded-md border border-dashed border-amber-300 bg-amber-50/80 px-2 py-1 text-xs text-amber-950",
-                              })}
-                            >
-                              {formatTimeRange(
-                                item.startMinutes,
-                                item.endMinutes,
-                              )}
-                            </div>
-                          );
-                        }
+                            if (item.id === CREATE_PREVIEW_ITEM_ID) {
+                              return (
+                                <div
+                                  key={item.id}
+                                  {...scheduler.getItemProps(layoutItem, {
+                                    className:
+                                      "pointer-events-none select-none z-20 flex flex-col justify-center rounded-md border border-dashed border-amber-300 bg-amber-50/80 px-2 py-1 text-xs text-amber-950",
+                                  })}
+                                >
+                                  {formatTimeRange(
+                                    item.startMinutes,
+                                    item.endMinutes,
+                                  )}
+                                </div>
+                              );
+                            }
 
-                        const metadata = item.metadata;
-                        const itemClass = metadata
-                          ? kindClasses(metadata.kind)
-                          : "border-zinc-300 bg-zinc-50 text-zinc-950";
+                            const metadata = item.metadata;
+                            const itemClass = metadata
+                              ? kindClasses(metadata.kind)
+                              : "border-zinc-300 bg-zinc-50 text-zinc-950";
+                            const canMutateItem = item.id.startsWith("gap-fill-");
 
-                        return (
-                          <div
-                            key={item.id}
-                            {...scheduler.getItemProps(layoutItem, {
-                              onDoubleClick: (event) => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                onEditItem(item);
-                              },
-                              className: [
-                                "group z-10 flex min-h-10 cursor-grab flex-col overflow-hidden rounded-md border px-2 py-1 text-left text-xs shadow-sm transition-shadow active:cursor-grabbing",
-                                layoutItem.isPreview
-                                  ? "opacity-70 ring-2 ring-zinc-900/20"
-                                  : "hover:shadow-md",
-                                itemClass,
-                              ].join(" "),
-                            })}
-                          >
-                            <div
-                              {...scheduler.getResizeHandleProps(
-                                layoutItem,
-                                "start",
-                                {
-                                  className:
-                                    "absolute inset-x-2 top-0 h-2 cursor-ns-resize rounded-full opacity-0 group-hover:opacity-100",
-                                },
-                              )}
-                            />
-                            <div className="min-w-0">
-                              <p className="truncate font-semibold">
-                                {metadata?.title ?? "Untitled"}
-                              </p>
-                              <p className="truncate text-[11px] opacity-75">
-                                {formatTimeRange(
-                                  item.startMinutes,
-                                  item.endMinutes,
-                                )}{" "}
-                                · {durationLabel(item)}
-                              </p>
-                            </div>
-                            <div className="mt-auto truncate text-[11px] font-medium opacity-80">
-                              {metadata?.category ?? "Unassigned"}
-                            </div>
-                            <div
-                              {...scheduler.getResizeHandleProps(
-                                layoutItem,
-                                "end",
-                                {
-                                  className:
-                                    "absolute inset-x-2 bottom-0 h-2 cursor-ns-resize rounded-full opacity-0 group-hover:opacity-100",
-                                },
-                              )}
-                            />
-                          </div>
-                        );
-                      }}
-                    </SchedulerItemLayer>
-                  </div>
+                            return (
+                              <ContextMenu key={item.id}>
+                                <ContextMenuTrigger asChild>
+                                  <div
+                                    {...scheduler.getItemProps(layoutItem, {
+                                      onContextMenu: (event) => {
+                                        event.stopPropagation();
+                                      },
+                                      onDoubleClick: (event) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        onEditItem(item);
+                                      },
+                                      className: [
+                                        "group z-10 flex min-h-10 cursor-grab flex-col overflow-hidden rounded-md border px-2 py-1 text-left text-xs shadow-sm transition-shadow active:cursor-grabbing",
+                                        layoutItem.isPreview
+                                          ? "opacity-70 ring-2 ring-zinc-900/20"
+                                          : "hover:shadow-md",
+                                        itemClass,
+                                      ].join(" "),
+                                    })}
+                                  >
+                                    <div
+                                      {...scheduler.getResizeHandleProps(
+                                        layoutItem,
+                                        "start",
+                                        {
+                                          className:
+                                            "absolute inset-x-2 top-0 h-2 cursor-ns-resize rounded-full opacity-0 group-hover:opacity-100",
+                                        },
+                                      )}
+                                    />
+                                    <div className="min-w-0">
+                                      <p className="truncate font-semibold">
+                                        {metadata?.title ?? "Untitled"}
+                                      </p>
+                                      <p className="truncate text-[11px] opacity-75">
+                                        {formatTimeRange(
+                                          item.startMinutes,
+                                          item.endMinutes,
+                                        )}{" "}
+                                        · {durationLabel(item)}
+                                      </p>
+                                    </div>
+                                    <div className="mt-auto truncate text-[11px] font-medium opacity-80">
+                                      {metadata?.category ?? "Unassigned"}
+                                    </div>
+                                    <div
+                                      {...scheduler.getResizeHandleProps(
+                                        layoutItem,
+                                        "end",
+                                        {
+                                          className:
+                                            "absolute inset-x-2 bottom-0 h-2 cursor-ns-resize rounded-full opacity-0 group-hover:opacity-100",
+                                        },
+                                      )}
+                                    />
+                                  </div>
+                                </ContextMenuTrigger>
+                                <ContextMenuContent data-scheduler-ignore-create="">
+                                  <ContextMenuItem
+                                    disabled={!canMutateItem}
+                                    onSelect={() => onEditItem(item)}
+                                  >
+                                    <PencilIcon />
+                                    Edit
+                                  </ContextMenuItem>
+                                  <ContextMenuItem
+                                    disabled={!canMutateItem}
+                                    onSelect={() => onDuplicateItem(item)}
+                                  >
+                                    <CopyIcon />
+                                    Duplicate
+                                  </ContextMenuItem>
+                                  <ContextMenuSeparator />
+                                  <ContextMenuItem
+                                    disabled={!canMutateItem}
+                                    variant="destructive"
+                                    onSelect={() => onRemoveItem(item)}
+                                  >
+                                    <Trash2Icon />
+                                    Remove
+                                  </ContextMenuItem>
+                                </ContextMenuContent>
+                              </ContextMenu>
+                            );
+                          }}
+                        </SchedulerItemLayer>
+                      </div>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent data-scheduler-ignore-create="">
+                      <ContextMenuItem
+                        onSelect={() => {
+                          const request = backgroundRequestRef.current;
+                          if (request?.day === day.date) {
+                            onCreate(request);
+                          }
+                        }}
+                      >
+                        <PlusIcon />
+                        New block
+                      </ContextMenuItem>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem
+                        disabled={!canResetDay}
+                        variant="destructive"
+                        onSelect={() => onResetDay(day.date)}
+                      >
+                        <RotateCcwIcon />
+                        Reset day
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                  </ContextMenu>
                 );
               })}
             </div>

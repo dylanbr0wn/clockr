@@ -17,7 +17,7 @@ type Querier interface {
 	CreateSubmission(ctx context.Context, arg CreateSubmissionParams) (Submission, error)
 	DeleteCategory(ctx context.Context, id int64) error
 	DeleteEvent(ctx context.Context, id int64) error
-	DeleteGapFill(ctx context.Context, id int64) error
+	DeleteManualGapFill(ctx context.Context, arg DeleteManualGapFillParams) (int64, error)
 	DeleteOverlay(ctx context.Context, id int64) error
 	DeletePeriod(ctx context.Context, id int64) error
 	DeleteTzSegment(ctx context.Context, id int64) error

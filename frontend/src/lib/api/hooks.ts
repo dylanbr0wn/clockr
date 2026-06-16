@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   computeGaps,
   createManualEvent,
+  deleteManualEvent,
   ensureCurrentPeriod,
   getSetting,
   listCalendars,
@@ -115,6 +116,24 @@ export function useUpdateManualEvent() {
     mutationFn: updateManualEvent,
     onSuccess: (gapFill, input) => {
       const periodId = gapFill.periodId || input.periodId;
+
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.periodGapFills(periodId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.gapTimeline(periodId),
+      });
+    },
+  });
+}
+
+export function useDeleteManualEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteManualEvent,
+    onSuccess: (result, input) => {
+      const periodId = result.periodId || input.periodId;
 
       void queryClient.invalidateQueries({
         queryKey: clockrQueryKeys.periodGapFills(periodId),

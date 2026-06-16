@@ -23,11 +23,15 @@ export function SchedulePage({ titlebarPaddingClass }: SchedulePageProps) {
         <ScheduleTimeline
           days={schedule.days}
           items={schedule.items}
+          resettableDays={schedule.resettableDays}
           visibleDayCount={schedule.visibleDayCount}
           onCreate={schedule.handleCreate}
           onPreviewChange={schedule.setPreview}
           onCommitChange={schedule.handleCommit}
           onEditItem={schedule.handleOpenEventEditor}
+          onDuplicateItem={schedule.handleDuplicateEvent}
+          onRemoveItem={schedule.handleRemoveEvent}
+          onResetDay={schedule.handleResetDay}
         />
         <ScheduleSidebar
           activePeriod={schedule.activePeriod}

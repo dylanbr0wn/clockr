@@ -9,6 +9,7 @@ import {
   useCategories,
   useCreateManualEvent,
   useCurrentPeriod,
+  useDeleteManualEvent,
   useEvents,
   useGapFills,
   useOpenReviewItems,
@@ -50,6 +51,7 @@ export interface SchedulePageViewModel {
   categories: Category[];
   days: ScheduleDay[];
   items: ScheduleItem[];
+  resettableDays: ReadonlySet<string>;
   totals: Record<string, number>;
   visibleDayCount: number;
   preview: ScheduleChange | null;
@@ -68,6 +70,9 @@ export interface SchedulePageViewModel {
   handleCreate: (request: SchedulerCreateRequest) => void;
   handleCommit: (change: ScheduleChange) => void;
   handleOpenEventEditor: (item: ScheduleItem) => void;
+  handleDuplicateEvent: (item: ScheduleItem) => void;
+  handleRemoveEvent: (item: ScheduleItem) => void;
+  handleResetDay: (day: string) => void;
   handleCloseEventEditor: () => void;
   handleSaveEventEdit: (values: ScheduleEventEditValues) => void;
 }
@@ -108,6 +113,7 @@ export function useSchedulePage(): SchedulePageViewModel {
   const categoriesQuery = useCategories();
   const createManualEventMutation = useCreateManualEvent();
   const updateManualEventMutation = useUpdateManualEvent();
+  const deleteManualEventMutation = useDeleteManualEvent();
   const persistedPeriods = useMemo(
     () => periodsQuery.data ?? [],
     [periodsQuery.data],
@@ -158,6 +164,13 @@ export function useSchedulePage(): SchedulePageViewModel {
         `gap-fill-${gapFill.id}`,
         gapFill,
       ]),
+    );
+  }, [gapFillsQuery.data]);
+  const resettableDays = useMemo(() => {
+    return new Set(
+      (gapFillsQuery.data ?? [])
+        .filter((gapFill) => gapFill.source === "manual")
+        .map((gapFill) => gapFill.day),
     );
   }, [gapFillsQuery.data]);
   const backendItems = useMemo(() => {
@@ -234,7 +247,8 @@ export function useSchedulePage(): SchedulePageViewModel {
     reviewItemsQuery.isLoading ||
     tzSegmentsQuery.isLoading ||
     createManualEventMutation.isPending ||
-    updateManualEventMutation.isPending;
+    updateManualEventMutation.isPending ||
+    deleteManualEventMutation.isPending;
   const backendError =
     periodsQuery.error ??
     currentPeriodQuery.error ??
@@ -244,7 +258,8 @@ export function useSchedulePage(): SchedulePageViewModel {
     reviewItemsQuery.error ??
     tzSegmentsQuery.error ??
     createManualEventMutation.error ??
-    updateManualEventMutation.error;
+    updateManualEventMutation.error ??
+    deleteManualEventMutation.error;
 
   useEffect(() => {
     setSelectedPeriodId((current) => {
@@ -343,6 +358,68 @@ export function useSchedulePage(): SchedulePageViewModel {
     setEditingItemId(item.id);
   };
 
+  const handleDuplicateEvent = (item: ScheduleItem) => {
+    const gapFill = gapFillsByItemId.get(item.id);
+
+    if (!gapFill) {
+      return;
+    }
+
+    createManualEventMutation.mutate({
+      periodId: gapFill.periodId,
+      day: item.day,
+      startMinutes: item.startMinutes,
+      endMinutes: item.endMinutes,
+      categoryId: gapFill.categoryId,
+      note: gapFill.note ?? item.metadata?.title ?? "",
+    });
+  };
+
+  const handleRemoveEvent = (item: ScheduleItem) => {
+    const gapFill = gapFillsByItemId.get(item.id);
+
+    if (!gapFill) {
+      return;
+    }
+
+    deleteManualEventMutation.mutate(
+      {
+        id: gapFill.id,
+        periodId: gapFill.periodId,
+      },
+      {
+        onSuccess: () => {
+          setEditingItemId((current) => (current === item.id ? null : current));
+        },
+      },
+    );
+  };
+
+  const handleResetDay = (day: string) => {
+    const manualGapFills = (gapFillsQuery.data ?? []).filter(
+      (gapFill) => gapFill.day === day && gapFill.source === "manual",
+    );
+
+    if (manualGapFills.length === 0) {
+      return;
+    }
+
+    const deletedItemIds = new Set(
+      manualGapFills.map((gapFill) => `gap-fill-${gapFill.id}`),
+    );
+
+    setEditingItemId((current) =>
+      current && deletedItemIds.has(current) ? null : current,
+    );
+
+    manualGapFills.forEach((gapFill) => {
+      deleteManualEventMutation.mutate({
+        id: gapFill.id,
+        periodId: gapFill.periodId,
+      });
+    });
+  };
+
   const handleCloseEventEditor = () => {
     setEditingItemId(null);
   };
@@ -404,6 +481,7 @@ export function useSchedulePage(): SchedulePageViewModel {
     categories,
     days,
     items,
+    resettableDays,
     totals,
     visibleDayCount,
     preview,
@@ -424,6 +502,9 @@ export function useSchedulePage(): SchedulePageViewModel {
     handleCreate,
     handleCommit,
     handleOpenEventEditor,
+    handleDuplicateEvent,
+    handleRemoveEvent,
+    handleResetDay,
     handleCloseEventEditor,
     handleSaveEventEdit,
   };

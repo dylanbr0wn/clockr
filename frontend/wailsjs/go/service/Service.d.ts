@@ -7,6 +7,8 @@ export function ComputeGaps(arg1:context.Context,arg2:number):Promise<Array<serv
 
 export function CreateManualEvent(arg1:context.Context,arg2:service.ManualEventInput):Promise<service.GapFill>;
 
+export function DeleteManualEvent(arg1:context.Context,arg2:service.ManualEventDeleteInput):Promise<void>;
+
 export function EnsureCurrentPeriod(arg1:context.Context,arg2:string,arg3:string):Promise<service.Period>;
 
 export function GetCategory(arg1:context.Context,arg2:number):Promise<service.Category>;

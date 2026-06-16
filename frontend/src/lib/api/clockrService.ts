@@ -5,6 +5,7 @@ import type {
   DayTimeline,
   Event,
   GapFill,
+  ManualEventDeleteInput,
   ManualEventInput,
   ManualEventResult,
   ManualEventUpdateInput,
@@ -16,6 +17,7 @@ import type {
 interface ClockrApp {
   ComputeGaps(periodId: number): Promise<DayTimeline[]>;
   CreateManualEvent(input: ManualEventInput): Promise<ManualEventResult>;
+  DeleteManualEvent(input: ManualEventDeleteInput): Promise<ManualEventResult>;
   EnsureCurrentPeriod(today: string, ianaTz: string): Promise<Period>;
   GetSetting(key: string): Promise<string>;
   ListCalendars(): Promise<Calendar[]>;
@@ -113,6 +115,12 @@ export function createManualEvent(input: ManualEventInput) {
 export function updateManualEvent(input: ManualEventUpdateInput) {
   return writeToBackend(() =>
     appBackend.UpdateManualEvent(input),
+  );
+}
+
+export function deleteManualEvent(input: ManualEventDeleteInput) {
+  return writeToBackend(() =>
+    appBackend.DeleteManualEvent(input),
   );
 }
 

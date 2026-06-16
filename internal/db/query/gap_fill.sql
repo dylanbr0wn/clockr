@@ -20,5 +20,5 @@ UPDATE gap_fill SET
 WHERE id = ? AND period_id = ? AND source = 'manual'
 RETURNING *;
 
--- name: DeleteGapFill :exec
-DELETE FROM gap_fill WHERE id = ?;
+-- name: DeleteManualGapFill :execrows
+DELETE FROM gap_fill WHERE id = ? AND period_id = ? AND source = 'manual';

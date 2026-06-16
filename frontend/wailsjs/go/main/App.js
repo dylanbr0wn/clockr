@@ -10,6 +10,10 @@ export function CreateManualEvent(arg1) {
   return window['go']['main']['App']['CreateManualEvent'](arg1);
 }
 
+export function DeleteManualEvent(arg1) {
+  return window['go']['main']['App']['DeleteManualEvent'](arg1);
+}
+
 export function EnsureCurrentPeriod(arg1, arg2) {
   return window['go']['main']['App']['EnsureCurrentPeriod'](arg1, arg2);
 }

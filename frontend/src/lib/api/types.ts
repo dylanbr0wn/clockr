@@ -68,6 +68,11 @@ export interface ManualEventUpdateInput extends ManualEventInput {
   id: number;
 }
 
+export interface ManualEventDeleteInput {
+  id: number;
+  periodId: number;
+}
+
 export interface ManualEventResult {
   periodId: number;
   id: number;

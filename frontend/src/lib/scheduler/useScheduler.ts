@@ -123,8 +123,11 @@ function isWithinThreshold(
   );
 }
 
-function targetInsideItem(target: EventTarget | null) {
-  return target instanceof Element && target.closest("[data-scheduler-item]") !== null;
+function targetBlocksColumnCreate(target: EventTarget | null) {
+  return (
+    target instanceof Element &&
+    target.closest("[data-scheduler-item], [data-scheduler-ignore-create]") !== null
+  );
 }
 
 export interface SchedulerApi<TItemMetadata = unknown, TDayMetadata = unknown> {
@@ -585,7 +588,7 @@ export function useScheduler<TItemMetadata = unknown, TDayMetadata = unknown>({
           day.disabled ||
           !onCreate ||
           !config.dragToCreate ||
-          targetInsideItem(event.target)
+          targetBlocksColumnCreate(event.target)
         ) {
           return;
         }
@@ -606,7 +609,7 @@ export function useScheduler<TItemMetadata = unknown, TDayMetadata = unknown>({
           event.defaultPrevented ||
           day.disabled ||
           !onCreate ||
-          targetInsideItem(event.target)
+          targetBlocksColumnCreate(event.target)
         ) {
           return;
         }

@@ -26,6 +26,12 @@ type ManualEventUpdateInput struct {
 	ManualEventInput
 }
 
+// ManualEventDeleteInput identifies a user-created scheduler block to remove.
+type ManualEventDeleteInput struct {
+	ID       int64 `json:"id"`
+	PeriodID int64 `json:"periodId"`
+}
+
 // CreateManualEvent persists a manually-created scheduler block as a gap fill.
 func (s *Service) CreateManualEvent(ctx context.Context, input ManualEventInput) (GapFill, error) {
 	span, err := s.manualEventSpan(ctx, "create manual event", input)
@@ -82,6 +88,28 @@ func (s *Service) UpdateManualEvent(ctx context.Context, input ManualEventUpdate
 		return GapFill{}, mapErr("update manual event", err)
 	}
 	return toGapFill(row), nil
+}
+
+// DeleteManualEvent removes a user-created scheduler block.
+func (s *Service) DeleteManualEvent(ctx context.Context, input ManualEventDeleteInput) error {
+	if input.ID <= 0 {
+		return fmt.Errorf("delete manual event: id is required")
+	}
+	if input.PeriodID <= 0 {
+		return fmt.Errorf("delete manual event: periodId is required")
+	}
+
+	rows, err := s.q.DeleteManualGapFill(ctx, sqlc.DeleteManualGapFillParams{
+		ID:       input.ID,
+		PeriodID: input.PeriodID,
+	})
+	if err != nil {
+		return mapErr("delete manual event", err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("delete manual event: %w", ErrNotFound)
+	}
+	return nil
 }
 
 type manualEventSpan struct {

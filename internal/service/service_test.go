@@ -302,6 +302,51 @@ func TestUpdateManualEvent(t *testing.T) {
 	}
 }
 
+func TestDeleteManualEvent(t *testing.T) {
+	s := newSvc(t)
+	ctx := context.Background()
+
+	periods, err := s.ListPeriods(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pid := periods[0].ID
+
+	fill, err := s.CreateManualEvent(ctx, service.ManualEventInput{
+		PeriodID:     pid,
+		Day:          "2026-06-01",
+		StartMinutes: 9 * 60,
+		EndMinutes:   10 * 60,
+		Note:         "Temporary block",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := s.DeleteManualEvent(ctx, service.ManualEventDeleteInput{
+		ID:       fill.ID,
+		PeriodID: pid,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	fills, err := s.ListGapFills(ctx, pid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fills) != 0 {
+		t.Fatalf("manual event was not deleted: %+v", fills)
+	}
+
+	err = s.DeleteManualEvent(ctx, service.ManualEventDeleteInput{
+		ID:       fill.ID,
+		PeriodID: pid,
+	})
+	if !errors.Is(err, service.ErrNotFound) {
+		t.Fatalf("want ErrNotFound after delete, got %v", err)
+	}
+}
+
 func TestCreateManualEventValidation(t *testing.T) {
 	s := newSvc(t)
 	ctx := context.Background()

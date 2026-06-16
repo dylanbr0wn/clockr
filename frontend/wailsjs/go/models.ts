@@ -320,6 +320,20 @@ export namespace service {
 		}
 	}
 	
+	export class ManualEventDeleteInput {
+	    id: number;
+	    periodId: number;
+
+	    static createFrom(source: any = {}) {
+	        return new ManualEventDeleteInput(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.periodId = source["periodId"];
+	    }
+	}
 	export class ManualEventInput {
 	    periodId: number;
 	    day: string;
@@ -471,4 +485,3 @@ export namespace service {
 	}
 
 }
-
