@@ -55,6 +55,24 @@ export interface GapFill {
   source: string;
 }
 
+export interface ManualEventInput {
+  periodId: number;
+  day: string;
+  startMinutes: number;
+  endMinutes: number;
+  categoryId?: number;
+  note?: string;
+}
+
+export interface ManualEventUpdateInput extends ManualEventInput {
+  id: number;
+}
+
+export interface ManualEventResult {
+  periodId: number;
+  id: number;
+}
+
 export interface ReviewItem {
   id: number;
   periodId: number;

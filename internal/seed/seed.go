@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/dylanbr0wn/clockr/internal/db/sqlc"
 )
@@ -39,8 +40,8 @@ var defaultSettings = map[string]string{
 	"period.target_hours": `8`,
 	// Default working-window start (local time-of-day). Window length = target hours.
 	"window.start": `"09:00"`,
-	"ai.base_url":         `""`,
-	"ai.model":           `""`,
+	"ai.base_url":  `""`,
+	"ai.model":     `""`,
 }
 
 // Core seeds data that every install needs (categories + settings).
@@ -99,6 +100,7 @@ func Dev(ctx context.Context, conn *sql.DB) error {
 
 	// A bi-weekly sample period; created lazily in the real app, eager here.
 	const start, end = "2026-06-01", "2026-06-14"
+	var period sqlc.Period
 	if _, err := q.GetPeriodByRange(ctx, sqlc.GetPeriodByRangeParams{StartDate: start, EndDate: end}); errors.Is(err, sql.ErrNoRows) {
 		p, err := q.CreatePeriod(ctx, sqlc.CreatePeriodParams{
 			StartDate:         start,
@@ -110,6 +112,7 @@ func Dev(ctx context.Context, conn *sql.DB) error {
 		if err != nil {
 			return fmt.Errorf("seed period: %w", err)
 		}
+		period = p
 		if _, err := q.UpsertTzSegment(ctx, sqlc.UpsertTzSegmentParams{
 			PeriodID:          p.ID,
 			EffectiveFromDate: start,
@@ -119,6 +122,98 @@ func Dev(ctx context.Context, conn *sql.DB) error {
 		}
 	} else if err != nil {
 		return fmt.Errorf("lookup sample period: %w", err)
+	} else {
+		period, err = q.GetPeriodByRange(ctx, sqlc.GetPeriodByRangeParams{StartDate: start, EndDate: end})
+		if err != nil {
+			return fmt.Errorf("load sample period: %w", err)
+		}
+	}
+
+	if err := seedDevEvents(ctx, q, period.ID, cal.ID); err != nil {
+		return err
 	}
 	return nil
+}
+
+func seedDevEvents(ctx context.Context, q *sqlc.Queries, periodID, calendarID int64) error {
+	loc, err := time.LoadLocation("America/Toronto")
+	if err != nil {
+		return fmt.Errorf("load dev timezone: %w", err)
+	}
+
+	events := []struct {
+		googleID string
+		title    string
+		day      string
+		startMin int
+		endMin   int
+	}{
+		{
+			googleID: "dev-sprint-planning",
+			title:    "Sprint planning",
+			day:      "2026-06-02",
+			startMin: 8*60 + 30,
+			endMin:   10 * 60,
+		},
+		{
+			googleID: "dev-design-review",
+			title:    "Design review",
+			day:      "2026-06-02",
+			startMin: 9*60 + 15,
+			endMin:   10*60 + 30,
+		},
+		{
+			googleID: "dev-vendor-call",
+			title:    "Vendor call",
+			day:      "2026-06-04",
+			startMin: 7 * 60,
+			endMin:   8 * 60,
+		},
+	}
+
+	for _, event := range events {
+		start := localMinute(event.day, event.startMin, loc)
+		end := localMinute(event.day, event.endMin, loc)
+		if _, err := q.UpsertEvent(ctx, sqlc.UpsertEventParams{
+			PeriodID:      periodID,
+			CalendarID:    calendarID,
+			GoogleEventID: event.googleID,
+			IcalUid:       event.googleID + "@clockr.dev",
+			Title:         event.title,
+			Attendees:     "[]",
+			Status:        "accepted",
+			StartUtc: sql.NullString{
+				String: start.UTC().Format(time.RFC3339),
+				Valid:  true,
+			},
+			EndUtc: sql.NullString{
+				String: end.UTC().Format(time.RFC3339),
+				Valid:  true,
+			},
+			OriginalTz: "America/Toronto",
+			SourceHash: "dev-seed-v1:" + event.googleID,
+		}); err != nil {
+			return fmt.Errorf("seed dev event %q: %w", event.googleID, err)
+		}
+	}
+
+	return nil
+}
+
+func localMinute(day string, minute int, loc *time.Location) time.Time {
+	date, err := time.ParseInLocation("2006-01-02", day, loc)
+	if err != nil {
+		return time.Time{}
+	}
+
+	return time.Date(
+		date.Year(),
+		date.Month(),
+		date.Day(),
+		0,
+		minute,
+		0,
+		0,
+		loc,
+	)
 }

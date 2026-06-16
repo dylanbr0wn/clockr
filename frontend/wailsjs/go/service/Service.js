@@ -6,6 +6,14 @@ export function ComputeGaps(arg1, arg2) {
   return window['go']['service']['Service']['ComputeGaps'](arg1, arg2);
 }
 
+export function CreateManualEvent(arg1, arg2) {
+  return window['go']['service']['Service']['CreateManualEvent'](arg1, arg2);
+}
+
+export function EnsureCurrentPeriod(arg1, arg2, arg3) {
+  return window['go']['service']['Service']['EnsureCurrentPeriod'](arg1, arg2, arg3);
+}
+
 export function GetCategory(arg1, arg2) {
   return window['go']['service']['Service']['GetCategory'](arg1, arg2);
 }
@@ -60,4 +68,8 @@ export function ListTzSegments(arg1, arg2) {
 
 export function SyncEvents(arg1, arg2, arg3) {
   return window['go']['service']['Service']['SyncEvents'](arg1, arg2, arg3);
+}
+
+export function UpdateManualEvent(arg1, arg2) {
+  return window['go']['service']['Service']['UpdateManualEvent'](arg1, arg2);
 }

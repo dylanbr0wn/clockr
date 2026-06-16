@@ -142,31 +142,50 @@ func (q *Queries) ListGapFillsForPeriod(ctx context.Context, periodID int64) ([]
 	return items, nil
 }
 
-const updateGapFill = `-- name: UpdateGapFill :exec
+const updateGapFill = `-- name: UpdateGapFill :one
 UPDATE gap_fill SET
+    day         = ?,
     start_utc   = ?,
     end_utc     = ?,
     category_id = ?,
     note        = ?,
     updated_at  = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-WHERE id = ?
+WHERE id = ? AND period_id = ? AND source = 'manual'
+RETURNING id, period_id, day, start_utc, end_utc, category_id, note, source, created_at, updated_at
 `
 
 type UpdateGapFillParams struct {
+	Day        string        `json:"day"`
 	StartUtc   string        `json:"start_utc"`
 	EndUtc     string        `json:"end_utc"`
 	CategoryID sql.NullInt64 `json:"category_id"`
 	Note       string        `json:"note"`
 	ID         int64         `json:"id"`
+	PeriodID   int64         `json:"period_id"`
 }
 
-func (q *Queries) UpdateGapFill(ctx context.Context, arg UpdateGapFillParams) error {
-	_, err := q.db.ExecContext(ctx, updateGapFill,
+func (q *Queries) UpdateGapFill(ctx context.Context, arg UpdateGapFillParams) (GapFill, error) {
+	row := q.db.QueryRowContext(ctx, updateGapFill,
+		arg.Day,
 		arg.StartUtc,
 		arg.EndUtc,
 		arg.CategoryID,
 		arg.Note,
 		arg.ID,
+		arg.PeriodID,
 	)
-	return err
+	var i GapFill
+	err := row.Scan(
+		&i.ID,
+		&i.PeriodID,
+		&i.Day,
+		&i.StartUtc,
+		&i.EndUtc,
+		&i.CategoryID,
+		&i.Note,
+		&i.Source,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

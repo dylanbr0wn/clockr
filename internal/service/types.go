@@ -95,14 +95,14 @@ type ReviewItem struct {
 
 // GapFill is a user entry covering an uncovered interval / manual block.
 type GapFill struct {
-	ID         int64     `json:"id"`
-	PeriodID   int64     `json:"periodId"`
-	Day        string    `json:"day"` // YYYY-MM-DD
-	Start      time.Time `json:"start"`
-	End        time.Time `json:"end"`
-	CategoryID *int64    `json:"categoryId,omitempty"`
-	Note       string    `json:"note,omitempty"`
-	Source     string    `json:"source"`
+	ID         int64  `json:"id"`
+	PeriodID   int64  `json:"periodId"`
+	Day        string `json:"day"` // YYYY-MM-DD
+	Start      string `json:"start"`
+	End        string `json:"end"`
+	CategoryID *int64 `json:"categoryId,omitempty"`
+	Note       string `json:"note,omitempty"`
+	Source     string `json:"source"`
 }
 
 // ── converters from sqlc rows ─────────────────────────────────────────
@@ -179,8 +179,8 @@ func toGapFill(r sqlc.GapFill) GapFill {
 		ID:         r.ID,
 		PeriodID:   r.PeriodID,
 		Day:        r.Day,
-		Start:      parseTime(r.StartUtc),
-		End:        parseTime(r.EndUtc),
+		Start:      r.StartUtc,
+		End:        r.EndUtc,
 		CategoryID: nullInt64Ptr(r.CategoryID),
 		Note:       r.Note,
 		Source:     r.Source,

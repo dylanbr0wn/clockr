@@ -81,7 +81,7 @@ func (s *Service) ComputeGaps(ctx context.Context, periodID int64) ([]DayTimelin
 		eventSpans = append(eventSpans, Interval{Start: e.Start.UTC(), End: e.End.UTC()})
 	}
 	for _, f := range fills {
-		fillSpans = append(fillSpans, Interval{Start: f.Start.UTC(), End: f.End.UTC()})
+		fillSpans = append(fillSpans, Interval{Start: parseTime(f.Start), End: parseTime(f.End)})
 	}
 
 	locCache := map[string]*time.Location{}

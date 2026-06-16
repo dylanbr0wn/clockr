@@ -5,6 +5,7 @@ import (
 	"errors"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/dylanbr0wn/clockr/internal/db"
 	"github.com/dylanbr0wn/clockr/internal/seed"
@@ -83,6 +84,40 @@ func TestPeriodsAndTzSegments(t *testing.T) {
 	}
 }
 
+func TestEnsureCurrentPeriodCreatesNextBiWeeklyPeriod(t *testing.T) {
+	s := newSvc(t)
+	ctx := context.Background()
+
+	p, err := s.EnsureCurrentPeriod(ctx, "2026-06-16", "America/Vancouver")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.StartDate != "2026-06-15" || p.EndDate != "2026-06-28" {
+		t.Fatalf("unexpected current period: %+v", p)
+	}
+
+	segs, err := s.ListTzSegments(ctx, p.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(segs) != 1 || segs[0].IanaTz != "America/Vancouver" {
+		t.Fatalf("current period should have a timezone segment, got %+v", segs)
+	}
+
+	fill, err := s.CreateManualEvent(ctx, service.ManualEventInput{
+		PeriodID:     p.ID,
+		Day:          "2026-06-16",
+		StartMinutes: 9 * 60,
+		EndMinutes:   10 * 60,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fill.Day != "2026-06-16" {
+		t.Fatalf("manual event should be added to current period day, got %+v", fill)
+	}
+}
+
 func TestCalendars(t *testing.T) {
 	s := newSvc(t)
 	ctx := context.Background()
@@ -107,7 +142,7 @@ func TestCalendars(t *testing.T) {
 	}
 }
 
-func TestEmptyEventsAndGapsAreNonNil(t *testing.T) {
+func TestSeededEventsAndEmptyGapsAreNonNil(t *testing.T) {
 	s := newSvc(t)
 	ctx := context.Background()
 
@@ -121,8 +156,11 @@ func TestEmptyEventsAndGapsAreNonNil(t *testing.T) {
 	if events == nil {
 		t.Fatal("events slice should be non-nil")
 	}
-	if len(events) != 0 {
-		t.Fatalf("want 0 seeded events, got %d", len(events))
+	if len(events) != 3 {
+		t.Fatalf("want 3 seeded events, got %d", len(events))
+	}
+	if events[0].Title == "" {
+		t.Fatalf("seeded event should have a title: %+v", events[0])
 	}
 
 	gaps, err := s.ListGapFills(ctx, pid)
@@ -153,5 +191,144 @@ func TestGetSetting(t *testing.T) {
 	}
 	if v != `"bi-weekly"` {
 		t.Fatalf("unexpected setting value: %q", v)
+	}
+}
+
+func TestCreateManualEvent(t *testing.T) {
+	s := newSvc(t)
+	ctx := context.Background()
+
+	periods, err := s.ListPeriods(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pid := periods[0].ID
+
+	fill, err := s.CreateManualEvent(ctx, service.ManualEventInput{
+		PeriodID:     pid,
+		Day:          "2026-06-01",
+		StartMinutes: 9 * 60,
+		EndMinutes:   10*60 + 30,
+		Note:         "New block",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fill.PeriodID != pid || fill.Day != "2026-06-01" || fill.Source != "manual" || fill.Note != "New block" {
+		t.Fatalf("unexpected fill: %+v", fill)
+	}
+
+	wantStart := time.Date(2026, 6, 1, 13, 0, 0, 0, time.UTC)
+	wantEnd := time.Date(2026, 6, 1, 14, 30, 0, 0, time.UTC)
+	gotStart, err := time.Parse(time.RFC3339, fill.Start)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotEnd, err := time.Parse(time.RFC3339, fill.End)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !gotStart.Equal(wantStart) || !gotEnd.Equal(wantEnd) {
+		t.Fatalf("unexpected UTC span: %s to %s", fill.Start, fill.End)
+	}
+
+	fills, err := s.ListGapFills(ctx, pid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fills) != 1 || fills[0].ID != fill.ID {
+		t.Fatalf("manual event was not listed: %+v", fills)
+	}
+}
+
+func TestUpdateManualEvent(t *testing.T) {
+	s := newSvc(t)
+	ctx := context.Background()
+
+	periods, err := s.ListPeriods(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pid := periods[0].ID
+
+	fill, err := s.CreateManualEvent(ctx, service.ManualEventInput{
+		PeriodID:     pid,
+		Day:          "2026-06-01",
+		StartMinutes: 9 * 60,
+		EndMinutes:   10 * 60,
+		Note:         "New block",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	updated, err := s.UpdateManualEvent(ctx, service.ManualEventUpdateInput{
+		ID: fill.ID,
+		ManualEventInput: service.ManualEventInput{
+			PeriodID:     pid,
+			Day:          "2026-06-02",
+			StartMinutes: 11 * 60,
+			EndMinutes:   12 * 60,
+			Note:         "Moved block",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.ID != fill.ID || updated.Day != "2026-06-02" || updated.Note != "Moved block" || updated.Source != "manual" {
+		t.Fatalf("unexpected updated fill: %+v", updated)
+	}
+
+	wantStart := time.Date(2026, 6, 2, 15, 0, 0, 0, time.UTC)
+	wantEnd := time.Date(2026, 6, 2, 16, 0, 0, 0, time.UTC)
+	gotStart, err := time.Parse(time.RFC3339, updated.Start)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotEnd, err := time.Parse(time.RFC3339, updated.End)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !gotStart.Equal(wantStart) || !gotEnd.Equal(wantEnd) {
+		t.Fatalf("unexpected UTC span: %s to %s", updated.Start, updated.End)
+	}
+
+	fills, err := s.ListGapFills(ctx, pid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fills) != 1 || fills[0].ID != fill.ID || fills[0].Day != "2026-06-02" {
+		t.Fatalf("manual event update was not listed: %+v", fills)
+	}
+}
+
+func TestCreateManualEventValidation(t *testing.T) {
+	s := newSvc(t)
+	ctx := context.Background()
+
+	periods, err := s.ListPeriods(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pid := periods[0].ID
+
+	_, err = s.CreateManualEvent(ctx, service.ManualEventInput{
+		PeriodID:     pid,
+		Day:          "2026-06-01",
+		StartMinutes: 10 * 60,
+		EndMinutes:   10 * 60,
+	})
+	if err == nil {
+		t.Fatal("expected invalid range error")
+	}
+
+	_, err = s.CreateManualEvent(ctx, service.ManualEventInput{
+		PeriodID:     pid,
+		Day:          "2026-06-15",
+		StartMinutes: 9 * 60,
+		EndMinutes:   10 * 60,
+	})
+	if err == nil {
+		t.Fatal("expected out-of-period error")
 	}
 }

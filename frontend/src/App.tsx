@@ -13,13 +13,19 @@ import {
 } from "@/lib/scheduler";
 import {
   useCategories,
+  useCreateManualEvent,
+  useCurrentPeriod,
   useEvents,
   useGapFills,
   useOpenReviewItems,
   usePeriods,
+  useTzSegments,
+  useUpdateManualEvent,
   type Category,
   type Event as ClockrEvent,
   type GapFill,
+  type Period,
+  type TzSegment,
 } from "@/lib/api";
 import { Clock } from "lucide-react";
 import { Separator } from "./components/ui/separator";
@@ -33,18 +39,21 @@ interface ScheduleMetadata {
   title: string;
   category: string;
   kind: ScheduleKind;
-  source: "backend" | "demo" | "draft";
 }
 
 interface ScheduleDayMetadata {
   isWeekend: boolean;
 }
 
-type DemoItem = SchedulerItem<ScheduleMetadata>;
-type DemoDay = SchedulerDay<ScheduleDayMetadata>;
-type SchedulePlacement = Pick<DemoItem, "day" | "endMinutes" | "startMinutes">;
+type ScheduleItem = SchedulerItem<ScheduleMetadata>;
+type ScheduleDay = SchedulerDay<ScheduleDayMetadata>;
+type SchedulePlacement = Pick<
+  ScheduleItem,
+  "day" | "endMinutes" | "startMinutes"
+>;
 
 const START_DATE = "2026-06-08";
+const FALLBACK_DAY_COUNT = 7;
 const SCHEDULE_START_MINUTES = 0;
 const SCHEDULE_END_MINUTES = 24 * 60;
 const WORKING_START_MINUTES = 8 * 60;
@@ -54,70 +63,7 @@ const TIMELINE_HOUR_HEIGHT = 56;
 const MAC_TITLEBAR_PADDING_CLASS = "pl-24";
 const DEFAULT_TITLEBAR_PADDING_CLASS = "pl-3";
 
-const initialItems: DemoItem[] = [
-  {
-    id: "planning",
-    day: START_DATE,
-    startMinutes: 8 * 60 + 30,
-    endMinutes: 10 * 60,
-    metadata: {
-      title: "Sprint planning",
-      category: "Product",
-      kind: "calendar",
-      source: "demo",
-    },
-  },
-  {
-    id: "review",
-    day: START_DATE,
-    startMinutes: 9 * 60 + 15,
-    endMinutes: 10 * 60 + 30,
-    metadata: {
-      title: "Design review",
-      category: "Client",
-      kind: "review",
-      source: "demo",
-    },
-  },
-  {
-    id: "deep-work",
-    day: START_DATE,
-    startMinutes: 13 * 60,
-    endMinutes: 16 * 60,
-    metadata: {
-      title: "Implementation",
-      category: "Engineering",
-      kind: "gap",
-      source: "demo",
-    },
-  },
-  {
-    id: "early-call",
-    day: "2026-06-10",
-    startMinutes: 7 * 60,
-    endMinutes: 8 * 60,
-    metadata: {
-      title: "Vendor call",
-      category: "Operations",
-      kind: "calendar",
-      source: "demo",
-    },
-  },
-  {
-    id: "late-writeup",
-    day: "2026-06-12",
-    startMinutes: 18 * 60,
-    endMinutes: 19 * 60 + 15,
-    metadata: {
-      title: "Timesheet notes",
-      category: "Admin",
-      kind: "manual",
-      source: "demo",
-    },
-  },
-];
-
-function buildDays(startDate: string, count: number): DemoDay[] {
+function buildDays(startDate: string, count: number): ScheduleDay[] {
   const [year, month, day] = startDate.split("-").map(Number);
   const start = new Date(Date.UTC(year, month - 1, day));
 
@@ -140,6 +86,63 @@ function buildDays(startDate: string, count: number): DemoDay[] {
       },
     };
   });
+}
+
+function dateFromDateKey(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function inclusiveDayCount(startDate: string, endDate: string) {
+  const start = dateFromDateKey(startDate);
+  const end = dateFromDateKey(endDate);
+
+  if (!start || !end) {
+    return 1;
+  }
+
+  const durationMs = end.getTime() - start.getTime();
+  return Math.max(1, Math.floor(durationMs / 86_400_000) + 1);
+}
+
+function periodDayCount(period: Period | null) {
+  if (!period) {
+    return FALLBACK_DAY_COUNT;
+  }
+
+  return inclusiveDayCount(period.startDate, period.endDate);
+}
+
+function formatDateKey(value: string) {
+  const date = dateFromDateKey(value);
+
+  if (!date) {
+    return value;
+  }
+
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function formatPeriodLabel(period: Period) {
+  return `${formatDateKey(period.startDate)}-${formatDateKey(period.endDate)}`;
+}
+
+function formatCadence(value: string) {
+  return value
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((part) => part.slice(0, 1).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function kindClasses(kind: ScheduleKind) {
@@ -170,7 +173,7 @@ function formatDuration(totalMinutes: number) {
   return `${hours}h ${minutes}m`;
 }
 
-function durationLabel(item: DemoItem) {
+function durationLabel(item: ScheduleItem) {
   return formatDuration(item.endMinutes - item.startMinutes);
 }
 
@@ -183,15 +186,72 @@ function toDate(value: string | undefined) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function dateKeyFromDate(date: Date) {
+function localDateKey(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
-function minutesFromDate(date: Date) {
-  return date.getHours() * 60 + date.getMinutes();
+function defaultTimeZone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+}
+
+function zonedDateTimeParts(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    hour: "2-digit",
+    hourCycle: "h23",
+    minute: "2-digit",
+    month: "2-digit",
+    timeZone,
+    year: "numeric",
+  }).formatToParts(date);
+  const values = Object.fromEntries(
+    parts
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value]),
+  );
+
+  return {
+    day: `${values.year}-${values.month}-${values.day}`,
+    minutes: Number(values.hour) * 60 + Number(values.minute),
+  };
+}
+
+function activeTimeZoneForDay(day: string, tzSegments: TzSegment[]) {
+  if (tzSegments.length === 0) {
+    return defaultTimeZone();
+  }
+
+  let activeSegment = tzSegments[0];
+  for (const segment of tzSegments) {
+    if (segment.effectiveFromDate <= day) {
+      activeSegment = segment;
+    } else {
+      break;
+    }
+  }
+
+  return activeSegment.ianaTz;
+}
+
+function zonedPosition(value: string | undefined, tzSegments: TzSegment[]) {
+  const date = toDate(value);
+
+  if (!date) {
+    return null;
+  }
+
+  const initialTimeZone = tzSegments[0]?.ianaTz ?? defaultTimeZone();
+  const initialParts = zonedDateTimeParts(date, initialTimeZone);
+  const activeTimeZone = activeTimeZoneForDay(initialParts.day, tzSegments);
+
+  if (activeTimeZone === initialTimeZone) {
+    return initialParts;
+  }
+
+  return zonedDateTimeParts(date, activeTimeZone);
 }
 
 function categoryName(
@@ -205,7 +265,11 @@ function categoryName(
   return categoriesById.get(categoryId)?.name ?? "Unassigned";
 }
 
-function applyPlacement(item: DemoItem, placement?: SchedulePlacement) {
+function periodContainsDate(period: Period, day: string) {
+  return period.startDate <= day && day <= period.endDate;
+}
+
+function applyPlacement(item: ScheduleItem, placement?: SchedulePlacement) {
   if (!placement) {
     return item;
   }
@@ -218,8 +282,9 @@ function applyPlacement(item: DemoItem, placement?: SchedulePlacement) {
 
 function eventToSchedulerItem(
   event: ClockrEvent,
+  tzSegments: TzSegment[],
   placement?: SchedulePlacement,
-): DemoItem | null {
+): ScheduleItem | null {
   if (event.allDay && event.startDate) {
     return applyPlacement(
       {
@@ -231,37 +296,32 @@ function eventToSchedulerItem(
           title: event.title || "Untitled event",
           category: "Calendar",
           kind: "calendar",
-          source: "backend",
         },
       },
       placement,
     );
   }
 
-  const start = toDate(event.start);
-  const end = toDate(event.end);
+  const start = zonedPosition(event.start, tzSegments);
+  const end = zonedPosition(event.end, tzSegments);
 
   if (!start || !end) {
     return null;
   }
 
-  const startMinutes = minutesFromDate(start);
   const endMinutes =
-    dateKeyFromDate(end) === dateKeyFromDate(start)
-      ? minutesFromDate(end)
-      : SCHEDULE_END_MINUTES;
+    end.day === start.day ? end.minutes : SCHEDULE_END_MINUTES;
 
   return applyPlacement(
     {
       id: `event-${event.id}`,
-      day: dateKeyFromDate(start),
-      startMinutes,
-      endMinutes: Math.max(startMinutes + 15, endMinutes),
+      day: start.day,
+      startMinutes: start.minutes,
+      endMinutes: Math.max(start.minutes + 15, endMinutes),
       metadata: {
         title: event.title || "Untitled event",
         category: "Calendar",
         kind: "calendar",
-        source: "backend",
       },
     },
     placement,
@@ -271,33 +331,34 @@ function eventToSchedulerItem(
 function gapFillToSchedulerItem(
   gapFill: GapFill,
   categoriesById: Map<number, Category>,
+  tzSegments: TzSegment[],
   placement?: SchedulePlacement,
-): DemoItem | null {
-  const start = toDate(gapFill.start);
-  const end = toDate(gapFill.end);
+): ScheduleItem | null {
+  const timeZone = activeTimeZoneForDay(gapFill.day, tzSegments);
+  const startDate = toDate(gapFill.start);
+  const endDate = toDate(gapFill.end);
 
-  if (!start || !end) {
+  if (!startDate || !endDate) {
     return null;
   }
 
-  const startMinutes = minutesFromDate(start);
+  const start = zonedDateTimeParts(startDate, timeZone);
+  const end = zonedDateTimeParts(endDate, timeZone);
+  const startMinutes = start.minutes;
   const endMinutes =
-    dateKeyFromDate(end) === dateKeyFromDate(start)
-      ? minutesFromDate(end)
-      : SCHEDULE_END_MINUTES;
+    end.day === start.day ? end.minutes : SCHEDULE_END_MINUTES;
   const category = categoryName(gapFill.categoryId, categoriesById);
 
   return applyPlacement(
     {
       id: `gap-fill-${gapFill.id}`,
-      day: gapFill.day || dateKeyFromDate(start),
+      day: gapFill.day || start.day,
       startMinutes,
       endMinutes: Math.max(startMinutes + 15, endMinutes),
       metadata: {
         title: gapFill.note || category,
         category,
         kind: "manual",
-        source: "backend",
       },
     },
     placement,
@@ -317,9 +378,7 @@ function getInitialPlatform() {
 }
 
 function App() {
-  const [dayCount, setDayCount] = useState(7);
-  const [demoItems, setDemoItems] = useState<DemoItem[]>(initialItems);
-  const [draftItems, setDraftItems] = useState<DemoItem[]>([]);
+  const [selectedPeriodId, setSelectedPeriodId] = useState<number | null>(null);
   const [draftPlacements, setDraftPlacements] = useState<
     Record<string, SchedulePlacement>
   >({});
@@ -329,25 +388,62 @@ function App() {
   const [platform, setPlatform] = useState(getInitialPlatform);
   const schedulerViewportRef = useRef<HTMLDivElement | null>(null);
   const didSetInitialScrollRef = useRef(false);
+  const today = useMemo(() => localDateKey(), []);
+  const currentTimeZone = useMemo(() => defaultTimeZone(), []);
   const periodsQuery = usePeriods();
+  const currentPeriodQuery = useCurrentPeriod(today, currentTimeZone);
   const categoriesQuery = useCategories();
-  const periods = useMemo(() => periodsQuery.data ?? [], [periodsQuery.data]);
+  const createManualEventMutation = useCreateManualEvent();
+  const updateManualEventMutation = useUpdateManualEvent();
+  const persistedPeriods = useMemo(
+    () => periodsQuery.data ?? [],
+    [periodsQuery.data],
+  );
+  const currentPeriod = currentPeriodQuery.data ?? null;
+  const periods = useMemo(() => {
+    if (
+      currentPeriod &&
+      !persistedPeriods.some((period) => period.id === currentPeriod.id)
+    ) {
+      return [currentPeriod, ...persistedPeriods];
+    }
+
+    return persistedPeriods;
+  }, [currentPeriod, persistedPeriods]);
   const categories = useMemo(
     () => categoriesQuery.data ?? [],
     [categoriesQuery.data],
   );
-  const activePeriod = periods[0] ?? null;
+  const activePeriod = useMemo(
+    () =>
+      periods.find((period) => period.id === selectedPeriodId) ??
+      currentPeriod ??
+      periods.find((period) => periodContainsDate(period, today)) ??
+      periods[0] ??
+      null,
+    [currentPeriod, periods, selectedPeriodId, today],
+  );
   const activePeriodId = activePeriod?.id;
   const eventsQuery = useEvents(activePeriodId);
   const gapFillsQuery = useGapFills(activePeriodId);
   const reviewItemsQuery = useOpenReviewItems(activePeriodId);
+  const tzSegmentsQuery = useTzSegments(activePeriodId);
   const categoriesById = useMemo(() => {
     return new Map(categories.map((category) => [category.id, category]));
   }, [categories]);
+  const visibleDayCount = periodDayCount(activePeriod);
   const days = useMemo(
-    () => buildDays(activePeriod?.startDate ?? START_DATE, dayCount),
-    [activePeriod?.startDate, dayCount],
+    () => buildDays(activePeriod?.startDate ?? START_DATE, visibleDayCount),
+    [activePeriod?.startDate, visibleDayCount],
   );
+  const gapFillsByItemId = useMemo(() => {
+    return new Map(
+      (gapFillsQuery.data ?? []).map((gapFill) => [
+        `gap-fill-${gapFill.id}`,
+        gapFill,
+      ]),
+    );
+  }, [gapFillsQuery.data]);
   const titlebarPaddingClass =
     platform === "darwin"
       ? MAC_TITLEBAR_PADDING_CLASS
@@ -355,32 +451,37 @@ function App() {
   const backendItems = useMemo(() => {
     const events = eventsQuery.data ?? [];
     const gapFills = gapFillsQuery.data ?? [];
+    const tzSegments = tzSegmentsQuery.data ?? [];
 
     return [
       ...events
         .map((event) =>
-          eventToSchedulerItem(event, draftPlacements[`event-${event.id}`]),
+          eventToSchedulerItem(
+            event,
+            tzSegments,
+            draftPlacements[`event-${event.id}`],
+          ),
         )
-        .filter((item): item is DemoItem => item !== null),
+        .filter((item): item is ScheduleItem => item !== null),
       ...gapFills
         .map((gapFill) =>
           gapFillToSchedulerItem(
             gapFill,
             categoriesById,
+            tzSegments,
             draftPlacements[`gap-fill-${gapFill.id}`],
           ),
         )
-        .filter((item): item is DemoItem => item !== null),
+        .filter((item): item is ScheduleItem => item !== null),
     ];
-  }, [categoriesById, draftPlacements, eventsQuery.data, gapFillsQuery.data]);
-  const isBackendScheduleActive = Boolean(activePeriod);
-  const items = useMemo(
-    () =>
-      isBackendScheduleActive
-        ? [...backendItems, ...draftItems]
-        : demoItems,
-    [backendItems, demoItems, draftItems, isBackendScheduleActive],
-  );
+  }, [
+    categoriesById,
+    draftPlacements,
+    eventsQuery.data,
+    gapFillsQuery.data,
+    tzSegmentsQuery.data,
+  ]);
+  const items = backendItems;
   const totals = useMemo(() => {
     return items.reduce<Record<string, number>>((next, item) => {
       const key = item.metadata?.category ?? "Unassigned";
@@ -390,54 +491,65 @@ function App() {
   }, [items]);
   const isBackendLoading =
     periodsQuery.isLoading ||
+    currentPeriodQuery.isLoading ||
     categoriesQuery.isLoading ||
     eventsQuery.isLoading ||
     gapFillsQuery.isLoading ||
-    reviewItemsQuery.isLoading;
+    reviewItemsQuery.isLoading ||
+    tzSegmentsQuery.isLoading ||
+    createManualEventMutation.isPending ||
+    updateManualEventMutation.isPending;
   const backendError =
     periodsQuery.error ??
+    currentPeriodQuery.error ??
     categoriesQuery.error ??
     eventsQuery.error ??
     gapFillsQuery.error ??
-    reviewItemsQuery.error;
+    reviewItemsQuery.error ??
+    tzSegmentsQuery.error ??
+    createManualEventMutation.error ??
+    updateManualEventMutation.error;
+
+  useEffect(() => {
+    setSelectedPeriodId((current) => {
+      if (
+        currentPeriod &&
+        (!current || !periods.some((period) => period.id === current))
+      ) {
+        return currentPeriod.id;
+      }
+
+      if (current && periods.some((period) => period.id === current)) {
+        return current;
+      }
+
+      return currentPeriod?.id ?? periods[0]?.id ?? null;
+    });
+  }, [currentPeriod, periods]);
+
+  useEffect(() => {
+    setDraftPlacements({});
+    setPreview(null);
+  }, [activePeriodId]);
 
   const handleCreate = (request: SchedulerCreateRequest) => {
-    const item: DemoItem = {
-      id: `manual-${Date.now()}`,
-      day: request.day,
-      startMinutes: request.startMinutes,
-      endMinutes: request.endMinutes,
-      metadata: {
-        title: "New block",
-        category: "Manual",
-        kind: "manual",
-        source: isBackendScheduleActive ? "draft" : "demo",
-      },
-    };
-
-    if (isBackendScheduleActive) {
-      setDraftItems((current) => [...current, item]);
+    if (activePeriodId) {
+      createManualEventMutation.mutate({
+        periodId: activePeriodId,
+        day: request.day,
+        startMinutes: request.startMinutes,
+        endMinutes: request.endMinutes,
+        note: "New block",
+      });
       return;
     }
-
-    setDemoItems((current) => [...current, item]);
   };
 
   const handleCommit = (change: SchedulerChange<ScheduleMetadata>) => {
-    const updateItems = (current: DemoItem[]) =>
-      current.map((item) =>
-        item.id === change.itemId
-          ? {
-              ...item,
-              day: change.day,
-              startMinutes: change.startMinutes,
-              endMinutes: change.endMinutes,
-            }
-          : item,
-      );
+    if (change.itemId.startsWith("gap-fill-")) {
+      const gapFill = gapFillsByItemId.get(change.itemId);
 
-    if (isBackendScheduleActive) {
-      if (change.itemId.startsWith("event-") || change.itemId.startsWith("gap-fill-")) {
+      if (gapFill) {
         setDraftPlacements((current) => ({
           ...current,
           [change.itemId]: {
@@ -446,11 +558,41 @@ function App() {
             endMinutes: change.endMinutes,
           },
         }));
-      } else {
-        setDraftItems(updateItems);
+        updateManualEventMutation.mutate(
+          {
+            id: gapFill.id,
+            periodId: gapFill.periodId,
+            day: change.day,
+            startMinutes: change.startMinutes,
+            endMinutes: change.endMinutes,
+            categoryId: gapFill.categoryId,
+            note: gapFill.note ?? "",
+          },
+          {
+            onSettled: () => {
+              setDraftPlacements((current) => {
+                const next = { ...current };
+                delete next[change.itemId];
+                return next;
+              });
+            },
+          },
+        );
       }
-    } else {
-      setDemoItems(updateItems);
+
+      setPreview(null);
+      return;
+    }
+
+    if (change.itemId.startsWith("event-")) {
+      setDraftPlacements((current) => ({
+        ...current,
+        [change.itemId]: {
+          day: change.day,
+          startMinutes: change.startMinutes,
+          endMinutes: change.endMinutes,
+        },
+      }));
     }
 
     setPreview(null);
@@ -514,24 +656,31 @@ function App() {
           <Separator orientation="vertical" className="my-2" />
           <div className="grow" />
           <div className="app-no-drag flex flex-wrap items-center gap-2">
-            <div className="flex rounded-md border border-zinc-200 bg-white p-1">
-              {[1, 7, 14].map((count) => (
-                <Button
-                  key={count}
-                  type="button"
-                  variant={dayCount === count ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setDayCount(count)}
-                  aria-pressed={dayCount === count}
-                >
-                  {count}d
-                </Button>
-              ))}
-            </div>
+            {periods.length > 0 && (
+              <select
+                value={activePeriod?.id ?? ""}
+                onChange={(event) =>
+                  setSelectedPeriodId(Number(event.target.value))
+                }
+                aria-label="Period"
+                className="h-8 min-w-48 rounded-lg border border-border bg-white px-2.5 text-sm font-medium text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                {periods.map((period) => (
+                  <option key={period.id} value={period.id}>
+                    {formatPeriodLabel(period)}
+                  </option>
+                ))}
+              </select>
+            )}
             <Button
               type="button"
               variant="outline"
               className="bg-white"
+              disabled={
+                !activePeriodId ||
+                createManualEventMutation.isPending ||
+                days.length === 0
+              }
               onClick={() =>
                 handleCreate({
                   day: days[0].date,
@@ -540,7 +689,7 @@ function App() {
                 })
               }
             >
-              Block
+              {createManualEventMutation.isPending ? "Saving" : "Block"}
             </Button>
           </div>
         </header>
@@ -550,6 +699,7 @@ function App() {
             days={days}
             items={items}
             config={{
+              maxDays: visibleDayCount,
               scheduleStartMinutes: SCHEDULE_START_MINUTES,
               scheduleEndMinutes: SCHEDULE_END_MINUTES,
               workingStartMinutes: WORKING_START_MINUTES,
@@ -633,7 +783,9 @@ function App() {
                         className={cn([
                           "sticky top-0 z-30 flex items-center border-b border-border px-3",
                           day.metadata?.isWeekend ? "bg-muted" : "bg-background",
-                          index % dayCount !== dayCount-1 ? "border-r" : "",
+                          index % visibleDayCount !== visibleDayCount - 1
+                            ? "border-r"
+                            : "",
                         ])}
                       >
                         <div>
@@ -832,7 +984,7 @@ function App() {
             </Card>
             <Card className="app-no-drag">
               <CardHeader>
-                <CardTitle className="text-sm">Backend</CardTitle>
+                <CardTitle className="text-sm">Schedule</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 text-sm">
@@ -841,9 +993,29 @@ function App() {
                     <span className="truncate font-medium">
                       {activePeriod
                         ? `${activePeriod.startDate} to ${activePeriod.endDate}`
-                        : "Demo"}
+                        : "No period"}
                     </span>
                   </div>
+                  {activePeriod && (
+                    <>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-muted-foreground">Cadence</span>
+                        <span className="font-medium">
+                          {formatCadence(activePeriod.cadence)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-muted-foreground">Days</span>
+                        <span className="font-medium">{visibleDayCount}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-muted-foreground">Target</span>
+                        <span className="font-medium">
+                          {activePeriod.targetHoursPerDay}h/day
+                        </span>
+                      </div>
+                    </>
+                  )}
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-muted-foreground">Events</span>
                     <span className="font-medium">

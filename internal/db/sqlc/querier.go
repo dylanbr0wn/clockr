@@ -59,7 +59,7 @@ type Querier interface {
 	SetEventActiveByCalendar(ctx context.Context, arg SetEventActiveByCalendarParams) error
 	SetSetting(ctx context.Context, arg SetSettingParams) error
 	TouchPeriodSynced(ctx context.Context, arg TouchPeriodSyncedParams) error
-	UpdateGapFill(ctx context.Context, arg UpdateGapFillParams) error
+	UpdateGapFill(ctx context.Context, arg UpdateGapFillParams) (GapFill, error)
 	UpdatePeriodTarget(ctx context.Context, arg UpdatePeriodTargetParams) error
 	UpsertCalendar(ctx context.Context, arg UpsertCalendarParams) (Calendar, error)
 	// Re-sync entry point: insert a fact, or update mutable synced fields on re-pull.

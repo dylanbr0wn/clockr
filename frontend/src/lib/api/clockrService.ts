@@ -1,110 +1,141 @@
-import * as generatedService from "../../../wailsjs/go/service/Service";
+import * as generatedApp from "../../../wailsjs/go/main/App";
 import type {
   Calendar,
   Category,
   DayTimeline,
   Event,
   GapFill,
+  ManualEventInput,
+  ManualEventResult,
+  ManualEventUpdateInput,
   Period,
   ReviewItem,
   TzSegment,
 } from "./types";
 
-interface ClockrBackend {
-  ComputeGaps(ctx: unknown, periodId: number): Promise<DayTimeline[]>;
-  GetSetting(ctx: unknown, key: string): Promise<string>;
-  ListCalendars(ctx: unknown): Promise<Calendar[]>;
-  ListCategories(ctx: unknown): Promise<Category[]>;
-  ListEvents(ctx: unknown, periodId: number): Promise<Event[]>;
-  ListGapFills(ctx: unknown, periodId: number): Promise<GapFill[]>;
-  ListOpenReviewItems(ctx: unknown, periodId: number): Promise<ReviewItem[]>;
-  ListPeriods(ctx: unknown): Promise<Period[]>;
-  ListSelectedCalendars(ctx: unknown): Promise<Calendar[]>;
-  ListTzSegments(ctx: unknown, periodId: number): Promise<TzSegment[]>;
+interface ClockrApp {
+  ComputeGaps(periodId: number): Promise<DayTimeline[]>;
+  CreateManualEvent(input: ManualEventInput): Promise<ManualEventResult>;
+  EnsureCurrentPeriod(today: string, ianaTz: string): Promise<Period>;
+  GetSetting(key: string): Promise<string>;
+  ListCalendars(): Promise<Calendar[]>;
+  ListCategories(): Promise<Category[]>;
+  ListEvents(periodId: number): Promise<Event[]>;
+  ListGapFills(periodId: number): Promise<GapFill[]>;
+  ListOpenReviewItems(periodId: number): Promise<ReviewItem[]>;
+  ListPeriods(): Promise<Period[]>;
+  ListSelectedCalendars(): Promise<Calendar[]>;
+  ListTzSegments(periodId: number): Promise<TzSegment[]>;
+  UpdateManualEvent(input: ManualEventUpdateInput): Promise<ManualEventResult>;
 }
 
 declare global {
   interface Window {
     go?: {
-      service?: {
-        Service?: unknown;
+      main?: {
+        App?: unknown;
       };
     };
   }
 }
 
-const backend = generatedService as unknown as ClockrBackend;
-const wailsContext = undefined;
+const appBackend = generatedApp as unknown as ClockrApp;
 
-export function isClockrBackendAvailable() {
+export function isClockrAppAvailable() {
   return Boolean(
     typeof window !== "undefined" &&
-      window.go?.service?.Service,
+      window.go?.main?.App,
   );
 }
 
 async function readFromBackend<T>(fallback: T, read: () => Promise<T>) {
-  if (!isClockrBackendAvailable()) {
+  if (!isClockrAppAvailable()) {
     return fallback;
   }
 
   return read();
 }
 
+async function writeToBackend<T>(write: () => Promise<T>) {
+  if (!isClockrAppAvailable()) {
+    throw new Error("Clockr backend is unavailable");
+  }
+
+  return write();
+}
+
 export function listPeriods() {
-  return readFromBackend<Period[]>([], () => backend.ListPeriods(wailsContext));
+  return readFromBackend<Period[]>([], () => appBackend.ListPeriods());
+}
+
+export function ensureCurrentPeriod(today: string, ianaTz: string) {
+  return readFromBackend<Period | null>(null, () =>
+    appBackend.EnsureCurrentPeriod(today, ianaTz),
+  );
 }
 
 export function listCategories() {
   return readFromBackend<Category[]>([], () =>
-    backend.ListCategories(wailsContext),
+    appBackend.ListCategories(),
   );
 }
 
 export function listCalendars() {
   return readFromBackend<Calendar[]>([], () =>
-    backend.ListCalendars(wailsContext),
+    appBackend.ListCalendars(),
   );
 }
 
 export function listSelectedCalendars() {
   return readFromBackend<Calendar[]>([], () =>
-    backend.ListSelectedCalendars(wailsContext),
+    appBackend.ListSelectedCalendars(),
   );
 }
 
 export function listEvents(periodId: number) {
   return readFromBackend<Event[]>([], () =>
-    backend.ListEvents(wailsContext, periodId),
+    appBackend.ListEvents(periodId),
   );
 }
 
 export function listGapFills(periodId: number) {
   return readFromBackend<GapFill[]>([], () =>
-    backend.ListGapFills(wailsContext, periodId),
+    appBackend.ListGapFills(periodId),
+  );
+}
+
+export function createManualEvent(input: ManualEventInput) {
+  return writeToBackend(() =>
+    appBackend.CreateManualEvent(input),
+  );
+}
+
+export function updateManualEvent(input: ManualEventUpdateInput) {
+  return writeToBackend(() =>
+    appBackend.UpdateManualEvent(input),
   );
 }
 
 export function listOpenReviewItems(periodId: number) {
   return readFromBackend<ReviewItem[]>([], () =>
-    backend.ListOpenReviewItems(wailsContext, periodId),
+    appBackend.ListOpenReviewItems(periodId),
   );
 }
 
 export function listTzSegments(periodId: number) {
   return readFromBackend<TzSegment[]>([], () =>
-    backend.ListTzSegments(wailsContext, periodId),
+    appBackend.ListTzSegments(periodId),
   );
 }
 
 export function computeGaps(periodId: number) {
   return readFromBackend<DayTimeline[]>([], () =>
-    backend.ComputeGaps(wailsContext, periodId),
+    appBackend.ComputeGaps(periodId),
   );
 }
 
 export function getSetting(key: string) {
   return readFromBackend<string | null>(null, () =>
-    backend.GetSetting(wailsContext, key),
+    appBackend.GetSetting(key),
   );
 }

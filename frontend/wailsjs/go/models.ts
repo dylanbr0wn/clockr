@@ -1,3 +1,22 @@
+export namespace main {
+	
+	export class ManualEventResult {
+	    periodId: number;
+	    id: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ManualEventResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.periodId = source["periodId"];
+	        this.id = source["id"];
+	    }
+	}
+
+}
+
 export namespace service {
 	
 	export class Attendee {
@@ -214,10 +233,8 @@ export namespace service {
 	    id: number;
 	    periodId: number;
 	    day: string;
-	    // Go type: time
-	    start: any;
-	    // Go type: time
-	    end: any;
+	    start: string;
+	    end: string;
 	    categoryId?: number;
 	    note?: string;
 	    source: string;
@@ -231,30 +248,12 @@ export namespace service {
 	        this.id = source["id"];
 	        this.periodId = source["periodId"];
 	        this.day = source["day"];
-	        this.start = this.convertValues(source["start"], null);
-	        this.end = this.convertValues(source["end"], null);
+	        this.start = source["start"];
+	        this.end = source["end"];
 	        this.categoryId = source["categoryId"];
 	        this.note = source["note"];
 	        this.source = source["source"];
 	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 	export class IncomingEvent {
 	    CalendarID: number;
@@ -321,6 +320,52 @@ export namespace service {
 		}
 	}
 	
+	export class ManualEventInput {
+	    periodId: number;
+	    day: string;
+	    startMinutes: number;
+	    endMinutes: number;
+	    categoryId?: number;
+	    note?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ManualEventInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.periodId = source["periodId"];
+	        this.day = source["day"];
+	        this.startMinutes = source["startMinutes"];
+	        this.endMinutes = source["endMinutes"];
+	        this.categoryId = source["categoryId"];
+	        this.note = source["note"];
+	    }
+	}
+	export class ManualEventUpdateInput {
+	    id: number;
+	    periodId: number;
+	    day: string;
+	    startMinutes: number;
+	    endMinutes: number;
+	    categoryId?: number;
+	    note?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ManualEventUpdateInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.periodId = source["periodId"];
+	        this.day = source["day"];
+	        this.startMinutes = source["startMinutes"];
+	        this.endMinutes = source["endMinutes"];
+	        this.categoryId = source["categoryId"];
+	        this.note = source["note"];
+	    }
+	}
 	export class Period {
 	    id: number;
 	    startDate: string;

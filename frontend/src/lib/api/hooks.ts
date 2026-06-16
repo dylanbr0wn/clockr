@@ -1,6 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   computeGaps,
+  createManualEvent,
+  ensureCurrentPeriod,
   getSetting,
   listCalendars,
   listCategories,
@@ -10,6 +12,7 @@ import {
   listPeriods,
   listSelectedCalendars,
   listTzSegments,
+  updateManualEvent,
 } from "./clockrService";
 
 export const clockrQueryKeys = {
@@ -20,6 +23,8 @@ export const clockrQueryKeys = {
     [...clockrQueryKeys.period(periodId), "gapTimeline"] as const,
   period: (periodId: number) =>
     [...clockrQueryKeys.periods(), periodId] as const,
+  currentPeriod: (today: string, ianaTz: string) =>
+    [...clockrQueryKeys.periods(), "current", today, ianaTz] as const,
   periods: () => [...clockrQueryKeys.all, "periods"] as const,
   periodEvents: (periodId: number) =>
     [...clockrQueryKeys.period(periodId), "events"] as const,
@@ -38,6 +43,13 @@ export function usePeriods() {
   return useQuery({
     queryKey: clockrQueryKeys.periods(),
     queryFn: listPeriods,
+  });
+}
+
+export function useCurrentPeriod(today: string, ianaTz: string) {
+  return useQuery({
+    queryKey: clockrQueryKeys.currentPeriod(today, ianaTz),
+    queryFn: () => ensureCurrentPeriod(today, ianaTz),
   });
 }
 
@@ -75,6 +87,42 @@ export function useGapFills(periodId: number | null | undefined) {
     enabled: typeof periodId === "number",
     queryKey: clockrQueryKeys.periodGapFills(periodId ?? 0),
     queryFn: () => listGapFills(periodId as number),
+  });
+}
+
+export function useCreateManualEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createManualEvent,
+    onSuccess: (gapFill, input) => {
+      const periodId = gapFill.periodId || input.periodId;
+
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.periodGapFills(periodId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.gapTimeline(periodId),
+      });
+    },
+  });
+}
+
+export function useUpdateManualEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateManualEvent,
+    onSuccess: (gapFill, input) => {
+      const periodId = gapFill.periodId || input.periodId;
+
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.periodGapFills(periodId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.gapTimeline(periodId),
+      });
+    },
   });
 }
 

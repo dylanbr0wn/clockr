@@ -9,14 +9,16 @@ INSERT INTO gap_fill (period_id, day, start_utc, end_utc, category_id, note, sou
 VALUES (?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
--- name: UpdateGapFill :exec
+-- name: UpdateGapFill :one
 UPDATE gap_fill SET
+    day         = ?,
     start_utc   = ?,
     end_utc     = ?,
     category_id = ?,
     note        = ?,
     updated_at  = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-WHERE id = ?;
+WHERE id = ? AND period_id = ? AND source = 'manual'
+RETURNING *;
 
 -- name: DeleteGapFill :exec
 DELETE FROM gap_fill WHERE id = ?;
