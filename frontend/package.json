@@ -15,9 +15,11 @@
     "@tanstack/react-query": "^5.101.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
     "lucide-react": "^0.468.0",
     "radix-ui": "^1.5.0",
     "react": "^18.3.1",
+    "react-day-picker": "^10.0.1",
     "react-dom": "^18.3.1",
     "shadcn": "^4.11.0",
     "tailwind-merge": "^2.6.1"

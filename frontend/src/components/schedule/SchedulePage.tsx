@@ -1,4 +1,5 @@
 import { Separator } from "@/components/ui/separator";
+import { EventEditDialog } from "./EventEditDialog";
 import { ScheduleHeader } from "./ScheduleHeader";
 import { ScheduleSidebar } from "./ScheduleSidebar";
 import { ScheduleTimeline } from "./ScheduleTimeline";
@@ -26,6 +27,7 @@ export function SchedulePage({ titlebarPaddingClass }: SchedulePageProps) {
           onCreate={schedule.handleCreate}
           onPreviewChange={schedule.setPreview}
           onCommitChange={schedule.handleCommit}
+          onEditItem={schedule.handleOpenEventEditor}
         />
         <ScheduleSidebar
           activePeriod={schedule.activePeriod}
@@ -37,6 +39,18 @@ export function SchedulePage({ titlebarPaddingClass }: SchedulePageProps) {
           backendError={schedule.backendError}
         />
       </section>
+      <EventEditDialog
+        categories={schedule.categories}
+        event={schedule.editingEvent}
+        isSaving={schedule.editEventPending}
+        open={schedule.editingEvent !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            schedule.handleCloseEventEditor();
+          }
+        }}
+        onSave={schedule.handleSaveEventEdit}
+      />
     </>
   );
 }

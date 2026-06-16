@@ -35,9 +35,15 @@ import {
   type SchedulePlacement,
 } from "@/lib/schedule";
 
+export type ScheduleViewDayCount = 1 | 7 | 14;
+
+export const SCHEDULE_VIEW_DAY_OPTIONS: ScheduleViewDayCount[] = [1, 7, 14];
+
 export interface SchedulePageViewModel {
   selectedPeriodId: number | null;
   setSelectedPeriodId: Dispatch<SetStateAction<number | null>>;
+  viewDayCount: ScheduleViewDayCount;
+  setViewDayCount: Dispatch<SetStateAction<ScheduleViewDayCount>>;
   periods: Period[];
   activePeriod: Period | null;
   activePeriodId: number | undefined;
@@ -57,16 +63,44 @@ export interface SchedulePageViewModel {
     reviewItems: number;
   };
   createPending: boolean;
+  editingEvent: EditableScheduleEvent | null;
+  editEventPending: boolean;
   handleCreate: (request: SchedulerCreateRequest) => void;
   handleCommit: (change: ScheduleChange) => void;
+  handleOpenEventEditor: (item: ScheduleItem) => void;
+  handleCloseEventEditor: () => void;
+  handleSaveEventEdit: (values: ScheduleEventEditValues) => void;
+}
+
+export interface EditableScheduleEvent {
+  id: string;
+  gapFillId: number;
+  periodId: number;
+  day: string;
+  startMinutes: number;
+  endMinutes: number;
+  category: string;
+  categoryId?: number;
+  note: string;
+}
+
+export interface ScheduleEventEditValues {
+  day: string;
+  startMinutes: number;
+  endMinutes: number;
+  categoryId?: number;
+  note: string;
 }
 
 export function useSchedulePage(): SchedulePageViewModel {
   const [selectedPeriodId, setSelectedPeriodId] = useState<number | null>(null);
+  const [viewDayCount, setViewDayCount] =
+    useState<ScheduleViewDayCount>(7);
   const [draftPlacements, setDraftPlacements] = useState<
     Record<string, SchedulePlacement>
   >({});
   const [preview, setPreview] = useState<ScheduleChange | null>(null);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const today = useMemo(() => localDateKey(), []);
   const currentTimeZone = useMemo(() => defaultTimeZone(), []);
   const periodsQuery = usePeriods();
@@ -110,7 +144,10 @@ export function useSchedulePage(): SchedulePageViewModel {
   const categoriesById = useMemo(() => {
     return new Map(categories.map((category) => [category.id, category]));
   }, [categories]);
-  const visibleDayCount = periodDayCount(activePeriod);
+  const periodVisibleDayCount = activePeriod
+    ? periodDayCount(activePeriod)
+    : viewDayCount;
+  const visibleDayCount = Math.min(periodVisibleDayCount, viewDayCount);
   const days = useMemo(
     () => buildDays(activePeriod?.startDate ?? START_DATE, visibleDayCount),
     [activePeriod?.startDate, visibleDayCount],
@@ -157,6 +194,30 @@ export function useSchedulePage(): SchedulePageViewModel {
     tzSegmentsQuery.data,
   ]);
   const items = backendItems;
+  const editingEvent = useMemo(() => {
+    if (!editingItemId) {
+      return null;
+    }
+
+    const gapFill = gapFillsByItemId.get(editingItemId);
+    const item = items.find((candidate) => candidate.id === editingItemId);
+
+    if (!gapFill || !item) {
+      return null;
+    }
+
+    return {
+      id: editingItemId,
+      gapFillId: gapFill.id,
+      periodId: gapFill.periodId,
+      day: item.day,
+      startMinutes: item.startMinutes,
+      endMinutes: item.endMinutes,
+      category: item.metadata?.category ?? "Unassigned",
+      categoryId: gapFill.categoryId,
+      note: gapFill.note ?? "",
+    };
+  }, [editingItemId, gapFillsByItemId, items]);
   const totals = useMemo(() => {
     return items.reduce<Record<string, number>>((next, item) => {
       const key = item.metadata?.category ?? "Unassigned";
@@ -205,6 +266,7 @@ export function useSchedulePage(): SchedulePageViewModel {
   useEffect(() => {
     setDraftPlacements({});
     setPreview(null);
+    setEditingItemId(null);
   }, [activePeriodId]);
 
   const handleCreate = (request: SchedulerCreateRequest) => {
@@ -273,9 +335,69 @@ export function useSchedulePage(): SchedulePageViewModel {
     setPreview(null);
   };
 
+  const handleOpenEventEditor = (item: ScheduleItem) => {
+    if (!item.id.startsWith("gap-fill-") || !gapFillsByItemId.has(item.id)) {
+      return;
+    }
+
+    setEditingItemId(item.id);
+  };
+
+  const handleCloseEventEditor = () => {
+    setEditingItemId(null);
+  };
+
+  const handleSaveEventEdit = (values: ScheduleEventEditValues) => {
+    if (!editingItemId) {
+      return;
+    }
+
+    const gapFill = gapFillsByItemId.get(editingItemId);
+
+    if (!gapFill) {
+      return;
+    }
+
+    const itemId = editingItemId;
+
+    setDraftPlacements((current) => ({
+      ...current,
+      [itemId]: {
+        day: values.day,
+        startMinutes: values.startMinutes,
+        endMinutes: values.endMinutes,
+      },
+    }));
+    updateManualEventMutation.mutate(
+      {
+        id: gapFill.id,
+        periodId: gapFill.periodId,
+        day: values.day,
+        startMinutes: values.startMinutes,
+        endMinutes: values.endMinutes,
+        categoryId: values.categoryId,
+        note: values.note,
+      },
+      {
+        onSuccess: () => {
+          setEditingItemId(null);
+        },
+        onSettled: () => {
+          setDraftPlacements((current) => {
+            const next = { ...current };
+            delete next[itemId];
+            return next;
+          });
+        },
+      },
+    );
+  };
+
   return {
     selectedPeriodId,
     setSelectedPeriodId,
+    viewDayCount,
+    setViewDayCount,
     periods,
     activePeriod,
     activePeriodId,
@@ -297,7 +419,12 @@ export function useSchedulePage(): SchedulePageViewModel {
       reviewItems: reviewItemsQuery.data?.length ?? 0,
     },
     createPending: createManualEventMutation.isPending,
+    editingEvent,
+    editEventPending: updateManualEventMutation.isPending,
     handleCreate,
     handleCommit,
+    handleOpenEventEditor,
+    handleCloseEventEditor,
+    handleSaveEventEdit,
   };
 }

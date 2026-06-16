@@ -31,6 +31,7 @@ interface ScheduleTimelineProps {
   onCreate: (request: SchedulerCreateRequest) => void;
   onPreviewChange: (change: ScheduleChange | null) => void;
   onCommitChange: (change: ScheduleChange) => void;
+  onEditItem: (item: ScheduleItem) => void;
 }
 
 export function ScheduleTimeline({
@@ -40,6 +41,7 @@ export function ScheduleTimeline({
   onCreate,
   onPreviewChange,
   onCommitChange,
+  onEditItem,
 }: ScheduleTimelineProps) {
   const schedulerViewportRef = useRef<HTMLDivElement | null>(null);
   const didSetInitialScrollRef = useRef(false);
@@ -258,8 +260,10 @@ export function ScheduleTimeline({
                           <div
                             key={item.id}
                             {...scheduler.getItemProps(layoutItem, {
-                              onClick: () => {
-                                console.log("Clicked item", item);
+                              onDoubleClick: (event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                onEditItem(item);
                               },
                               className: [
                                 "group z-10 flex min-h-10 cursor-grab flex-col overflow-hidden rounded-md border px-2 py-1 text-left text-xs shadow-sm transition-shadow active:cursor-grabbing",

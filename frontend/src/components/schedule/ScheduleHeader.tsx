@@ -1,8 +1,20 @@
-import { Clock } from "lucide-react";
+import { Clock, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { formatPeriodLabel } from "@/lib/schedule";
-import type { SchedulePageViewModel } from "./useSchedulePage";
+import {
+  SCHEDULE_VIEW_DAY_OPTIONS,
+  type SchedulePageViewModel,
+  type ScheduleViewDayCount,
+} from "./useSchedulePage";
 
 interface ScheduleHeaderProps {
   titlebarPaddingClass: string;
@@ -27,25 +39,52 @@ export function ScheduleHeader({
       <div className="grow" />
       <div className="app-no-drag flex flex-wrap items-center gap-2">
         {schedule.periods.length > 0 && (
-          <select
-            value={schedule.activePeriod?.id ?? ""}
-            onChange={(event) =>
-              schedule.setSelectedPeriodId(Number(event.target.value))
+          <Select
+            value={String(schedule.activePeriod?.id ?? "")}
+            onValueChange={(value) =>
+              schedule.setSelectedPeriodId(Number(value))
             }
-            aria-label="Period"
-            className="h-8 min-w-48 rounded-lg border border-border bg-white px-2.5 text-sm font-medium text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           >
-            {schedule.periods.map((period) => (
-              <option key={period.id} value={period.id}>
-                {formatPeriodLabel(period)}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger
+              aria-label="Period"
+              className="min-w-52 bg-white"
+            >
+              <SelectValue placeholder="Period" />
+            </SelectTrigger>
+            <SelectContent align="end">
+              {schedule.periods.map((period) => (
+                <SelectItem key={period.id} value={String(period.id)}>
+                  {formatPeriodLabel(period)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
+        <ToggleGroup
+          type="single"
+          value={String(schedule.viewDayCount)}
+          onValueChange={(value) => {
+            if (value) {
+              schedule.setViewDayCount(Number(value) as ScheduleViewDayCount);
+            }
+          }}
+          variant="outline"
+          spacing={0}
+          aria-label="View length"
+          className="bg-white"
+        >
+          {SCHEDULE_VIEW_DAY_OPTIONS.map((dayCount) => (
+            <ToggleGroupItem
+              key={dayCount}
+              value={String(dayCount)}
+              aria-label={`${dayCount} day view`}
+            >
+              {dayCount}d
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
         <Button
           type="button"
-          variant="outline"
-          className="bg-white"
           disabled={
             !schedule.activePeriodId ||
             schedule.createPending ||
@@ -59,7 +98,8 @@ export function ScheduleHeader({
             })
           }
         >
-          {schedule.createPending ? "Saving" : "Block"}
+          <Plus />
+          {schedule.createPending ? "Saving" : "Add Block"}
         </Button>
       </div>
     </header>
