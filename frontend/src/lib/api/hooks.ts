@@ -13,6 +13,7 @@ import {
   listPeriods,
   listSelectedCalendars,
   listTzSegments,
+  setSetting,
   updateManualEvent,
 } from "./clockrService";
 
@@ -173,5 +174,22 @@ export function useSetting(key: string) {
   return useQuery({
     queryKey: clockrQueryKeys.setting(key),
     queryFn: () => getSetting(key),
+  });
+}
+
+export function useSetSetting() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ key, value }: { key: string; value: string }) =>
+      setSetting(key, value),
+    onMutate: ({ key, value }) => {
+      queryClient.setQueryData(clockrQueryKeys.setting(key), value);
+    },
+    onSuccess: (_result, { key }) => {
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.setting(key),
+      });
+    },
   });
 }

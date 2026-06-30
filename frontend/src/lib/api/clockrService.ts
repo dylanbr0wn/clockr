@@ -28,6 +28,7 @@ interface ClockrApp {
   ListPeriods(): Promise<Period[]>;
   ListSelectedCalendars(): Promise<Calendar[]>;
   ListTzSegments(periodId: number): Promise<TzSegment[]>;
+  SetSetting(key: string, value: string): Promise<void>;
   UpdateManualEvent(input: ManualEventUpdateInput): Promise<ManualEventResult>;
 }
 
@@ -143,7 +144,17 @@ export function computeGaps(periodId: number) {
 }
 
 export function getSetting(key: string) {
-  return readFromBackend<string | null>(null, () =>
-    appBackend.GetSetting(key),
+  return readFromBackend<string | null>(
+    localStorage.getItem(`clockr.setting.${key}`),
+    () => appBackend.GetSetting(key),
   );
+}
+
+export function setSetting(key: string, value: string) {
+  if (!isClockrAppAvailable()) {
+    localStorage.setItem(`clockr.setting.${key}`, value);
+    return Promise.resolve();
+  }
+
+  return writeToBackend(() => appBackend.SetSetting(key, value));
 }

@@ -1,5 +1,6 @@
-import { Clock, Plus } from "lucide-react";
+import { Clock, Plus, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import {
   Select,
   SelectContent,
@@ -47,7 +48,7 @@ export function ScheduleHeader({
           >
             <SelectTrigger
               aria-label="Period"
-              className="min-w-52 bg-white"
+              className="min-w-52"
             >
               <SelectValue placeholder="Period" />
             </SelectTrigger>
@@ -71,7 +72,6 @@ export function ScheduleHeader({
           variant="outline"
           spacing={0}
           aria-label="View length"
-          className="bg-white"
         >
           {SCHEDULE_VIEW_DAY_OPTIONS.map((dayCount) => (
             <ToggleGroupItem
@@ -101,6 +101,16 @@ export function ScheduleHeader({
           <Plus />
           {schedule.createPending ? "Saving" : "Add Block"}
         </Button>
+        <SettingsDialog>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Open settings"
+          >
+            <Settings className="size-4" />
+          </Button>
+        </SettingsDialog>
       </div>
     </header>
   );

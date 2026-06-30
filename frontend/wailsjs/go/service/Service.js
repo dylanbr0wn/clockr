@@ -70,6 +70,10 @@ export function ListTzSegments(arg1, arg2) {
   return window['go']['service']['Service']['ListTzSegments'](arg1, arg2);
 }
 
+export function SetSetting(arg1, arg2, arg3) {
+  return window['go']['service']['Service']['SetSetting'](arg1, arg2, arg3);
+}
+
 export function SyncEvents(arg1, arg2, arg3) {
   return window['go']['service']['Service']['SyncEvents'](arg1, arg2, arg3);
 }

@@ -104,6 +104,11 @@ func (a *App) GetSetting(key string) (string, error) {
 	return a.Svc.GetSetting(a.callContext(), key)
 }
 
+// SetSetting persists a raw JSON setting value.
+func (a *App) SetSetting(key string, value string) error {
+	return a.Svc.SetSetting(a.callContext(), key, value)
+}
+
 // CreateManualEvent persists a scheduler-created manual block.
 func (a *App) CreateManualEvent(input service.ManualEventInput) (ManualEventResult, error) {
 	fill, err := a.Svc.CreateManualEvent(a.callContext(), input)

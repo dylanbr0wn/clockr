@@ -194,6 +194,23 @@ func TestGetSetting(t *testing.T) {
 	}
 }
 
+func TestSetSetting(t *testing.T) {
+	s := newSvc(t)
+	ctx := context.Background()
+
+	if err := s.SetSetting(ctx, "period.target_hours", `7.5`); err != nil {
+		t.Fatal(err)
+	}
+
+	v, err := s.GetSetting(ctx, "period.target_hours")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v != `7.5` {
+		t.Fatalf("unexpected setting value: %q", v)
+	}
+}
+
 func TestCreateManualEvent(t *testing.T) {
 	s := newSvc(t)
 	ctx := context.Background()

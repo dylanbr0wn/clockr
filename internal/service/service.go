@@ -195,3 +195,11 @@ func (s *Service) GetSetting(ctx context.Context, key string) (string, error) {
 	}
 	return v, nil
 }
+
+// SetSetting stores a raw JSON-encoded setting value.
+func (s *Service) SetSetting(ctx context.Context, key, value string) error {
+	if err := s.q.SetSetting(ctx, sqlc.SetSettingParams{Key: key, Value: value}); err != nil {
+		return mapErr("set setting", err)
+	}
+	return nil
+}

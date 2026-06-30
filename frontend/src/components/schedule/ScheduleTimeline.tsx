@@ -128,9 +128,9 @@ export function ScheduleTimeline({
         const workingEndPercent = minuteToPercent(
           scheduler.config.workingEndMinutes,
         );
-        const hourGridBackground = `repeating-linear-gradient(to bottom, transparent 0, transparent calc(${slotPercent}% - 1px), rgb(228 228 231) calc(${slotPercent}% - 1px), rgb(228 228 231) ${slotPercent}%)`;
+        const hourGridBackground = `repeating-linear-gradient(to bottom, transparent 0, transparent calc(${slotPercent}% - 1px), var(--border) calc(${slotPercent}% - 1px), var(--border) ${slotPercent}%)`;
         const nonWorkingHoursBackground =
-          "repeating-linear-gradient(135deg, rgba(244, 244, 245, 0.7) 0 6px, transparent 6px 12px), rgba(244, 244, 245, 0.45)";
+          "repeating-linear-gradient(135deg, var(--background) 0 6px, transparent 6px 12px), var(--muted)";
         const timelineMarks: number[] = [];
 
         for (
@@ -143,14 +143,14 @@ export function ScheduleTimeline({
 
         const timeLabelClass = (minute: number) => {
           if (minute === scheduler.visibleRange.startMinutes) {
-            return "absolute right-3 translate-y-0 text-xs font-medium text-zinc-500";
+            return "absolute right-3 translate-y-0 text-xs font-medium text-muted-foreground";
           }
 
           if (minute === scheduler.visibleRange.endMinutes) {
-            return "absolute right-3 -translate-y-full text-xs font-medium text-zinc-500";
+            return "absolute right-3 -translate-y-full text-xs font-medium text-muted-foreground";
           }
 
-          return "absolute right-3 -translate-y-2 text-xs font-medium text-zinc-500";
+          return "absolute right-3 -translate-y-2 text-xs font-medium text-muted-foreground";
         };
 
         return (
@@ -312,7 +312,7 @@ export function ScheduleTimeline({
                             const metadata = item.metadata;
                             const itemClass = metadata
                               ? kindClasses(metadata.kind)
-                              : "border-zinc-300 bg-zinc-50 text-zinc-950";
+                              : "border-border bg-muted text-foreground";
                             const canMutateItem = item.id.startsWith("gap-fill-");
 
                             return (
@@ -331,7 +331,7 @@ export function ScheduleTimeline({
                                       className: [
                                         "group z-10 flex min-h-10 cursor-grab flex-col overflow-hidden rounded-md border px-2 py-1 text-left text-xs shadow-sm transition-shadow active:cursor-grabbing",
                                         layoutItem.isPreview
-                                          ? "opacity-70 ring-2 ring-zinc-900/20"
+                                          ? "opacity-70 ring-2 ring-background/20"
                                           : "hover:shadow-md",
                                         itemClass,
                                       ].join(" "),

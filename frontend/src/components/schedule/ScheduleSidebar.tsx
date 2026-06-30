@@ -50,19 +50,19 @@ export function ScheduleSidebar({
                 key={category}
                 className="flex items-center justify-between gap-3 text-sm"
               >
-                <span className="truncate text-zinc-600">{category}</span>
-                <span className="font-semibold text-zinc-950">
+                <span className="truncate text-muted-foreground">{category}</span>
+                <span className="font-semibold text-foreground">
                   {formatDuration(minutes)}
                 </span>
               </div>
             ))}
           </div>
-          <div className="border-t border-zinc-200 pt-4">
-            <h2 className="text-sm font-semibold text-zinc-950">Preview</h2>
-            <div className="mt-3 min-h-16 rounded-md border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-600">
+          <div className="border-t border-border pt-4">
+            <h2 className="text-sm font-semibold text-foreground">Preview</h2>
+            <div className="mt-3 min-h-16 rounded-md border border-border bg-muted p-3 text-sm text-muted-foreground">
               {preview ? (
                 <div className="space-y-1">
-                  <p className="font-medium text-zinc-950">
+                  <p className="font-medium text-foreground">
                     {preview.interaction}
                   </p>
                   <p>{preview.day}</p>
@@ -129,7 +129,7 @@ export function ScheduleSidebar({
               <span className="font-medium">{counts.reviewItems}</span>
             </div>
             {isBackendLoading && (
-              <p className="rounded-md border border-zinc-200 bg-white p-2 text-xs text-muted-foreground">
+              <p className="rounded-md border border-border bg-background p-2 text-xs text-muted-foreground">
                 Loading backend data
               </p>
             )}

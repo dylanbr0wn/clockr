@@ -58,6 +58,10 @@ export function ListTzSegments(arg1) {
   return window['go']['main']['App']['ListTzSegments'](arg1);
 }
 
+export function SetSetting(arg1, arg2) {
+  return window['go']['main']['App']['SetSetting'](arg1, arg2);
+}
+
 export function UpdateManualEvent(arg1) {
   return window['go']['main']['App']['UpdateManualEvent'](arg1);
 }

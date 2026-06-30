@@ -36,6 +36,7 @@ var defaultSettings = map[string]string{
 	"events.accepted":     `"include"`,
 	"events.tentative":    `"flag"`,
 	"events.all_day":      `"flag"`,
+	"app.theme":           `"system"`,
 	"period.cadence":      `"bi-weekly"`,
 	"period.target_hours": `8`,
 	// Default working-window start (local time-of-day). Window length = target hours.

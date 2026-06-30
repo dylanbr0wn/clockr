@@ -31,4 +31,6 @@ export function ListSelectedCalendars():Promise<Array<service.Calendar>>;
 
 export function ListTzSegments(arg1:number):Promise<Array<service.TzSegment>>;
 
+export function SetSetting(arg1:string,arg2:string):Promise<void>;
+
 export function UpdateManualEvent(arg1:service.ManualEventUpdateInput):Promise<main.ManualEventResult>;

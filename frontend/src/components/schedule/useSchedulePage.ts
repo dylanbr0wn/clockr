@@ -32,7 +32,6 @@ import {
   type ScheduleChange,
   type ScheduleDay,
   type ScheduleItem,
-  type ScheduleMetadata,
   type SchedulePlacement,
 } from "@/lib/schedule";
 

@@ -19,7 +19,7 @@ export function SchedulePage({ titlebarPaddingClass }: SchedulePageProps) {
         schedule={schedule}
       />
       <Separator />
-      <section className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px] p-3 bg-muted">
+      <section className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px] p-3 bg-sidebar">
         <ScheduleTimeline
           days={schedule.days}
           items={schedule.items}

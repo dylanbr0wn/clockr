@@ -37,6 +37,8 @@ export function ListSelectedCalendars(arg1:context.Context):Promise<Array<servic
 
 export function ListTzSegments(arg1:context.Context,arg2:number):Promise<Array<service.TzSegment>>;
 
+export function SetSetting(arg1:context.Context,arg2:string,arg3:string):Promise<void>;
+
 export function SyncEvents(arg1:context.Context,arg2:number,arg3:Array<service.IncomingEvent>):Promise<service.SyncResult>;
 
 export function UpdateManualEvent(arg1:context.Context,arg2:service.ManualEventUpdateInput):Promise<service.GapFill>;
