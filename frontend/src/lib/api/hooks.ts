@@ -49,6 +49,10 @@ export const clockrQueryKeys = {
   aiDiscovery: () => [...clockrQueryKeys.all, "ai", "discovery"] as const,
   aiClassification: (baseURL: string) =>
     [...clockrQueryKeys.all, "ai", "classification", baseURL] as const,
+  aiModels: (baseURL: string) =>
+    [...clockrQueryKeys.all, "ai", "models", baseURL] as const,
+  aiValidation: (baseURL: string, apiKey: string, model: string) =>
+    [...clockrQueryKeys.all, "ai", "validation", baseURL, apiKey, model] as const,
 };
 
 export function usePeriods() {
@@ -219,29 +223,25 @@ export function useClassifyAIEndpoint(baseURL: string) {
   });
 }
 
-export function useListAIModels() {
-  return useMutation({
-    mutationFn: ({
-      baseURL,
-      apiKey,
-    }: {
-      baseURL: string;
-      apiKey: string;
-    }) => listAIModels(baseURL, apiKey),
+export function useAIModels(baseURL: string, apiKey: string) {
+  return useQuery({
+    enabled: baseURL.trim().length > 0,
+    queryKey: clockrQueryKeys.aiModels(baseURL),
+    queryFn: () => listAIModels(baseURL, apiKey),
+    retry: false,
   });
 }
 
-export function useValidateAIConfig() {
-  return useMutation({
-    mutationFn: ({
-      baseURL,
-      apiKey,
-      model,
-    }: {
-      baseURL: string;
-      apiKey: string;
-      model: string;
-    }) => validateAIConfig(baseURL, apiKey, model),
+export function useValidateAIConfig(
+  baseURL: string,
+  apiKey: string,
+  model: string,
+) {
+  return useQuery({
+    enabled: false,
+    queryKey: clockrQueryKeys.aiValidation(baseURL, apiKey, model),
+    queryFn: () => validateAIConfig(baseURL, apiKey, model),
+    retry: false,
   });
 }
 

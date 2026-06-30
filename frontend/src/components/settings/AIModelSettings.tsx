@@ -17,16 +17,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  useAIModels,
   useClassifyAIEndpoint,
   useDiscoverLocalAIEndpoints,
-  useListAIModels,
   useSaveAIConfig,
   useSaveAIEndpoint,
   useSaveAIModel,
   useSetting,
   useValidateAIConfig,
 } from "@/lib/api";
-import { listAIModels } from "@/lib/api/clockrService";
 import { aiEndpointsMatch } from "@/lib/ai/endpoints";
 import { SettingBlock } from "./SettingBlock";
 
@@ -57,23 +56,25 @@ export function AIModelSettings() {
   const [baseURL, setBaseURL] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("");
-  const [models, setModels] = useState<string[]>([]);
   const [validationMessage, setValidationMessage] = useState<string | null>(
     null,
   );
-  const loadedModelsForRef = useRef("");
+  const pendingModelPickRef = useRef<{
+    discoveredModel?: string;
+  } | null>(null);
 
   const discovery = useDiscoverLocalAIEndpoints();
-  const classify = useClassifyAIEndpoint(baseURL || savedBaseURL);
-  const listModels = useListAIModels();
-  const validate = useValidateAIConfig();
+  const activeBaseURL = baseURL || savedBaseURL;
+  const classify = useClassifyAIEndpoint(activeBaseURL);
+  const modelsQuery = useAIModels(activeBaseURL, apiKey);
+  const validate = useValidateAIConfig(activeBaseURL, apiKey, model);
   const saveEndpoint = useSaveAIEndpoint();
   const saveModel = useSaveAIModel();
   const saveConfig = useSaveAIConfig();
 
-  const activeBaseURL = baseURL || savedBaseURL;
+  const models = modelsQuery.data ?? (savedModel ? [savedModel] : []);
 
-  // Restore persisted endpoint as soon as settings load (independent of model).
+  // Restore persisted settings when the panel opens.
   useEffect(() => {
     if (savedBaseURL) {
       setBaseURL(savedBaseURL);
@@ -85,33 +86,6 @@ export function AIModelSettings() {
       setModel(savedModel);
     }
   }, [savedModel]);
-
-  // Load models once for the saved endpoint when the panel opens.
-  useEffect(() => {
-    if (!savedBaseURL || loadedModelsForRef.current === savedBaseURL) {
-      return;
-    }
-
-    loadedModelsForRef.current = savedBaseURL;
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        const nextModels = await listAIModels(savedBaseURL, "");
-        if (!cancelled) {
-          setModels(nextModels);
-        }
-      } catch {
-        if (!cancelled) {
-          setModels(savedModel ? [savedModel] : []);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [savedBaseURL, savedModel]);
 
   const persistEndpoint = useCallback(
     async (nextBaseURL: string) => {
@@ -135,6 +109,32 @@ export function AIModelSettings() {
     [saveModel],
   );
 
+  // After selecting an endpoint, pick a model once its list loads.
+  useEffect(() => {
+    if (!pendingModelPickRef.current || !modelsQuery.data) {
+      return;
+    }
+
+    const { discoveredModel } = pendingModelPickRef.current;
+    pendingModelPickRef.current = null;
+
+    const nextModels = modelsQuery.data;
+    const preferredModel =
+      (savedModel && nextModels.includes(savedModel) && savedModel) ||
+      (discoveredModel &&
+        nextModels.includes(discoveredModel) &&
+        discoveredModel) ||
+      nextModels[0] ||
+      savedModel ||
+      discoveredModel ||
+      "";
+
+    if (preferredModel) {
+      setModel(preferredModel);
+      void persistModel(preferredModel);
+    }
+  }, [modelsQuery.data, persistModel, savedModel]);
+
   const classification = useMemo(() => {
     if (!activeBaseURL.trim()) {
       return null;
@@ -153,15 +153,8 @@ export function AIModelSettings() {
   );
 
   const refreshModels = async () => {
-    if (!activeBaseURL.trim()) {
-      return;
-    }
-
-    const nextModels = await listModels.mutateAsync({
-      baseURL: activeBaseURL,
-      apiKey,
-    });
-    setModels(nextModels);
+    const result = await modelsQuery.refetch();
+    const nextModels = result.data ?? [];
     if (nextModels.length > 0 && model && !nextModels.includes(model)) {
       const fallbackModel = nextModels[0];
       setModel(fallbackModel);
@@ -173,25 +166,9 @@ export function AIModelSettings() {
     nextBaseURL: string,
     discoveredModel?: string,
   ) => {
+    pendingModelPickRef.current = { discoveredModel };
     setBaseURL(nextBaseURL);
-    loadedModelsForRef.current = nextBaseURL;
     await persistEndpoint(nextBaseURL);
-
-    const nextModels = await listAIModels(nextBaseURL, apiKey);
-    setModels(nextModels);
-
-    const preferredModel =
-      (savedModel && nextModels.includes(savedModel) && savedModel) ||
-      (discoveredModel && nextModels.includes(discoveredModel) && discoveredModel) ||
-      nextModels[0] ||
-      savedModel ||
-      discoveredModel ||
-      "";
-
-    if (preferredModel) {
-      setModel(preferredModel);
-      await persistModel(preferredModel);
-    }
   };
 
   const handleModelChange = (nextModel: string) => {
@@ -200,21 +177,31 @@ export function AIModelSettings() {
   };
 
   const handleValidate = async () => {
-    const result = await validate.mutateAsync({
-      baseURL: activeBaseURL,
-      apiKey,
-      model,
-    });
-    setValidationMessage(result.message);
-    if (result.ok) {
+    const result = await validate.refetch();
+    if (result.error) {
+      setValidationMessage(
+        result.error instanceof Error
+          ? result.error.message
+          : "Unable to validate configuration",
+      );
+      return;
+    }
+
+    const validation = result.data;
+    if (!validation) {
+      return;
+    }
+
+    setValidationMessage(validation.message);
+    if (validation.ok) {
       await saveConfig.mutateAsync({ baseURL: activeBaseURL, model });
     }
   };
 
   const isBusy =
     discovery.isLoading ||
-    listModels.isPending ||
-    validate.isPending ||
+    modelsQuery.isFetching ||
+    validate.isFetching ||
     saveEndpoint.isPending ||
     saveModel.isPending ||
     saveConfig.isPending;
@@ -352,7 +339,7 @@ export function AIModelSettings() {
                 disabled={!activeBaseURL.trim() || isBusy}
                 onClick={() => void refreshModels()}
               >
-                {listModels.isPending ? (
+                {modelsQuery.isFetching ? (
                   <LoaderCircle className="size-4 animate-spin" />
                 ) : (
                   "Load models"
@@ -363,7 +350,7 @@ export function AIModelSettings() {
                 disabled={!activeBaseURL.trim() || !model.trim() || isBusy}
                 onClick={() => void handleValidate()}
               >
-                {validate.isPending ? (
+                {validate.isFetching ? (
                   <LoaderCircle className="size-4 animate-spin" />
                 ) : (
                   <Check className="size-4" />
