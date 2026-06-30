@@ -17,6 +17,8 @@ import {
   listSelectedCalendars,
   listTzSegments,
   saveAIConfig,
+  saveAIEndpoint,
+  saveAIModel,
   setSetting,
   updateManualEvent,
   validateAIConfig,
@@ -243,6 +245,42 @@ export function useValidateAIConfig() {
   });
 }
 
+export function useSaveAIEndpoint() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (baseURL: string) => saveAIEndpoint(baseURL),
+    onSuccess: (_result, baseURL) => {
+      const encodedBaseURL = JSON.stringify(baseURL);
+      queryClient.setQueryData(
+        clockrQueryKeys.setting("ai.base_url"),
+        encodedBaseURL,
+      );
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.setting("ai.base_url"),
+      });
+    },
+  });
+}
+
+export function useSaveAIModel() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (model: string) => saveAIModel(model),
+    onSuccess: (_result, model) => {
+      const encodedModel = JSON.stringify(model);
+      queryClient.setQueryData(
+        clockrQueryKeys.setting("ai.model"),
+        encodedModel,
+      );
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.setting("ai.model"),
+      });
+    },
+  });
+}
+
 export function useSaveAIConfig() {
   const queryClient = useQueryClient();
 
@@ -255,14 +293,22 @@ export function useSaveAIConfig() {
       model: string;
     }) => saveAIConfig(baseURL, model),
     onSuccess: (_result, { baseURL, model }) => {
+      const encodedBaseURL = JSON.stringify(baseURL);
+      const encodedModel = JSON.stringify(model);
       queryClient.setQueryData(
         clockrQueryKeys.setting("ai.base_url"),
-        JSON.stringify(baseURL),
+        encodedBaseURL,
       );
       queryClient.setQueryData(
         clockrQueryKeys.setting("ai.model"),
-        JSON.stringify(model),
+        encodedModel,
       );
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.setting("ai.base_url"),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.setting("ai.model"),
+      });
     },
   });
 }

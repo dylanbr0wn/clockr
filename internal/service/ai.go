@@ -68,6 +68,24 @@ func (s *Service) ValidateAIConfig(ctx context.Context, baseURL, apiKey, model s
 	return result, nil
 }
 
+// SaveAIEndpoint persists the selected OpenAI-compatible base URL.
+func (s *Service) SaveAIEndpoint(ctx context.Context, baseURL string) error {
+	baseURL = strings.TrimSpace(baseURL)
+	if baseURL == "" {
+		return fmt.Errorf("save ai endpoint: base URL is required")
+	}
+	return s.SetSetting(ctx, settingAIBaseURL, jsonString(baseURL))
+}
+
+// SaveAIModel persists the selected model name.
+func (s *Service) SaveAIModel(ctx context.Context, model string) error {
+	model = strings.TrimSpace(model)
+	if model == "" {
+		return fmt.Errorf("save ai model: model is required")
+	}
+	return s.SetSetting(ctx, settingAIModel, jsonString(model))
+}
+
 // SaveAIConfig persists the selected endpoint and model.
 func (s *Service) SaveAIConfig(ctx context.Context, baseURL, model string) error {
 	baseURL = strings.TrimSpace(baseURL)
@@ -75,10 +93,10 @@ func (s *Service) SaveAIConfig(ctx context.Context, baseURL, model string) error
 	if baseURL == "" || model == "" {
 		return fmt.Errorf("save ai config: base URL and model are required")
 	}
-	if err := s.SetSetting(ctx, settingAIBaseURL, jsonString(baseURL)); err != nil {
+	if err := s.SaveAIEndpoint(ctx, baseURL); err != nil {
 		return err
 	}
-	return s.SetSetting(ctx, settingAIModel, jsonString(model))
+	return s.SaveAIModel(ctx, model)
 }
 
 func (s *Service) loadAIConfig(ctx context.Context) (baseURL, model string, ok bool) {

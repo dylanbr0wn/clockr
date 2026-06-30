@@ -5,7 +5,7 @@ import {
   ShieldCheck,
   ShieldAlert,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,9 +21,12 @@ import {
   useDiscoverLocalAIEndpoints,
   useListAIModels,
   useSaveAIConfig,
+  useSaveAIEndpoint,
+  useSaveAIModel,
   useSetting,
   useValidateAIConfig,
 } from "@/lib/api";
+import { aiEndpointsMatch } from "@/lib/ai/endpoints";
 import { SettingBlock } from "./SettingBlock";
 
 function parseJsonSetting<T>(raw: string | null | undefined, fallback: T): T {
@@ -50,74 +53,162 @@ export function AIModelSettings() {
     [modelSetting.data],
   );
 
-  const [baseURL, setBaseURL] = useState(savedBaseURL);
+  const [baseURL, setBaseURL] = useState("");
   const [apiKey, setApiKey] = useState("");
-  const [model, setModel] = useState(savedModel);
+  const [model, setModel] = useState("");
   const [models, setModels] = useState<string[]>([]);
   const [validationMessage, setValidationMessage] = useState<string | null>(
     null,
   );
 
   const discovery = useDiscoverLocalAIEndpoints();
-  const classify = useClassifyAIEndpoint(baseURL);
+  const classify = useClassifyAIEndpoint(baseURL || savedBaseURL);
   const listModels = useListAIModels();
   const validate = useValidateAIConfig();
+  const saveEndpoint = useSaveAIEndpoint();
+  const saveModel = useSaveAIModel();
   const saveConfig = useSaveAIConfig();
 
+  const activeBaseURL = baseURL || savedBaseURL;
+
+  // Restore persisted endpoint as soon as settings load (independent of model).
   useEffect(() => {
-    setBaseURL(savedBaseURL);
+    if (savedBaseURL) {
+      setBaseURL(savedBaseURL);
+    }
   }, [savedBaseURL]);
 
   useEffect(() => {
-    setModel(savedModel);
+    if (savedModel) {
+      setModel(savedModel);
+    }
   }, [savedModel]);
 
+  // Load models for the saved endpoint when the panel opens.
+  useEffect(() => {
+    if (!savedBaseURL) {
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const nextModels = await listModels.mutateAsync({
+          baseURL: savedBaseURL,
+          apiKey: "",
+        });
+        if (!cancelled) {
+          setModels(nextModels);
+        }
+      } catch {
+        if (!cancelled) {
+          setModels(savedModel ? [savedModel] : []);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [listModels, savedBaseURL, savedModel]);
+
+  const persistEndpoint = useCallback(
+    async (nextBaseURL: string) => {
+      const trimmedBaseURL = nextBaseURL.trim();
+      if (!trimmedBaseURL) {
+        return;
+      }
+      await saveEndpoint.mutateAsync(trimmedBaseURL);
+    },
+    [saveEndpoint],
+  );
+
+  const persistModel = useCallback(
+    async (nextModel: string) => {
+      const trimmedModel = nextModel.trim();
+      if (!trimmedModel) {
+        return;
+      }
+      await saveModel.mutateAsync(trimmedModel);
+    },
+    [saveModel],
+  );
+
   const classification = useMemo(() => {
-    if (!baseURL.trim()) {
+    if (!activeBaseURL.trim()) {
       return null;
     }
     return classify.data ?? null;
-  }, [baseURL, classify.data]);
+  }, [activeBaseURL, classify.data]);
+
+  const isSavedEndpoint = useMemo(
+    () => Boolean(savedBaseURL && aiEndpointsMatch(activeBaseURL, savedBaseURL)),
+    [activeBaseURL, savedBaseURL],
+  );
+
+  const isSavedModel = useMemo(
+    () => Boolean(savedModel && model === savedModel),
+    [model, savedModel],
+  );
 
   const refreshModels = async () => {
-    if (!baseURL.trim()) {
+    if (!activeBaseURL.trim()) {
       return;
     }
 
     const nextModels = await listModels.mutateAsync({
-      baseURL,
+      baseURL: activeBaseURL,
       apiKey,
     });
     setModels(nextModels);
-    if (nextModels.length > 0 && !nextModels.includes(model)) {
-      setModel(nextModels[0]);
+    if (nextModels.length > 0 && model && !nextModels.includes(model)) {
+      const fallbackModel = nextModels[0];
+      setModel(fallbackModel);
+      await persistModel(fallbackModel);
     }
   };
 
-  const handleSelectEndpoint = async (nextBaseURL: string, nextModel?: string) => {
+  const handleSelectEndpoint = async (
+    nextBaseURL: string,
+    discoveredModel?: string,
+  ) => {
     setBaseURL(nextBaseURL);
-    if (nextModel) {
-      setModel(nextModel);
-    }
+    await persistEndpoint(nextBaseURL);
+
     const nextModels = await listModels.mutateAsync({
       baseURL: nextBaseURL,
       apiKey,
     });
     setModels(nextModels);
-    if (!nextModel && nextModels.length > 0) {
-      setModel(nextModels[0]);
+
+    const preferredModel =
+      (savedModel && nextModels.includes(savedModel) && savedModel) ||
+      (discoveredModel && nextModels.includes(discoveredModel) && discoveredModel) ||
+      nextModels[0] ||
+      savedModel ||
+      discoveredModel ||
+      "";
+
+    if (preferredModel) {
+      setModel(preferredModel);
+      await persistModel(preferredModel);
     }
+  };
+
+  const handleModelChange = (nextModel: string) => {
+    setModel(nextModel);
+    void persistModel(nextModel);
   };
 
   const handleValidate = async () => {
     const result = await validate.mutateAsync({
-      baseURL,
+      baseURL: activeBaseURL,
       apiKey,
       model,
     });
     setValidationMessage(result.message);
     if (result.ok) {
-      await saveConfig.mutateAsync({ baseURL, model });
+      await saveConfig.mutateAsync({ baseURL: activeBaseURL, model });
     }
   };
 
@@ -125,6 +216,8 @@ export function AIModelSettings() {
     discovery.isLoading ||
     listModels.isPending ||
     validate.isPending ||
+    saveEndpoint.isPending ||
+    saveModel.isPending ||
     saveConfig.isPending;
 
   return (
@@ -156,7 +249,7 @@ export function AIModelSettings() {
                 key={endpoint.baseUrl}
                 type="button"
                 className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left transition-colors ${
-                  baseURL === endpoint.baseUrl
+                  aiEndpointsMatch(activeBaseURL, endpoint.baseUrl)
                     ? "border-primary bg-primary/5"
                     : "border-border hover:bg-muted/50"
                 }`}
@@ -179,6 +272,12 @@ export function AIModelSettings() {
                     >
                       {endpoint.running ? "Running" : "Not running"}
                     </span>
+                    {isSavedEndpoint &&
+                    aiEndpointsMatch(savedBaseURL, endpoint.baseUrl) ? (
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                        Saved
+                      </span>
+                    ) : null}
                   </div>
                   <p className="mt-0.5 font-mono text-xs text-muted-foreground">
                     {endpoint.baseUrl}
@@ -204,6 +303,9 @@ export function AIModelSettings() {
               className="font-mono"
               value={baseURL}
               onChange={(event) => setBaseURL(event.target.value)}
+              onBlur={() => {
+                void persistEndpoint(baseURL);
+              }}
               placeholder="http://127.0.0.1:11434/v1"
             />
           </div>
@@ -227,7 +329,7 @@ export function AIModelSettings() {
               <Label htmlFor="ai-model" className="text-xs">
                 Model
               </Label>
-              <Select value={model} onValueChange={setModel}>
+              <Select value={model} onValueChange={handleModelChange}>
                 <SelectTrigger id="ai-model" className="w-full bg-background">
                   <SelectValue placeholder="Select or type a model" />
                 </SelectTrigger>
@@ -248,7 +350,7 @@ export function AIModelSettings() {
               <Button
                 type="button"
                 variant="outline"
-                disabled={!baseURL.trim() || isBusy}
+                disabled={!activeBaseURL.trim() || isBusy}
                 onClick={() => void refreshModels()}
               >
                 {listModels.isPending ? (
@@ -259,7 +361,7 @@ export function AIModelSettings() {
               </Button>
               <Button
                 type="button"
-                disabled={!baseURL.trim() || !model.trim() || isBusy}
+                disabled={!activeBaseURL.trim() || !model.trim() || isBusy}
                 onClick={() => void handleValidate()}
               >
                 {validate.isPending ? (
@@ -277,8 +379,21 @@ export function AIModelSettings() {
             className="font-mono"
             value={model}
             onChange={(event) => setModel(event.target.value)}
+            onBlur={(event) => {
+              const nextModel = event.target.value.trim();
+              if (nextModel) {
+                void persistModel(nextModel);
+              }
+            }}
             placeholder="Or type a model name"
           />
+
+          {isSavedEndpoint ? (
+            <p className="text-sm text-muted-foreground">
+              Saved endpoint: {savedBaseURL.replace(/^https?:\/\//, "")}
+              {isSavedModel && savedModel ? ` · model: ${savedModel}` : null}
+            </p>
+          ) : null}
 
           {classification ? (
             <div

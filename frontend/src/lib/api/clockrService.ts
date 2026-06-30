@@ -35,6 +35,8 @@ interface ClockrApp {
   ListSelectedCalendars(): Promise<Calendar[]>;
   ListTzSegments(periodId: number): Promise<TzSegment[]>;
   SaveAIConfig(baseURL: string, model: string): Promise<void>;
+  SaveAIEndpoint(baseURL: string): Promise<void>;
+  SaveAIModel(model: string): Promise<void>;
   SetSetting(key: string, value: string): Promise<void>;
   UpdateManualEvent(input: ManualEventUpdateInput): Promise<ManualEventResult>;
   ValidateAIConfig(
@@ -211,4 +213,12 @@ export function validateAIConfig(
 
 export function saveAIConfig(baseURL: string, model: string) {
   return writeToBackend(() => appBackend.SaveAIConfig(baseURL, model));
+}
+
+export function saveAIEndpoint(baseURL: string) {
+  return writeToBackend(() => appBackend.SaveAIEndpoint(baseURL));
+}
+
+export function saveAIModel(model: string) {
+  return writeToBackend(() => appBackend.SaveAIModel(model));
 }

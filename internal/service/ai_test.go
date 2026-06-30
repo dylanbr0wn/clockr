@@ -64,6 +64,48 @@ func TestSync_AppliesAISuggestion(t *testing.T) {
 	}
 }
 
+func TestSaveAIEndpointPersistsIndependently(t *testing.T) {
+	e := newSyncEnv(t)
+	ctx := context.Background()
+
+	if err := e.svc.SaveAIEndpoint(ctx, "http://127.0.0.1:1234/v1"); err != nil {
+		t.Fatalf("SaveAIEndpoint: %v", err)
+	}
+
+	baseURL, err := e.svc.GetSetting(ctx, "ai.base_url")
+	if err != nil {
+		t.Fatalf("GetSetting base url: %v", err)
+	}
+	if baseURL != `"http://127.0.0.1:1234/v1"` {
+		t.Fatalf("unexpected ai.base_url: %q", baseURL)
+	}
+}
+
+func TestSaveAIConfigPersistsSettings(t *testing.T) {
+	e := newSyncEnv(t)
+	ctx := context.Background()
+
+	if err := e.svc.SaveAIConfig(ctx, "http://127.0.0.1:1234/v1", "local-model"); err != nil {
+		t.Fatalf("SaveAIConfig: %v", err)
+	}
+
+	baseURL, err := e.svc.GetSetting(ctx, "ai.base_url")
+	if err != nil {
+		t.Fatalf("GetSetting base url: %v", err)
+	}
+	if baseURL != `"http://127.0.0.1:1234/v1"` {
+		t.Fatalf("unexpected ai.base_url: %q", baseURL)
+	}
+
+	model, err := e.svc.GetSetting(ctx, "ai.model")
+	if err != nil {
+		t.Fatalf("GetSetting model: %v", err)
+	}
+	if model != `"local-model"` {
+		t.Fatalf("unexpected ai.model: %q", model)
+	}
+}
+
 func TestValidateAIConfig(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{

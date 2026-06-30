@@ -137,6 +137,16 @@ func (a *App) ValidateAIConfig(baseURL string, apiKey string, model string) (ai.
 	return a.Svc.ValidateAIConfig(a.callContext(), baseURL, apiKey, model)
 }
 
+// SaveAIEndpoint persists the selected OpenAI-compatible base URL.
+func (a *App) SaveAIEndpoint(baseURL string) error {
+	return a.Svc.SaveAIEndpoint(a.callContext(), baseURL)
+}
+
+// SaveAIModel persists the selected model name.
+func (a *App) SaveAIModel(model string) error {
+	return a.Svc.SaveAIModel(a.callContext(), model)
+}
+
 // SaveAIConfig persists the selected endpoint and model.
 func (a *App) SaveAIConfig(baseURL string, model string) error {
 	return a.Svc.SaveAIConfig(a.callContext(), baseURL, model)
