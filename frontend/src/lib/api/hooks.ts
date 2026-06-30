@@ -251,14 +251,10 @@ export function useSaveAIEndpoint() {
   return useMutation({
     mutationFn: (baseURL: string) => saveAIEndpoint(baseURL),
     onSuccess: (_result, baseURL) => {
-      const encodedBaseURL = JSON.stringify(baseURL);
       queryClient.setQueryData(
         clockrQueryKeys.setting("ai.base_url"),
-        encodedBaseURL,
+        JSON.stringify(baseURL),
       );
-      void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.setting("ai.base_url"),
-      });
     },
   });
 }
@@ -269,14 +265,10 @@ export function useSaveAIModel() {
   return useMutation({
     mutationFn: (model: string) => saveAIModel(model),
     onSuccess: (_result, model) => {
-      const encodedModel = JSON.stringify(model);
       queryClient.setQueryData(
         clockrQueryKeys.setting("ai.model"),
-        encodedModel,
+        JSON.stringify(model),
       );
-      void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.setting("ai.model"),
-      });
     },
   });
 }
@@ -293,22 +285,14 @@ export function useSaveAIConfig() {
       model: string;
     }) => saveAIConfig(baseURL, model),
     onSuccess: (_result, { baseURL, model }) => {
-      const encodedBaseURL = JSON.stringify(baseURL);
-      const encodedModel = JSON.stringify(model);
       queryClient.setQueryData(
         clockrQueryKeys.setting("ai.base_url"),
-        encodedBaseURL,
+        JSON.stringify(baseURL),
       );
       queryClient.setQueryData(
         clockrQueryKeys.setting("ai.model"),
-        encodedModel,
+        JSON.stringify(model),
       );
-      void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.setting("ai.base_url"),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.setting("ai.model"),
-      });
     },
   });
 }

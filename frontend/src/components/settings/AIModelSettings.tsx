@@ -5,7 +5,7 @@ import {
   ShieldCheck,
   ShieldAlert,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +26,7 @@ import {
   useSetting,
   useValidateAIConfig,
 } from "@/lib/api";
+import { listAIModels } from "@/lib/api/clockrService";
 import { aiEndpointsMatch } from "@/lib/ai/endpoints";
 import { SettingBlock } from "./SettingBlock";
 
@@ -60,6 +61,7 @@ export function AIModelSettings() {
   const [validationMessage, setValidationMessage] = useState<string | null>(
     null,
   );
+  const loadedModelsForRef = useRef("");
 
   const discovery = useDiscoverLocalAIEndpoints();
   const classify = useClassifyAIEndpoint(baseURL || savedBaseURL);
@@ -84,19 +86,18 @@ export function AIModelSettings() {
     }
   }, [savedModel]);
 
-  // Load models for the saved endpoint when the panel opens.
+  // Load models once for the saved endpoint when the panel opens.
   useEffect(() => {
-    if (!savedBaseURL) {
+    if (!savedBaseURL || loadedModelsForRef.current === savedBaseURL) {
       return;
     }
 
+    loadedModelsForRef.current = savedBaseURL;
     let cancelled = false;
+
     void (async () => {
       try {
-        const nextModels = await listModels.mutateAsync({
-          baseURL: savedBaseURL,
-          apiKey: "",
-        });
+        const nextModels = await listAIModels(savedBaseURL, "");
         if (!cancelled) {
           setModels(nextModels);
         }
@@ -110,7 +111,7 @@ export function AIModelSettings() {
     return () => {
       cancelled = true;
     };
-  }, [listModels, savedBaseURL, savedModel]);
+  }, [savedBaseURL, savedModel]);
 
   const persistEndpoint = useCallback(
     async (nextBaseURL: string) => {
@@ -173,12 +174,10 @@ export function AIModelSettings() {
     discoveredModel?: string,
   ) => {
     setBaseURL(nextBaseURL);
+    loadedModelsForRef.current = nextBaseURL;
     await persistEndpoint(nextBaseURL);
 
-    const nextModels = await listModels.mutateAsync({
-      baseURL: nextBaseURL,
-      apiKey,
-    });
+    const nextModels = await listAIModels(nextBaseURL, apiKey);
     setModels(nextModels);
 
     const preferredModel =
