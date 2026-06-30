@@ -197,10 +197,25 @@ export function useSetSetting() {
   return useMutation({
     mutationFn: ({ key, value }: { key: string; value: string }) =>
       setSetting(key, value),
-    onMutate: ({ key, value }) => {
-      queryClient.setQueryData(clockrQueryKeys.setting(key), value);
+    onMutate: async ({ key, value }) => {
+      const queryKey = clockrQueryKeys.setting(key);
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<string | null | undefined>(
+        queryKey,
+      );
+      queryClient.setQueryData(queryKey, value);
+      return { key, previous };
     },
-    onSuccess: (_result, { key }) => {
+    onError: (_error, _variables, context) => {
+      if (!context) {
+        return;
+      }
+      queryClient.setQueryData(
+        clockrQueryKeys.setting(context.key),
+        context.previous,
+      );
+    },
+    onSettled: (_result, _error, { key }) => {
       void queryClient.invalidateQueries({
         queryKey: clockrQueryKeys.setting(key),
       });
@@ -247,45 +262,83 @@ export function useValidateAIConfig(
 
 export function useClearAIModel() {
   const queryClient = useQueryClient();
+  const queryKey = clockrQueryKeys.setting("ai.model");
 
   return useMutation({
     mutationFn: () => setSetting("ai.model", '""'),
-    onMutate: () => {
-      queryClient.setQueryData(clockrQueryKeys.setting("ai.model"), '""');
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<string | null | undefined>(
+        queryKey,
+      );
+      queryClient.setQueryData(queryKey, '""');
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      if (context) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey });
     },
   });
 }
 
 export function useSaveAIEndpoint() {
   const queryClient = useQueryClient();
+  const queryKey = clockrQueryKeys.setting("ai.base_url");
 
   return useMutation({
     mutationFn: (baseURL: string) => saveAIEndpoint(baseURL),
-    onMutate: (baseURL) => {
-      queryClient.setQueryData(
-        clockrQueryKeys.setting("ai.base_url"),
-        JSON.stringify(baseURL),
+    onMutate: async (baseURL) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<string | null | undefined>(
+        queryKey,
       );
+      queryClient.setQueryData(queryKey, JSON.stringify(baseURL));
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      if (context) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey });
     },
   });
 }
 
 export function useSaveAIModel() {
   const queryClient = useQueryClient();
+  const queryKey = clockrQueryKeys.setting("ai.model");
 
   return useMutation({
     mutationFn: (model: string) => saveAIModel(model),
-    onMutate: (model) => {
-      queryClient.setQueryData(
-        clockrQueryKeys.setting("ai.model"),
-        JSON.stringify(model),
+    onMutate: async (model) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<string | null | undefined>(
+        queryKey,
       );
+      queryClient.setQueryData(queryKey, JSON.stringify(model));
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      if (context) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey });
     },
   });
 }
 
 export function useSaveAIConfig() {
   const queryClient = useQueryClient();
+  const baseURLKey = clockrQueryKeys.setting("ai.base_url");
+  const modelKey = clockrQueryKeys.setting("ai.model");
 
   return useMutation({
     mutationFn: ({
@@ -295,15 +348,29 @@ export function useSaveAIConfig() {
       baseURL: string;
       model: string;
     }) => saveAIConfig(baseURL, model),
-    onMutate: ({ baseURL, model }) => {
-      queryClient.setQueryData(
-        clockrQueryKeys.setting("ai.base_url"),
-        JSON.stringify(baseURL),
+    onMutate: async ({ baseURL, model }) => {
+      await queryClient.cancelQueries({ queryKey: baseURLKey });
+      await queryClient.cancelQueries({ queryKey: modelKey });
+      const previousBaseURL = queryClient.getQueryData<string | null | undefined>(
+        baseURLKey,
       );
-      queryClient.setQueryData(
-        clockrQueryKeys.setting("ai.model"),
-        JSON.stringify(model),
+      const previousModel = queryClient.getQueryData<string | null | undefined>(
+        modelKey,
       );
+      queryClient.setQueryData(baseURLKey, JSON.stringify(baseURL));
+      queryClient.setQueryData(modelKey, JSON.stringify(model));
+      return { previousBaseURL, previousModel };
+    },
+    onError: (_error, _variables, context) => {
+      if (!context) {
+        return;
+      }
+      queryClient.setQueryData(baseURLKey, context.previousBaseURL);
+      queryClient.setQueryData(modelKey, context.previousModel);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: baseURLKey });
+      void queryClient.invalidateQueries({ queryKey: modelKey });
     },
   });
 }
