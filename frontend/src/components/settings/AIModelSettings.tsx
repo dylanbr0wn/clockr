@@ -19,6 +19,7 @@ import {
 import {
   useAIModels,
   useClassifyAIEndpoint,
+  useClearAIModel,
   useDiscoverLocalAIEndpoints,
   useSaveAIConfig,
   useSaveAIEndpoint,
@@ -26,6 +27,7 @@ import {
   useSetting,
   useValidateAIConfig,
 } from "@/lib/api";
+import type { AIEndpoint } from "@/lib/api/types";
 import { aiEndpointsMatch } from "@/lib/ai/endpoints";
 import { SettingBlock } from "./SettingBlock";
 
@@ -70,9 +72,18 @@ export function AIModelSettings() {
   const validate = useValidateAIConfig(activeBaseURL, apiKey, model);
   const saveEndpoint = useSaveAIEndpoint();
   const saveModel = useSaveAIModel();
+  const clearModel = useClearAIModel();
   const saveConfig = useSaveAIConfig();
 
-  const models = modelsQuery.data ?? (savedModel ? [savedModel] : []);
+  const modelSavedForActiveEndpoint = Boolean(
+    savedModel &&
+      savedBaseURL &&
+      aiEndpointsMatch(activeBaseURL, savedBaseURL),
+  );
+
+  const models =
+    modelsQuery.data ??
+    (modelSavedForActiveEndpoint && savedModel ? [savedModel] : []);
 
   // Restore persisted settings when the panel opens.
   useEffect(() => {
@@ -81,11 +92,19 @@ export function AIModelSettings() {
     }
   }, [savedBaseURL]);
 
+  // Restore a saved model only when it belongs to the active endpoint and
+  // appears in that endpoint's loaded model list.
   useEffect(() => {
-    if (savedModel) {
-      setModel(savedModel);
+    if (
+      !savedModel ||
+      !modelSavedForActiveEndpoint ||
+      !modelsQuery.data?.includes(savedModel) ||
+      model
+    ) {
+      return;
     }
-  }, [savedModel]);
+    setModel(savedModel);
+  }, [model, modelSavedForActiveEndpoint, modelsQuery.data, savedModel]);
 
   const persistEndpoint = useCallback(
     async (nextBaseURL: string) => {
@@ -109,31 +128,46 @@ export function AIModelSettings() {
     [saveModel],
   );
 
-  // After selecting an endpoint, pick a model once its list loads.
+  const resetModelSelection = useCallback(async () => {
+    setModel("");
+    await clearModel.mutateAsync();
+  }, [clearModel]);
+
+  // After selecting a reachable endpoint, pick a model once its list loads.
   useEffect(() => {
-    if (!pendingModelPickRef.current || !modelsQuery.data) {
+    if (!pendingModelPickRef.current || modelsQuery.isFetching) {
       return;
     }
 
     const { discoveredModel } = pendingModelPickRef.current;
     pendingModelPickRef.current = null;
 
+    if (modelsQuery.isError || !modelsQuery.data?.length) {
+      void resetModelSelection();
+      return;
+    }
+
     const nextModels = modelsQuery.data;
     const preferredModel =
-      (savedModel && nextModels.includes(savedModel) && savedModel) ||
       (discoveredModel &&
         nextModels.includes(discoveredModel) &&
         discoveredModel) ||
       nextModels[0] ||
-      savedModel ||
-      discoveredModel ||
       "";
 
     if (preferredModel) {
       setModel(preferredModel);
       void persistModel(preferredModel);
+    } else {
+      void resetModelSelection();
     }
-  }, [modelsQuery.data, persistModel, savedModel]);
+  }, [
+    modelsQuery.data,
+    modelsQuery.isError,
+    modelsQuery.isFetching,
+    persistModel,
+    resetModelSelection,
+  ]);
 
   const classification = useMemo(() => {
     if (!activeBaseURL.trim()) {
@@ -148,27 +182,42 @@ export function AIModelSettings() {
   );
 
   const isSavedModel = useMemo(
-    () => Boolean(savedModel && model === savedModel),
-    [model, savedModel],
+    () => Boolean(savedModel && model === savedModel && modelSavedForActiveEndpoint),
+    [model, modelSavedForActiveEndpoint, savedModel],
   );
 
   const refreshModels = async () => {
     const result = await modelsQuery.refetch();
     const nextModels = result.data ?? [];
-    if (nextModels.length > 0 && model && !nextModels.includes(model)) {
+    if (nextModels.length === 0) {
+      await resetModelSelection();
+      return;
+    }
+    if (model && !nextModels.includes(model)) {
       const fallbackModel = nextModels[0];
       setModel(fallbackModel);
       await persistModel(fallbackModel);
     }
   };
 
-  const handleSelectEndpoint = async (
-    nextBaseURL: string,
-    discoveredModel?: string,
-  ) => {
-    pendingModelPickRef.current = { discoveredModel };
-    setBaseURL(nextBaseURL);
-    await persistEndpoint(nextBaseURL);
+  const handleSelectEndpoint = async (endpoint: AIEndpoint) => {
+    setValidationMessage(null);
+    setBaseURL(endpoint.baseUrl);
+    setModel("");
+    await persistEndpoint(endpoint.baseUrl);
+
+    if (!endpoint.running) {
+      pendingModelPickRef.current = null;
+      await resetModelSelection();
+      setValidationMessage(
+        `${endpoint.name} is not running. Start it and scan again to load models.`,
+      );
+      return;
+    }
+
+    pendingModelPickRef.current = {
+      discoveredModel: endpoint.models?.[0],
+    };
   };
 
   const handleModelChange = (nextModel: string) => {
@@ -204,6 +253,7 @@ export function AIModelSettings() {
     validate.isFetching ||
     saveEndpoint.isPending ||
     saveModel.isPending ||
+    clearModel.isPending ||
     saveConfig.isPending;
 
   return (
@@ -239,12 +289,7 @@ export function AIModelSettings() {
                     ? "border-primary bg-primary/5"
                     : "border-border hover:bg-muted/50"
                 }`}
-                onClick={() =>
-                  void handleSelectEndpoint(
-                    endpoint.baseUrl,
-                    endpoint.models?.[0],
-                  )
-                }
+                onClick={() => void handleSelectEndpoint(endpoint)}
               >
                 <div>
                   <div className="flex items-center gap-2 text-sm font-medium">
@@ -315,9 +360,12 @@ export function AIModelSettings() {
               <Label htmlFor="ai-model" className="text-xs">
                 Model
               </Label>
-              <Select value={model} onValueChange={handleModelChange}>
+              <Select
+                value={model || undefined}
+                onValueChange={handleModelChange}
+              >
                 <SelectTrigger id="ai-model" className="w-full bg-background">
-                  <SelectValue placeholder="Select or type a model" />
+                  <SelectValue placeholder="Select a model" />
                 </SelectTrigger>
                 <SelectContent>
                   {models.map((item) => (
@@ -325,9 +373,6 @@ export function AIModelSettings() {
                       {item}
                     </SelectItem>
                   ))}
-                  {model && !models.includes(model) ? (
-                    <SelectItem value={model}>{model}</SelectItem>
-                  ) : null}
                 </SelectContent>
               </Select>
             </div>

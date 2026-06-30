@@ -245,6 +245,17 @@ export function useValidateAIConfig(
   });
 }
 
+export function useClearAIModel() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => setSetting("ai.model", '""'),
+    onSuccess: () => {
+      queryClient.setQueryData(clockrQueryKeys.setting("ai.model"), '""');
+    },
+  });
+}
+
 export function useSaveAIEndpoint() {
   const queryClient = useQueryClient();
 
