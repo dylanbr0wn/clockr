@@ -39,6 +39,8 @@ export function ListIntegrationConnections():Promise<Array<connection.Connection
 
 export function ListOpenReviewItems(arg1:number):Promise<Array<service.ReviewItem>>;
 
+export function ResolveReviewItem(arg1:service.ResolveReviewItemInput):Promise<service.ResolveReviewItemResult>;
+
 export function ListPeriods():Promise<Array<service.Period>>;
 
 export function ListSelectedCalendars():Promise<Array<service.Calendar>>;

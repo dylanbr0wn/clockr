@@ -70,6 +70,10 @@ export function ListOpenReviewItems(arg1) {
   return window['go']['main']['App']['ListOpenReviewItems'](arg1);
 }
 
+export function ResolveReviewItem(arg1) {
+  return window['go']['main']['App']['ResolveReviewItem'](arg1);
+}
+
 export function ListPeriods() {
   return window['go']['main']['App']['ListPeriods']();
 }

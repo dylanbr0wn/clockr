@@ -4,6 +4,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { formatMinutes } from "@/lib/scheduler";
 import {
   errorMessage,
@@ -24,6 +25,7 @@ interface ScheduleSidebarProps {
     categories: number;
     reviewItems: number;
   };
+  onOpenReviewQueue?: () => void;
   isBackendLoading: boolean;
   backendError: unknown;
 }
@@ -34,6 +36,7 @@ export function ScheduleSidebar({
   totals,
   preview,
   counts,
+  onOpenReviewQueue,
   isBackendLoading,
   backendError,
 }: ScheduleSidebarProps) {
@@ -126,7 +129,18 @@ export function ScheduleSidebar({
             </div>
             <div className="flex items-center justify-between gap-3">
               <span className="text-muted-foreground">Review</span>
-              <span className="font-medium">{counts.reviewItems}</span>
+              {counts.reviewItems > 0 && onOpenReviewQueue ? (
+                <Button
+                  className="h-7 px-2 font-semibold"
+                  size="sm"
+                  variant="secondary"
+                  onClick={onOpenReviewQueue}
+                >
+                  {counts.reviewItems} open
+                </Button>
+              ) : (
+                <span className="font-medium">{counts.reviewItems}</span>
+              )}
             </div>
             {isBackendLoading && (
               <p className="rounded-md border border-border bg-background p-2 text-xs text-muted-foreground">

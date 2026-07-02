@@ -553,6 +553,32 @@ export namespace service {
 	        this.status = source["status"];
 	    }
 	}
+	export class ResolveReviewItemInput {
+	    reviewItemId: number;
+	    action: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ResolveReviewItemInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.reviewItemId = source["reviewItemId"];
+	        this.action = source["action"];
+	    }
+	}
+	export class ResolveReviewItemResult {
+	    periodId: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ResolveReviewItemResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.periodId = source["periodId"];
+	    }
+	}
 	export class SyncResult {
 	    added: number;
 	    updated: number;

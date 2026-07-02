@@ -44,6 +44,26 @@ func (q *Queries) CreateReviewItem(ctx context.Context, arg CreateReviewItemPara
 	return i, err
 }
 
+const getReviewItem = `-- name: GetReviewItem :one
+SELECT id, period_id, kind, event_id, payload, status, created_at, resolved_at FROM review_item WHERE id = ?
+`
+
+func (q *Queries) GetReviewItem(ctx context.Context, id int64) (ReviewItem, error) {
+	row := q.db.QueryRowContext(ctx, getReviewItem, id)
+	var i ReviewItem
+	err := row.Scan(
+		&i.ID,
+		&i.PeriodID,
+		&i.Kind,
+		&i.EventID,
+		&i.Payload,
+		&i.Status,
+		&i.CreatedAt,
+		&i.ResolvedAt,
+	)
+	return i, err
+}
+
 const listOpenReviewItems = `-- name: ListOpenReviewItems :many
 SELECT id, period_id, kind, event_id, payload, status, created_at, resolved_at FROM review_item WHERE period_id = ? AND status = 'open' ORDER BY created_at
 `

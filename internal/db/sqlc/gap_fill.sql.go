@@ -52,6 +52,23 @@ func (q *Queries) CreateGapFill(ctx context.Context, arg CreateGapFillParams) (G
 	return i, err
 }
 
+const deleteGapFill = `-- name: DeleteGapFill :execrows
+DELETE FROM gap_fill WHERE id = ? AND period_id = ?
+`
+
+type DeleteGapFillParams struct {
+	ID       int64 `json:"id"`
+	PeriodID int64 `json:"period_id"`
+}
+
+func (q *Queries) DeleteGapFill(ctx context.Context, arg DeleteGapFillParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteGapFill, arg.ID, arg.PeriodID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const deleteManualGapFill = `-- name: DeleteManualGapFill :execrows
 DELETE FROM gap_fill WHERE id = ? AND period_id = ? AND source = 'manual'
 `
@@ -179,6 +196,45 @@ func (q *Queries) UpdateGapFill(ctx context.Context, arg UpdateGapFillParams) (G
 		arg.EndUtc,
 		arg.CategoryID,
 		arg.Note,
+		arg.ID,
+		arg.PeriodID,
+	)
+	var i GapFill
+	err := row.Scan(
+		&i.ID,
+		&i.PeriodID,
+		&i.Day,
+		&i.StartUtc,
+		&i.EndUtc,
+		&i.CategoryID,
+		&i.Note,
+		&i.Source,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateGapFillSpan = `-- name: UpdateGapFillSpan :one
+UPDATE gap_fill SET
+    start_utc   = ?,
+    end_utc     = ?,
+    updated_at  = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ? AND period_id = ?
+RETURNING id, period_id, day, start_utc, end_utc, category_id, note, source, created_at, updated_at
+`
+
+type UpdateGapFillSpanParams struct {
+	StartUtc string `json:"start_utc"`
+	EndUtc   string `json:"end_utc"`
+	ID       int64  `json:"id"`
+	PeriodID int64  `json:"period_id"`
+}
+
+func (q *Queries) UpdateGapFillSpan(ctx context.Context, arg UpdateGapFillSpanParams) (GapFill, error) {
+	row := q.db.QueryRowContext(ctx, updateGapFillSpan,
+		arg.StartUtc,
+		arg.EndUtc,
 		arg.ID,
 		arg.PeriodID,
 	)

@@ -15,6 +15,8 @@ import type {
   ManualEventUpdateInput,
   Period,
   ReviewItem,
+  ResolveReviewItemInput,
+  ResolveReviewItemResult,
   SyncResult,
   TzSegment,
 } from "./types";
@@ -36,6 +38,9 @@ interface ClockrApp {
   ListGapFills(periodId: number): Promise<GapFill[]>;
   ListIntegrationConnections(): Promise<IntegrationConnection[]>;
   ListOpenReviewItems(periodId: number): Promise<ReviewItem[]>;
+  ResolveReviewItem(
+    input: ResolveReviewItemInput,
+  ): Promise<ResolveReviewItemResult>;
   ListPeriods(): Promise<Period[]>;
   ListSelectedCalendars(): Promise<Calendar[]>;
   ListTzSegments(periodId: number): Promise<TzSegment[]>;
@@ -151,6 +156,10 @@ export function listOpenReviewItems(periodId: number) {
   return readFromBackend<ReviewItem[]>([], () =>
     appBackend.ListOpenReviewItems(periodId),
   );
+}
+
+export function resolveReviewItem(input: ResolveReviewItemInput) {
+  return writeToBackend(() => appBackend.ResolveReviewItem(input));
 }
 
 export function listTzSegments(periodId: number) {

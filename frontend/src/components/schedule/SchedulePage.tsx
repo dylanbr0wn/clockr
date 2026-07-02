@@ -1,5 +1,6 @@
 import { Separator } from "@/components/ui/separator";
 import { EventEditDialog } from "./EventEditDialog";
+import { ReviewQueueDialog } from "./ReviewQueueDialog";
 import { ScheduleHeader } from "./ScheduleHeader";
 import { ScheduleSidebar } from "./ScheduleSidebar";
 import { ScheduleTimeline } from "./ScheduleTimeline";
@@ -39,10 +40,16 @@ export function SchedulePage({ titlebarPaddingClass }: SchedulePageProps) {
           totals={schedule.totals}
           preview={schedule.preview}
           counts={schedule.counts}
+          onOpenReviewQueue={() => schedule.setReviewQueueOpen(true)}
           isBackendLoading={schedule.isBackendLoading}
           backendError={schedule.backendError}
         />
       </section>
+      <ReviewQueueDialog
+        open={schedule.reviewQueueOpen}
+        periodId={schedule.activePeriodId}
+        onOpenChange={schedule.setReviewQueueOpen}
+      />
       <EventEditDialog
         categories={schedule.categories}
         event={schedule.editingEvent}

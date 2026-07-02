@@ -108,6 +108,15 @@ export interface ReviewItem {
   status: string;
 }
 
+export interface ResolveReviewItemInput {
+  reviewItemId: number;
+  action: string;
+}
+
+export interface ResolveReviewItemResult {
+  periodId: number;
+}
+
 export interface TzSegment {
   id: number;
   periodId: number;

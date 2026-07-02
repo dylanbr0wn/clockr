@@ -74,6 +74,8 @@ export interface SchedulePageViewModel {
   handleResetDay: (day: string) => void;
   handleCloseEventEditor: () => void;
   handleSaveEventEdit: (values: ScheduleEventEditValues) => void;
+  reviewQueueOpen: boolean;
+  setReviewQueueOpen: Dispatch<SetStateAction<boolean>>;
 }
 
 export interface EditableScheduleEvent {
@@ -106,6 +108,7 @@ export function useSchedulePage(): SchedulePageViewModel {
   >({});
   const [preview, setPreview] = useState<ScheduleChange | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [reviewQueueOpen, setReviewQueueOpen] = useState(false);
   const [pendingCreate, setPendingCreate] =
     useState<SchedulerCreateRequest | null>(null);
   const today = useMemo(() => localDateKey(), []);
@@ -298,6 +301,7 @@ export function useSchedulePage(): SchedulePageViewModel {
     setPreview(null);
     setEditingItemId(null);
     setPendingCreate(null);
+    setReviewQueueOpen(false);
   }, [activePeriodId]);
 
   const handleCreate = (request: SchedulerCreateRequest) => {
@@ -540,5 +544,7 @@ export function useSchedulePage(): SchedulePageViewModel {
     handleResetDay,
     handleCloseEventEditor,
     handleSaveEventEdit,
+    reviewQueueOpen,
+    setReviewQueueOpen,
   };
 }

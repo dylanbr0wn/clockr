@@ -17,6 +17,7 @@ type Querier interface {
 	CreateSubmission(ctx context.Context, arg CreateSubmissionParams) (Submission, error)
 	DeleteCategory(ctx context.Context, id int64) error
 	DeleteEvent(ctx context.Context, id int64) error
+	DeleteGapFill(ctx context.Context, arg DeleteGapFillParams) (int64, error)
 	DeleteIntegrationConnection(ctx context.Context, arg DeleteIntegrationConnectionParams) error
 	DeleteManualGapFill(ctx context.Context, arg DeleteManualGapFillParams) (int64, error)
 	DeleteOverlay(ctx context.Context, id int64) error
@@ -34,6 +35,7 @@ type Querier interface {
 	GetOverlay(ctx context.Context, arg GetOverlayParams) (Overlay, error)
 	GetPeriod(ctx context.Context, id int64) (Period, error)
 	GetPeriodByRange(ctx context.Context, arg GetPeriodByRangeParams) (Period, error)
+	GetReviewItem(ctx context.Context, id int64) (ReviewItem, error)
 	GetSetting(ctx context.Context, key string) (string, error)
 	ListAllEventsForPeriod(ctx context.Context, periodID int64) ([]Event, error)
 	ListCalendars(ctx context.Context) ([]Calendar, error)
@@ -65,6 +67,7 @@ type Querier interface {
 	SetSetting(ctx context.Context, arg SetSettingParams) error
 	TouchPeriodSynced(ctx context.Context, arg TouchPeriodSyncedParams) error
 	UpdateGapFill(ctx context.Context, arg UpdateGapFillParams) (GapFill, error)
+	UpdateGapFillSpan(ctx context.Context, arg UpdateGapFillSpanParams) (GapFill, error)
 	UpdateIntegrationConnectionStatus(ctx context.Context, arg UpdateIntegrationConnectionStatusParams) error
 	UpdatePeriodTarget(ctx context.Context, arg UpdatePeriodTargetParams) error
 	UpsertCalendar(ctx context.Context, arg UpsertCalendarParams) (Calendar, error)
