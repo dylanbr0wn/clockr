@@ -1,6 +1,8 @@
 import { Clock, LoaderCircle, Plus, RefreshCw, Settings } from "lucide-react";
+import { useMemo } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ExportActions } from "@/components/export/ExportActions";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import {
   Select,
@@ -13,6 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useSyncPeriod } from "@/lib/api";
 import { formatRelativeTime, formatSyncResultSummary } from "@/lib/formatters";
+import { buildPeriodExportSummary } from "@/lib/export";
 import { formatPeriodLabel } from "@/lib/schedule";
 import {
   SCHEDULE_VIEW_DAY_OPTIONS,
@@ -31,6 +34,13 @@ export function ScheduleHeader({
 }: ScheduleHeaderProps) {
   const syncPeriod = useSyncPeriod();
   const lastSyncedLabel = formatRelativeTime(schedule.activePeriod?.lastSyncedAt);
+  const exportSummary = useMemo(() => {
+    if (!schedule.activePeriod) {
+      return null;
+    }
+
+    return buildPeriodExportSummary(schedule.items, schedule.activePeriod);
+  }, [schedule.activePeriod, schedule.items]);
 
   const handleSync = async () => {
     if (!schedule.activePeriodId) {
@@ -81,6 +91,10 @@ export function ScheduleHeader({
           )}
           Sync
         </Button>
+        <ExportActions
+          summary={exportSummary}
+          disabled={!schedule.activePeriodId || schedule.isBackendLoading}
+        />
         {schedule.periods.length > 0 && (
           <Select
             value={String(schedule.activePeriod?.id ?? "")}

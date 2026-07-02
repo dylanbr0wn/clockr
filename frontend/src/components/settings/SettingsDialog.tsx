@@ -38,6 +38,7 @@ import { useSetSetting, useSetting } from "@/lib/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { AIModelSettings } from "./AIModelSettings";
 import { CalendarSettings } from "./CalendarSettings";
+import { ExportSettings } from "./ExportSettings";
 import { SettingBlock } from "./SettingBlock";
 
 type ThemeSetting = "system" | "light" | "dark";
@@ -59,7 +60,7 @@ const sections: Array<{
   { id: "categories", label: "Categories", icon: Tags, ready: false },
   { id: "ai", label: "AI Model", icon: Sparkles, ready: true },
   { id: "privacy", label: "Privacy", icon: Shield, ready: false },
-  { id: "export", label: "Export", icon: Download, ready: false },
+  { id: "export", label: "Export", icon: Download, ready: true },
 ];
 
 function parseJsonSetting<T>(raw: string | null | undefined, fallback: T): T {
@@ -406,6 +407,9 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
             </TabsContent>
             <TabsContent value="ai" className="min-h-0 overflow-auto p-5">
               <AIModelSettings />
+            </TabsContent>
+            <TabsContent value="export" className="min-h-0 overflow-auto p-5">
+              <ExportSettings />
             </TabsContent>
             <DialogFooter className="border-t border-border px-5 py-3">
               <div className="flex min-h-8 w-full items-center justify-between gap-3">
