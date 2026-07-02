@@ -1,3 +1,6 @@
+-- name: GetReviewItem :one
+SELECT * FROM review_item WHERE id = ?;
+
 -- name: ListOpenReviewItems :many
 SELECT * FROM review_item WHERE period_id = ? AND status = 'open' ORDER BY created_at;
 

@@ -22,3 +22,14 @@ RETURNING *;
 
 -- name: DeleteManualGapFill :execrows
 DELETE FROM gap_fill WHERE id = ? AND period_id = ? AND source = 'manual';
+
+-- name: DeleteGapFill :execrows
+DELETE FROM gap_fill WHERE id = ? AND period_id = ?;
+
+-- name: UpdateGapFillSpan :one
+UPDATE gap_fill SET
+    start_utc   = ?,
+    end_utc     = ?,
+    updated_at  = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ? AND period_id = ?
+RETURNING *;

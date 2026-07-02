@@ -19,6 +19,7 @@ import {
   listPeriods,
   listSelectedCalendars,
   listTzSegments,
+  resolveReviewItem,
   saveAIConfig,
   saveAIEndpoint,
   saveAIModel,
@@ -172,6 +173,29 @@ export function useOpenReviewItems(periodId: number | null | undefined) {
     enabled: typeof periodId === "number",
     queryKey: clockrQueryKeys.periodReviewItems(periodId ?? 0),
     queryFn: () => listOpenReviewItems(periodId as number),
+  });
+}
+
+export function useResolveReviewItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: resolveReviewItem,
+    onSuccess: (result) => {
+      const periodId = result.periodId;
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.periodReviewItems(periodId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.periodEvents(periodId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.periodGapFills(periodId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.gapTimeline(periodId),
+      });
+    },
   });
 }
 

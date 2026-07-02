@@ -128,6 +128,11 @@ func (a *App) ListOpenReviewItems(periodID int64) ([]service.ReviewItem, error) 
 	return a.Svc.ListOpenReviewItems(a.callContext(), periodID)
 }
 
+// ResolveReviewItem applies a user decision to a review-queue item.
+func (a *App) ResolveReviewItem(input service.ResolveReviewItemInput) (service.ResolveReviewItemResult, error) {
+	return a.Svc.ResolveReviewItem(a.callContext(), input)
+}
+
 // ListTzSegments returns timezone segments for a period.
 func (a *App) ListTzSegments(periodID int64) ([]service.TzSegment, error) {
 	return a.Svc.ListTzSegments(a.callContext(), periodID)
