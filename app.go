@@ -205,6 +205,15 @@ func (a *App) CreateManualEvent(input service.ManualEventInput) (ManualEventResu
 	return ManualEventResult{PeriodID: fill.PeriodID, ID: fill.ID}, nil
 }
 
+// CreateGapFill persists a user-confirmed gap assignment (e.g. from AI suggest).
+func (a *App) CreateGapFill(input service.ManualEventInput) (ManualEventResult, error) {
+	fill, err := a.Svc.CreateGapFill(a.callContext(), input)
+	if err != nil {
+		return ManualEventResult{}, err
+	}
+	return ManualEventResult{PeriodID: fill.PeriodID, ID: fill.ID}, nil
+}
+
 // UpdateManualEvent persists a scheduler edit to an existing manual block.
 func (a *App) UpdateManualEvent(input service.ManualEventUpdateInput) (ManualEventResult, error) {
 	fill, err := a.Svc.UpdateManualEvent(a.callContext(), input)

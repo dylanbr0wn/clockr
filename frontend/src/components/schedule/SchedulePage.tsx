@@ -1,5 +1,6 @@
 import { Separator } from "@/components/ui/separator";
 import { EventEditDialog } from "./EventEditDialog";
+import { GapSuggestDialog } from "./GapSuggestDialog";
 import { ScheduleHeader } from "./ScheduleHeader";
 import { ScheduleSidebar } from "./ScheduleSidebar";
 import { ScheduleTimeline } from "./ScheduleTimeline";
@@ -25,6 +26,7 @@ export function SchedulePage({ titlebarPaddingClass }: SchedulePageProps) {
           items={schedule.items}
           resettableDays={schedule.resettableDays}
           visibleDayCount={schedule.visibleDayCount}
+          aiConfigured={schedule.aiConfigured}
           onCreate={schedule.handleCreate}
           onPreviewChange={schedule.setPreview}
           onCommitChange={schedule.handleCommit}
@@ -32,6 +34,7 @@ export function SchedulePage({ titlebarPaddingClass }: SchedulePageProps) {
           onDuplicateItem={schedule.handleDuplicateEvent}
           onRemoveItem={schedule.handleRemoveEvent}
           onResetDay={schedule.handleResetDay}
+          onSelectGap={schedule.handleSelectGap}
         />
         <ScheduleSidebar
           activePeriod={schedule.activePeriod}
@@ -54,6 +57,24 @@ export function SchedulePage({ titlebarPaddingClass }: SchedulePageProps) {
           }
         }}
         onSave={schedule.handleSaveEventEdit}
+      />
+      <GapSuggestDialog
+        aiConfigured={schedule.aiConfigured}
+        aiLocal={schedule.aiLocal}
+        categories={schedule.categories}
+        gap={schedule.selectedGap}
+        isSaving={schedule.gapSuggestSaving}
+        isSuggesting={schedule.gapSuggestPending}
+        open={schedule.gapSuggestOpen}
+        suggestError={schedule.gapSuggestError}
+        suggestion={schedule.gapSuggestion}
+        onConfirm={schedule.handleConfirmGapSuggest}
+        onOpenChange={(open) => {
+          if (!open) {
+            schedule.handleCloseGapSuggest();
+          }
+        }}
+        onRetrySuggest={schedule.handleRetryGapSuggest}
       />
     </>
   );

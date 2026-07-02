@@ -361,6 +361,22 @@ export namespace service {
 	        this.source = source["source"];
 	    }
 	}
+	export class GapSuggestion {
+	    category: string;
+	    description: string;
+	    evidenceCount: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new GapSuggestion(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category = source["category"];
+	        this.description = source["description"];
+	        this.evidenceCount = source["evidenceCount"];
+	    }
+	}
 	export class IncomingEvent {
 	    CalendarID: number;
 	    Provider: string;
@@ -590,6 +606,40 @@ export namespace service {
 	        this.effectiveFromDate = source["effectiveFromDate"];
 	        this.ianaTz = source["ianaTz"];
 	    }
+	}
+	export class TimeWindow {
+	    // Go type: time
+	    start: any;
+	    // Go type: time
+	    end: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new TimeWindow(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.start = this.convertValues(source["start"], null);
+	        this.end = this.convertValues(source["end"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 
 }

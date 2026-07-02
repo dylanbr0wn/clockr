@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { CopyIcon, PencilIcon, PlusIcon, RotateCcwIcon, Trash2Icon } from "lucide-react";
+import { CopyIcon, PencilIcon, PlusIcon, RotateCcwIcon, SparklesIcon, Trash2Icon } from "lucide-react";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -40,6 +40,7 @@ interface ScheduleTimelineProps {
   items: ScheduleItem[];
   resettableDays: ReadonlySet<string>;
   visibleDayCount: number;
+  aiConfigured: boolean;
   onCreate: (request: SchedulerCreateRequest) => void;
   onPreviewChange: (change: ScheduleChange | null) => void;
   onCommitChange: (change: ScheduleChange) => void;
@@ -47,6 +48,7 @@ interface ScheduleTimelineProps {
   onDuplicateItem: (item: ScheduleItem) => void;
   onRemoveItem: (item: ScheduleItem) => void;
   onResetDay: (day: string) => void;
+  onSelectGap: (item: ScheduleItem) => void;
 }
 
 export function ScheduleTimeline({
@@ -54,6 +56,7 @@ export function ScheduleTimeline({
   items,
   resettableDays,
   visibleDayCount,
+  aiConfigured,
   onCreate,
   onPreviewChange,
   onCommitChange,
@@ -61,6 +64,7 @@ export function ScheduleTimeline({
   onDuplicateItem,
   onRemoveItem,
   onResetDay,
+  onSelectGap,
 }: ScheduleTimelineProps) {
   const schedulerViewportRef = useRef<HTMLDivElement | null>(null);
   const didSetInitialScrollRef = useRef(false);
@@ -314,6 +318,60 @@ export function ScheduleTimeline({
                               ? kindClasses(metadata.kind)
                               : "border-border bg-muted text-foreground";
                             const canMutateItem = item.id.startsWith("gap-fill-");
+                            const isUncoveredGap = metadata?.kind === "uncovered";
+
+                            if (isUncoveredGap) {
+                              return (
+                                <ContextMenu key={item.id}>
+                                  <ContextMenuTrigger asChild>
+                                    <div
+                                      {...scheduler.getItemProps(layoutItem, {
+                                        onClick: (event) => {
+                                          event.preventDefault();
+                                          event.stopPropagation();
+                                          onSelectGap(item);
+                                        },
+                                        onContextMenu: (event) => {
+                                          event.stopPropagation();
+                                        },
+                                        className: [
+                                          "group z-5 flex min-h-10 cursor-pointer flex-col justify-center overflow-hidden rounded-md border px-2 py-1 text-left text-xs shadow-none transition-colors",
+                                          itemClass,
+                                          !aiConfigured
+                                            ? "opacity-60"
+                                            : "hover:border-emerald-400 hover:bg-emerald-50/40",
+                                        ].join(" "),
+                                      })}
+                                    >
+                                      <p className="truncate font-medium text-foreground">
+                                        {metadata?.title ?? "Gap"}
+                                      </p>
+                                      <p className="truncate text-[11px] opacity-75">
+                                        {formatTimeRange(
+                                          item.startMinutes,
+                                          item.endMinutes,
+                                        )}{" "}
+                                        · {durationLabel(item)}
+                                      </p>
+                                      <p className="mt-1 truncate text-[11px] font-medium opacity-80">
+                                        {aiConfigured
+                                          ? "Click for AI suggest"
+                                          : "Configure AI in Settings"}
+                                      </p>
+                                    </div>
+                                  </ContextMenuTrigger>
+                                  <ContextMenuContent data-scheduler-ignore-create="">
+                                    <ContextMenuItem
+                                      disabled={!aiConfigured}
+                                      onSelect={() => onSelectGap(item)}
+                                    >
+                                      <SparklesIcon />
+                                      AI suggest
+                                    </ContextMenuItem>
+                                  </ContextMenuContent>
+                                </ContextMenu>
+                              );
+                            }
 
                             return (
                               <ContextMenu key={item.id}>

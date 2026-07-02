@@ -8,6 +8,7 @@ import type {
   DayTimeline,
   Event,
   GapFill,
+  GapSuggestion,
   IntegrationConnection,
   ManualEventDeleteInput,
   ManualEventInput,
@@ -16,6 +17,7 @@ import type {
   Period,
   ReviewItem,
   SyncResult,
+  TimeWindow,
   TzSegment,
 } from "./types";
 
@@ -23,6 +25,7 @@ interface ClockrApp {
   ClassifyAIEndpoint(baseURL: string): Promise<AIClassification>;
   ComputeGaps(periodId: number): Promise<DayTimeline[]>;
   ConnectGoogle(accountID: string, accountLabel: string): Promise<IntegrationConnection>;
+  CreateGapFill(input: ManualEventInput): Promise<ManualEventResult>;
   CreateManualEvent(input: ManualEventInput): Promise<ManualEventResult>;
   DeleteManualEvent(input: ManualEventDeleteInput): Promise<ManualEventResult>;
   DisconnectGoogle(accountID: string): Promise<void>;
@@ -45,6 +48,7 @@ interface ClockrApp {
   SetCalendarDefaultCategory(calendarID: number, categoryID: number | null): Promise<void>;
   SetCalendarSelected(calendarID: number, selected: boolean): Promise<void>;
   SetSetting(key: string, value: string): Promise<void>;
+  SuggestGapFill(window: TimeWindow): Promise<GapSuggestion>;
   SyncPeriod(periodID: number): Promise<SyncResult>;
   UpdateManualEvent(input: ManualEventUpdateInput): Promise<ManualEventResult>;
   ValidateAIConfig(
@@ -127,6 +131,10 @@ export function listGapFills(periodId: number) {
   return readFromBackend<GapFill[]>([], () =>
     appBackend.ListGapFills(periodId),
   );
+}
+
+export function createGapFill(input: ManualEventInput) {
+  return writeToBackend(() => appBackend.CreateGapFill(input));
 }
 
 export function createManualEvent(input: ManualEventInput) {
@@ -260,6 +268,10 @@ export function setCalendarDefaultCategory(
   return writeToBackend(() =>
     appBackend.SetCalendarDefaultCategory(calendarID, categoryID),
   );
+}
+
+export function suggestGapFill(window: TimeWindow) {
+  return writeToBackend(() => appBackend.SuggestGapFill(window));
 }
 
 export function syncPeriod(periodID: number) {

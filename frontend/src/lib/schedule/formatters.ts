@@ -25,6 +25,8 @@ export function kindClasses(kind: ScheduleKind) {
       return "border-amber-300 bg-amber-50 text-amber-950";
     case "review":
       return "border-rose-300 bg-rose-50 text-rose-950";
+    case "uncovered":
+      return "border-dashed border-zinc-300 bg-background text-muted-foreground hover:border-zinc-400 hover:bg-muted/50";
   }
 }
 

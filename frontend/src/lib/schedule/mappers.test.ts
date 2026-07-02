@@ -8,6 +8,7 @@ import type {
 import {
   eventToSchedulerItem,
   gapFillToSchedulerItem,
+  gapIntervalToSchedulerItem,
   periodContainsDate,
 } from "./mappers";
 
@@ -95,6 +96,54 @@ describe("schedule mappers", () => {
         title: "Deep Work",
         category: "Deep Work",
         kind: "manual",
+      },
+    });
+  });
+
+  it("maps ai-confirmed gap fills with the gap kind", () => {
+    const categoriesById = new Map<number, Category>([
+      [5, { id: 5, name: "Deep Work", isDefaultGap: true }],
+    ]);
+    const gapFill: GapFill = {
+      id: 22,
+      periodId: 1,
+      day: "2026-06-09",
+      start: "2026-06-09T18:00:00Z",
+      end: "2026-06-09T19:15:00Z",
+      categoryId: 5,
+      note: "Feature implementation",
+      source: "gap",
+    };
+
+    expect(
+      gapFillToSchedulerItem(gapFill, categoriesById, tzSegments),
+    ).toMatchObject({
+      metadata: {
+        kind: "gap",
+      },
+    });
+  });
+
+  it("maps uncovered gap intervals for the schedule overlay", () => {
+    expect(
+      gapIntervalToSchedulerItem(
+        "2026-06-09",
+        {
+          start: "2026-06-09T18:00:00Z",
+          end: "2026-06-09T20:00:00Z",
+        },
+        tzSegments,
+      ),
+    ).toMatchObject({
+      id: "gap-2026-06-09-2026-06-09T18:00:00.000Z-2026-06-09T20:00:00.000Z",
+      day: "2026-06-09",
+      startMinutes: 11 * 60,
+      endMinutes: 13 * 60,
+      disabled: true,
+      metadata: {
+        kind: "uncovered",
+        gapWindowStart: "2026-06-09T18:00:00.000Z",
+        gapWindowEnd: "2026-06-09T20:00:00.000Z",
       },
     });
   });

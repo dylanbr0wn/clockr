@@ -34,7 +34,16 @@ type ManualEventDeleteInput struct {
 
 // CreateManualEvent persists a manually-created scheduler block as a gap fill.
 func (s *Service) CreateManualEvent(ctx context.Context, input ManualEventInput) (GapFill, error) {
-	span, err := s.manualEventSpan(ctx, "create manual event", input)
+	return s.createGapFillEntry(ctx, "create manual event", input, "manual")
+}
+
+// CreateGapFill persists a user-confirmed gap assignment (e.g. from AI suggest).
+func (s *Service) CreateGapFill(ctx context.Context, input ManualEventInput) (GapFill, error) {
+	return s.createGapFillEntry(ctx, "create gap fill", input, "gap")
+}
+
+func (s *Service) createGapFillEntry(ctx context.Context, action string, input ManualEventInput, source string) (GapFill, error) {
+	span, err := s.manualEventSpan(ctx, action, input)
 	if err != nil {
 		return GapFill{}, err
 	}
@@ -51,10 +60,10 @@ func (s *Service) CreateManualEvent(ctx context.Context, input ManualEventInput)
 		EndUtc:     span.end.Format(time.RFC3339),
 		CategoryID: categoryID,
 		Note:       strings.TrimSpace(input.Note),
-		Source:     "manual",
+		Source:     source,
 	})
 	if err != nil {
-		return GapFill{}, mapErr("create manual event", err)
+		return GapFill{}, mapErr(action, err)
 	}
 	return toGapFill(row), nil
 }

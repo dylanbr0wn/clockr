@@ -14,6 +14,10 @@ export function ConnectGoogle(arg1, arg2) {
   return window['go']['main']['App']['ConnectGoogle'](arg1, arg2);
 }
 
+export function CreateGapFill(arg1) {
+  return window['go']['main']['App']['CreateGapFill'](arg1);
+}
+
 export function CreateManualEvent(arg1) {
   return window['go']['main']['App']['CreateManualEvent'](arg1);
 }
@@ -104,6 +108,10 @@ export function SetCalendarSelected(arg1, arg2) {
 
 export function SetSetting(arg1, arg2) {
   return window['go']['main']['App']['SetSetting'](arg1, arg2);
+}
+
+export function SuggestGapFill(arg1) {
+  return window['go']['main']['App']['SuggestGapFill'](arg1);
 }
 
 export function SyncPeriod(arg1) {

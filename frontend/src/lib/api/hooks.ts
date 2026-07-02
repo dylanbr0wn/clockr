@@ -3,6 +3,7 @@ import {
   classifyAIEndpoint,
   computeGaps,
   connectGoogle,
+  createGapFill,
   createManualEvent,
   deleteManualEvent,
   disconnectGoogle,
@@ -25,10 +26,24 @@ import {
   setCalendarDefaultCategory,
   setCalendarSelected,
   setSetting,
+  suggestGapFill,
   syncPeriod,
   updateManualEvent,
   validateAIConfig,
 } from "./clockrService";
+import type { TimeWindow } from "./types";
+
+function parseJsonSetting<T>(raw: string | null | undefined, fallback: T): T {
+  if (!raw) {
+    return fallback;
+  }
+
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
 
 export const clockrQueryKeys = {
   all: ["clockr"] as const,
@@ -129,6 +144,44 @@ export function useCreateManualEvent() {
       });
     },
   });
+}
+
+export function useCreateGapFill() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createGapFill,
+    onSuccess: (gapFill, input) => {
+      const periodId = gapFill.periodId || input.periodId;
+
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.periodGapFills(periodId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.gapTimeline(periodId),
+      });
+    },
+  });
+}
+
+export function useSuggestGapFill() {
+  return useMutation({
+    mutationFn: (window: TimeWindow) => suggestGapFill(window),
+  });
+}
+
+export function useAIConfigured() {
+  const baseURLSetting = useSetting("ai.base_url");
+  const modelSetting = useSetting("ai.model");
+
+  const baseURL = parseJsonSetting(baseURLSetting.data, "");
+  const model = parseJsonSetting(modelSetting.data, "");
+
+  return {
+    isConfigured: Boolean(baseURL.trim() && model.trim()),
+    baseURL,
+    isLoading: baseURLSetting.isLoading || modelSetting.isLoading,
+  };
 }
 
 export function useUpdateManualEvent() {
