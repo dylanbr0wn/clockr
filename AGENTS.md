@@ -1,5 +1,14 @@
 # AGENTS.md
 
+## Issue tracking
+
+Use **Linear** for all tickets, bugs, and feature requests — not GitHub Issues.
+
+- Project: **Clockr** (team: Dylans apps, key: DYL)
+- Create/update issues via Linear MCP (`save_issue`, `list_issues`, etc.)
+- Do not create GitHub Issues unless the user explicitly asks
+- `gh` is still fine for PRs, CI, and other repo operations
+
 ## Cursor Cloud specific instructions
 
 Clockr is a single **Wails v2 desktop app**: a Go backend (root `app.go`/`main.go` + `internal/`)
