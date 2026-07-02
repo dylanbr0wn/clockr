@@ -8,20 +8,24 @@ import type {
   DayTimeline,
   Event,
   GapFill,
+  IntegrationConnection,
   ManualEventDeleteInput,
   ManualEventInput,
   ManualEventResult,
   ManualEventUpdateInput,
   Period,
   ReviewItem,
+  SyncResult,
   TzSegment,
 } from "./types";
 
 interface ClockrApp {
   ClassifyAIEndpoint(baseURL: string): Promise<AIClassification>;
   ComputeGaps(periodId: number): Promise<DayTimeline[]>;
+  ConnectGoogle(accountID: string, accountLabel: string): Promise<IntegrationConnection>;
   CreateManualEvent(input: ManualEventInput): Promise<ManualEventResult>;
   DeleteManualEvent(input: ManualEventDeleteInput): Promise<ManualEventResult>;
+  DisconnectGoogle(accountID: string): Promise<void>;
   DiscoverLocalAIEndpoints(): Promise<AIEndpoint[]>;
   EnsureCurrentPeriod(today: string, ianaTz: string): Promise<Period>;
   GetSetting(key: string): Promise<string>;
@@ -30,6 +34,7 @@ interface ClockrApp {
   ListCategories(): Promise<Category[]>;
   ListEvents(periodId: number): Promise<Event[]>;
   ListGapFills(periodId: number): Promise<GapFill[]>;
+  ListIntegrationConnections(): Promise<IntegrationConnection[]>;
   ListOpenReviewItems(periodId: number): Promise<ReviewItem[]>;
   ListPeriods(): Promise<Period[]>;
   ListSelectedCalendars(): Promise<Calendar[]>;
@@ -37,7 +42,10 @@ interface ClockrApp {
   SaveAIConfig(baseURL: string, model: string): Promise<void>;
   SaveAIEndpoint(baseURL: string): Promise<void>;
   SaveAIModel(model: string): Promise<void>;
+  SetCalendarDefaultCategory(calendarID: number, categoryID: number | null): Promise<void>;
+  SetCalendarSelected(calendarID: number, selected: boolean): Promise<void>;
   SetSetting(key: string, value: string): Promise<void>;
+  SyncPeriod(periodID: number): Promise<SyncResult>;
   UpdateManualEvent(input: ManualEventUpdateInput): Promise<ManualEventResult>;
   ValidateAIConfig(
     baseURL: string,
@@ -221,4 +229,39 @@ export function saveAIEndpoint(baseURL: string) {
 
 export function saveAIModel(model: string) {
   return writeToBackend(() => appBackend.SaveAIModel(model));
+}
+
+export function listIntegrationConnections() {
+  return readFromBackend<IntegrationConnection[]>([], () =>
+    appBackend.ListIntegrationConnections(),
+  );
+}
+
+export function connectGoogle(accountID: string, accountLabel: string) {
+  return writeToBackend(() =>
+    appBackend.ConnectGoogle(accountID, accountLabel),
+  );
+}
+
+export function disconnectGoogle(accountID: string) {
+  return writeToBackend(() => appBackend.DisconnectGoogle(accountID));
+}
+
+export function setCalendarSelected(calendarID: number, selected: boolean) {
+  return writeToBackend(() =>
+    appBackend.SetCalendarSelected(calendarID, selected),
+  );
+}
+
+export function setCalendarDefaultCategory(
+  calendarID: number,
+  categoryID: number | null,
+) {
+  return writeToBackend(() =>
+    appBackend.SetCalendarDefaultCategory(calendarID, categoryID),
+  );
+}
+
+export function syncPeriod(periodID: number) {
+  return writeToBackend(() => appBackend.SyncPeriod(periodID));
 }

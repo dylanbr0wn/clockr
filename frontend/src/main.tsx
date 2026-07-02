@@ -1,6 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "sonner";
 import "@/index.css";
 import App from "@/App";
 import { queryClient } from "@/lib/api";
@@ -13,6 +14,7 @@ root.render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <App />
+      <Toaster richColors closeButton position="bottom-right" />
     </QueryClientProvider>
   </React.StrictMode>
 );

@@ -74,7 +74,13 @@ func newProviderEnv(t *testing.T, handler http.Handler) (*google.Provider, *conn
 }
 
 func TestConnectUpsertsConnection(t *testing.T) {
-	p, reg, _ := newProviderEnv(t, http.NotFoundHandler())
+	p, reg, _ := newProviderEnv(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/users/me/calendarList" {
+			_ = json.NewEncoder(w).Encode(map[string]any{"items": []any{}})
+			return
+		}
+		http.NotFound(w, r)
+	}))
 	p.Authorizer = stubAuthorizer{
 		result: oauth.Result{
 			Provider:  service.ProviderGoogle,
@@ -160,7 +166,7 @@ func TestSyncCalendarsPaginatesAndUpserts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if primary.Name != "Primary" || primary.IsPrimary != 1 {
+	if primary.Name != "Primary" || primary.IsPrimary != 1 || primary.Selected != 1 {
 		t.Fatalf("primary calendar: %+v", primary)
 	}
 }
@@ -296,7 +302,13 @@ func TestFetchEventsPropagatesAPIError(t *testing.T) {
 }
 
 func TestDisconnectRemovesTokenAndConnection(t *testing.T) {
-	p, reg, _ := newProviderEnv(t, http.NotFoundHandler())
+	p, reg, _ := newProviderEnv(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/users/me/calendarList" {
+			_ = json.NewEncoder(w).Encode(map[string]any{"items": []any{}})
+			return
+		}
+		http.NotFound(w, r)
+	}))
 	ctx := context.Background()
 
 	p.Authorizer = stubAuthorizer{

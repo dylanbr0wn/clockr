@@ -39,7 +39,7 @@ func newGapEnv(t *testing.T, start, end, iana string, target float64) *gapEnv {
 		t.Fatalf("seed: %v", err)
 	}
 	q := sqlc.New(conn)
-	cal, err := q.UpsertCalendar(ctx, sqlc.UpsertCalendarParams{Provider: service.ProviderGoogle, ExternalID: "primary", Name: "Primary", IsPrimary: 1})
+	cal, err := q.UpsertCalendar(ctx, sqlc.UpsertCalendarParams{Provider: service.ProviderGoogle, ExternalID: "primary", Name: "Primary", IsPrimary: 1, Column5: int64(1)})
 	if err != nil {
 		t.Fatal(err)
 	}
