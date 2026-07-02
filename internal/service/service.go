@@ -23,8 +23,9 @@ var ErrNotFound = errors.New("not found")
 // it) into Wails. Methods take a context.Context first arg, which Wails injects
 // for bound calls.
 type Service struct {
-	db *sql.DB
-	q  *sqlc.Queries
+	db           *sql.DB
+	q            *sqlc.Queries
+	calendarSync *CalendarSyncConfig
 }
 
 // New builds a Service over an open database connection.

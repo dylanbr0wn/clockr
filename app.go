@@ -6,14 +6,18 @@ import (
 	"fmt"
 
 	"github.com/dylanbr0wn/clockr/internal/ai"
+	"github.com/dylanbr0wn/clockr/internal/integration/connection"
+	"github.com/dylanbr0wn/clockr/internal/integration/google"
 	"github.com/dylanbr0wn/clockr/internal/service"
 )
 
 // App struct
 type App struct {
-	ctx  context.Context
-	conn *sql.DB
-	Svc  *service.Service
+	ctx      context.Context
+	conn     *sql.DB
+	Svc      *service.Service
+	google   *google.Provider
+	registry *connection.Registry
 }
 
 type ManualEventResult struct {
@@ -25,9 +29,13 @@ type ManualEventResult struct {
 // connection is opened, migrated, and seeded in main before binding, so Svc is
 // live at bind time (Wails reflects bound instances up front).
 func NewApp(conn *sql.DB) *App {
+	svc := service.New(conn)
+	googleProvider, registry := wireIntegrations(conn, svc)
 	return &App{
-		conn: conn,
-		Svc:  service.New(conn),
+		conn:     conn,
+		Svc:      svc,
+		google:   googleProvider,
+		registry: registry,
 	}
 }
 
@@ -73,6 +81,36 @@ func (a *App) ListCalendars() ([]service.Calendar, error) {
 // ListSelectedCalendars returns calendars included in schedule imports.
 func (a *App) ListSelectedCalendars() ([]service.Calendar, error) {
 	return a.Svc.ListSelectedCalendars(a.callContext())
+}
+
+// SyncPeriod pulls calendar events for a pay period and merges them locally.
+func (a *App) SyncPeriod(periodID int64) (service.SyncResult, error) {
+	return a.Svc.SyncPeriod(a.callContext(), periodID)
+}
+
+// SetCalendarSelected toggles whether a calendar is included in imports.
+func (a *App) SetCalendarSelected(calendarID int64, selected bool) error {
+	return a.Svc.SetCalendarSelected(a.callContext(), calendarID, selected)
+}
+
+// SetCalendarDefaultCategory assigns a default category to a calendar source.
+func (a *App) SetCalendarDefaultCategory(calendarID int64, categoryID *int64) error {
+	return a.Svc.SetCalendarDefaultCategory(a.callContext(), calendarID, categoryID)
+}
+
+// ListIntegrationConnections returns all connected integration accounts.
+func (a *App) ListIntegrationConnections() ([]connection.Connection, error) {
+	return a.registry.List(a.callContext())
+}
+
+// ConnectGoogle runs desktop OAuth for a Google Calendar account.
+func (a *App) ConnectGoogle(accountID, accountLabel string) (connection.Connection, error) {
+	return a.google.Connect(a.callContext(), accountID, accountLabel)
+}
+
+// DisconnectGoogle removes a Google Calendar connection and its tokens.
+func (a *App) DisconnectGoogle(accountID string) error {
+	return a.google.Disconnect(a.callContext(), accountID)
 }
 
 // ListEvents returns active events for a period.
