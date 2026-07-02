@@ -14,6 +14,25 @@ export interface Calendar {
   defaultCategoryId?: number;
 }
 
+export interface IntegrationConnection {
+  id: number;
+  provider: string;
+  accountLabel: string;
+  accountId: string;
+  scopes: string[];
+  status: "connected" | "needs_reauth" | "disconnected" | string;
+  connectedAt: string;
+  updatedAt: string;
+}
+
+export interface SyncResult {
+  added: number;
+  updated: number;
+  unchanged: number;
+  removed: number;
+  flagged: number;
+}
+
 export interface Period {
   id: number;
   startDate: string;

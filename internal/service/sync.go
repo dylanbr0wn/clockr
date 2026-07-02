@@ -184,6 +184,9 @@ func (s *Service) handleNewEvent(ctx context.Context, q *sqlc.Queries, periodID 
 	if err := s.applyMemory(ctx, q, periodID, inc); err != nil {
 		return err
 	}
+	if err := s.applyCalendarDefault(ctx, q, periodID, inc); err != nil {
+		return err
+	}
 	return s.applyAISuggestion(ctx, q, periodID, inc)
 }
 
@@ -211,6 +214,38 @@ func (s *Service) handleChangedEvent(ctx context.Context, q *sqlc.Queries, perio
 			return err
 		}
 		res.Flagged++
+	}
+	return nil
+}
+
+// applyCalendarDefault auto-applies a calendar's default category when memory
+// did not match. AI suggestion is a later layer.
+func (s *Service) applyCalendarDefault(ctx context.Context, q *sqlc.Queries, periodID int64, inc IncomingEvent) error {
+	has, err := hasCategory(ctx, q, periodID, inc.Provider, inc.ExternalID, inc.InstanceID)
+	if err != nil || has {
+		return err
+	}
+
+	cal, err := q.GetCalendar(ctx, inc.CalendarID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("calendar lookup: %w", err)
+	}
+	if !cal.DefaultCategoryID.Valid {
+		return nil
+	}
+
+	if _, err := q.UpsertOverlay(ctx, sqlc.UpsertOverlayParams{
+		PeriodID:   periodID,
+		Provider:   inc.Provider,
+		ExternalID: inc.ExternalID,
+		InstanceID: inc.InstanceID,
+		CategoryID: cal.DefaultCategoryID,
+		Kind:       overlayKindCategory,
+	}); err != nil {
+		return fmt.Errorf("apply calendar default overlay: %w", err)
 	}
 	return nil
 }

@@ -66,13 +66,24 @@ func (p *Provider) Connect(ctx context.Context, accountID, accountLabel string) 
 		label = accountID
 	}
 
-	return p.Registry.Upsert(ctx, connection.UpsertInput{
+	conn, err := p.Registry.Upsert(ctx, connection.UpsertInput{
 		Provider:     p.Config.Provider,
 		AccountLabel: label,
 		AccountID:    accountID,
 		Scopes:       result.Scopes,
 		Status:       connection.StatusConnected,
 	})
+	if err != nil {
+		return connection.Connection{}, err
+	}
+
+	if p.Queries != nil {
+		if _, err := p.SyncCalendars(ctx, accountID); err != nil {
+			return connection.Connection{}, fmt.Errorf("refresh calendars: %w", err)
+		}
+	}
+
+	return conn, nil
 }
 
 // Disconnect removes tokens and the connection row.
@@ -122,6 +133,7 @@ func (p *Provider) SyncCalendars(ctx context.Context, accountID string) ([]sqlc.
 				ExternalID: item.ID,
 				Name:       name,
 				IsPrimary:  primary,
+				Column5:    primary,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("upsert calendar %q: %w", item.ID, err)

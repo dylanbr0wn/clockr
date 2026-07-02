@@ -37,6 +37,7 @@ import { Separator } from "@/components/ui/separator";
 import { useSetSetting, useSetting } from "@/lib/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { AIModelSettings } from "./AIModelSettings";
+import { CalendarSettings } from "./CalendarSettings";
 import { SettingBlock } from "./SettingBlock";
 
 type ThemeSetting = "system" | "light" | "dark";
@@ -54,7 +55,7 @@ const sections: Array<{
   ready: boolean;
 }> = [
   { id: "general", label: "General", icon: Settings, ready: true },
-  { id: "calendars", label: "Calendars", icon: CalendarDays, ready: false },
+  { id: "calendars", label: "Calendars", icon: CalendarDays, ready: true },
   { id: "categories", label: "Categories", icon: Tags, ready: false },
   { id: "ai", label: "AI Model", icon: Sparkles, ready: true },
   { id: "privacy", label: "Privacy", icon: Shield, ready: false },
@@ -399,6 +400,9 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
                   </div>
                 </SettingBlock>
               </div>
+            </TabsContent>
+            <TabsContent value="calendars" className="min-h-0 overflow-auto p-5">
+              <CalendarSettings />
             </TabsContent>
             <TabsContent value="ai" className="min-h-0 overflow-auto p-5">
               <AIModelSettings />

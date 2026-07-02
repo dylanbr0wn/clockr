@@ -2,8 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   classifyAIEndpoint,
   computeGaps,
+  connectGoogle,
   createManualEvent,
   deleteManualEvent,
+  disconnectGoogle,
   discoverLocalAIEndpoints,
   ensureCurrentPeriod,
   getSetting,
@@ -12,6 +14,7 @@ import {
   listCategories,
   listEvents,
   listGapFills,
+  listIntegrationConnections,
   listOpenReviewItems,
   listPeriods,
   listSelectedCalendars,
@@ -19,7 +22,10 @@ import {
   saveAIConfig,
   saveAIEndpoint,
   saveAIModel,
+  setCalendarDefaultCategory,
+  setCalendarSelected,
   setSetting,
+  syncPeriod,
   updateManualEvent,
   validateAIConfig,
 } from "./clockrService";
@@ -45,6 +51,7 @@ export const clockrQueryKeys = {
     [...clockrQueryKeys.period(periodId), "tzSegments"] as const,
   selectedCalendars: () =>
     [...clockrQueryKeys.calendars(), "selected"] as const,
+  connections: () => [...clockrQueryKeys.all, "connections"] as const,
   setting: (key: string) => [...clockrQueryKeys.all, "settings", key] as const,
   aiDiscovery: () => [...clockrQueryKeys.all, "ai", "discovery"] as const,
   aiClassification: (baseURL: string) =>
@@ -371,6 +378,132 @@ export function useSaveAIConfig() {
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: baseURLKey });
       void queryClient.invalidateQueries({ queryKey: modelKey });
+    },
+  });
+}
+
+export function useIntegrationConnections() {
+  return useQuery({
+    queryKey: clockrQueryKeys.connections(),
+    queryFn: listIntegrationConnections,
+  });
+}
+
+export function useConnectGoogle() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      accountID,
+      accountLabel,
+    }: {
+      accountID: string;
+      accountLabel: string;
+    }) => connectGoogle(accountID, accountLabel),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.connections(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.calendars(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.selectedCalendars(),
+      });
+    },
+  });
+}
+
+export function useDisconnectGoogle() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (accountID: string) => disconnectGoogle(accountID),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.connections(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.calendars(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.selectedCalendars(),
+      });
+    },
+  });
+}
+
+export function useSetCalendarSelected() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      calendarID,
+      selected,
+    }: {
+      calendarID: number;
+      selected: boolean;
+    }) => setCalendarSelected(calendarID, selected),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.calendars(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.selectedCalendars(),
+      });
+    },
+  });
+}
+
+export function useSetCalendarDefaultCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      calendarID,
+      categoryID,
+    }: {
+      calendarID: number;
+      categoryID: number | null;
+    }) => setCalendarDefaultCategory(calendarID, categoryID),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.calendars(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.selectedCalendars(),
+      });
+    },
+  });
+}
+
+export function useSyncPeriod() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (periodID: number) => syncPeriod(periodID),
+    onSuccess: (_result, periodID) => {
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.periods(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.period(periodID),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.periodEvents(periodID),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.periodReviewItems(periodID),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.gapTimeline(periodID),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.calendars(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: clockrQueryKeys.connections(),
+      });
     },
   });
 }

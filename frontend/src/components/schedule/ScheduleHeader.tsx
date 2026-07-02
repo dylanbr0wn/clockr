@@ -1,4 +1,5 @@
-import { Clock, Plus, Settings } from "lucide-react";
+import { Clock, LoaderCircle, Plus, RefreshCw, Settings } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import {
@@ -10,6 +11,8 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useSyncPeriod } from "@/lib/api";
+import { formatRelativeTime, formatSyncResultSummary } from "@/lib/formatters";
 import { formatPeriodLabel } from "@/lib/schedule";
 import {
   SCHEDULE_VIEW_DAY_OPTIONS,
@@ -26,6 +29,26 @@ export function ScheduleHeader({
   titlebarPaddingClass,
   schedule,
 }: ScheduleHeaderProps) {
+  const syncPeriod = useSyncPeriod();
+  const lastSyncedLabel = formatRelativeTime(schedule.activePeriod?.lastSyncedAt);
+
+  const handleSync = async () => {
+    if (!schedule.activePeriodId) {
+      return;
+    }
+
+    try {
+      const result = await syncPeriod.mutateAsync(schedule.activePeriodId);
+      toast.success("Calendar sync complete", {
+        description: formatSyncResultSummary(result),
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Calendar sync failed";
+      toast.error("Calendar sync failed", { description: message });
+    }
+  };
+
   return (
     <header
       className={`shrink-0 flex items-center gap-3 py-2 pr-3 ${titlebarPaddingClass}`}
@@ -39,6 +62,25 @@ export function ScheduleHeader({
       <Separator orientation="vertical" className="my-2" />
       <div className="grow" />
       <div className="app-no-drag flex flex-wrap items-center gap-2">
+        {lastSyncedLabel ? (
+          <p className="hidden text-xs text-muted-foreground sm:block">
+            Last synced {lastSyncedLabel}
+          </p>
+        ) : null}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={!schedule.activePeriodId || syncPeriod.isPending}
+          onClick={() => void handleSync()}
+        >
+          {syncPeriod.isPending ? (
+            <LoaderCircle className="size-4 animate-spin" />
+          ) : (
+            <RefreshCw className="size-4" />
+          )}
+          Sync
+        </Button>
         {schedule.periods.length > 0 && (
           <Select
             value={String(schedule.activePeriod?.id ?? "")}

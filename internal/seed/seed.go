@@ -92,6 +92,7 @@ func Dev(ctx context.Context, conn *sql.DB) error {
 		ExternalID: "primary",
 		Name:       "Primary",
 		IsPrimary:  1,
+		Column5:    int64(1),
 	})
 	if err != nil {
 		return fmt.Errorf("seed calendar: %w", err)

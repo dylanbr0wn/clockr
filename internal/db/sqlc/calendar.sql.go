@@ -10,6 +10,26 @@ import (
 	"database/sql"
 )
 
+const getCalendar = `-- name: GetCalendar :one
+SELECT id, provider, external_id, name, is_primary, selected, default_category_id, created_at FROM calendar WHERE id = ?
+`
+
+func (q *Queries) GetCalendar(ctx context.Context, id int64) (Calendar, error) {
+	row := q.db.QueryRowContext(ctx, getCalendar, id)
+	var i Calendar
+	err := row.Scan(
+		&i.ID,
+		&i.Provider,
+		&i.ExternalID,
+		&i.Name,
+		&i.IsPrimary,
+		&i.Selected,
+		&i.DefaultCategoryID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getCalendarByProviderExternalID = `-- name: GetCalendarByProviderExternalID :one
 SELECT id, provider, external_id, name, is_primary, selected, default_category_id, created_at FROM calendar WHERE provider = ? AND external_id = ?
 `
@@ -136,8 +156,8 @@ func (q *Queries) SetCalendarSelected(ctx context.Context, arg SetCalendarSelect
 }
 
 const upsertCalendar = `-- name: UpsertCalendar :one
-INSERT INTO calendar (provider, external_id, name, is_primary)
-VALUES (?, ?, ?, ?)
+INSERT INTO calendar (provider, external_id, name, is_primary, selected)
+VALUES (?, ?, ?, ?, CASE WHEN ? = 1 THEN 1 ELSE 0 END)
 ON CONFLICT (provider, external_id) DO UPDATE SET
     name = excluded.name,
     is_primary = excluded.is_primary
@@ -145,10 +165,11 @@ RETURNING id, provider, external_id, name, is_primary, selected, default_categor
 `
 
 type UpsertCalendarParams struct {
-	Provider   string `json:"provider"`
-	ExternalID string `json:"external_id"`
-	Name       string `json:"name"`
-	IsPrimary  int64  `json:"is_primary"`
+	Provider   string      `json:"provider"`
+	ExternalID string      `json:"external_id"`
+	Name       string      `json:"name"`
+	IsPrimary  int64       `json:"is_primary"`
+	Column5    interface{} `json:"column_5"`
 }
 
 func (q *Queries) UpsertCalendar(ctx context.Context, arg UpsertCalendarParams) (Calendar, error) {
@@ -157,6 +178,7 @@ func (q *Queries) UpsertCalendar(ctx context.Context, arg UpsertCalendarParams) 
 		arg.ExternalID,
 		arg.Name,
 		arg.IsPrimary,
+		arg.Column5,
 	)
 	var i Calendar
 	err := row.Scan(
