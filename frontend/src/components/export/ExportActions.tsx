@@ -1,7 +1,7 @@
 import { Copy, Download, LoaderCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ClipboardSetText } from "wailsjs/runtime/runtime";
+import { ClipboardSetText } from "../../../wailsjs/runtime/runtime";
 import { Button } from "@/components/ui/button";
 import { saveExportFile } from "@/lib/api/clockrService";
 import {
