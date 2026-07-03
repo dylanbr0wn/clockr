@@ -51,6 +51,8 @@ export function SaveAIEndpoint(arg1:string):Promise<void>;
 
 export function SaveAIModel(arg1:string):Promise<void>;
 
+export function SaveExportFile(arg1:string,arg2:string):Promise<string>;
+
 export function SetCalendarDefaultCategory(arg1:number,arg2:any):Promise<void>;
 
 export function SetCalendarSelected(arg1:number,arg2:boolean):Promise<void>;

@@ -1,9 +1,12 @@
+import { useMemo } from "react";
+import { ExportActions } from "@/components/export/ExportActions";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { buildPeriodExportSummary } from "@/lib/export";
 import { formatMinutes } from "@/lib/scheduler";
 import {
   errorMessage,
@@ -12,9 +15,11 @@ import {
   type ScheduleChange,
 } from "@/lib/schedule";
 import type { Period } from "@/lib/api";
+import type { ScheduleItem } from "@/lib/schedule/types";
 
 interface ScheduleSidebarProps {
   activePeriod: Period | null;
+  items: ScheduleItem[];
   visibleDayCount: number;
   totals: Record<string, number>;
   preview: ScheduleChange | null;
@@ -30,6 +35,7 @@ interface ScheduleSidebarProps {
 
 export function ScheduleSidebar({
   activePeriod,
+  items,
   visibleDayCount,
   totals,
   preview,
@@ -37,6 +43,14 @@ export function ScheduleSidebar({
   isBackendLoading,
   backendError,
 }: ScheduleSidebarProps) {
+  const exportSummary = useMemo(() => {
+    if (!activePeriod) {
+      return null;
+    }
+
+    return buildPeriodExportSummary(items, activePeriod);
+  }, [activePeriod, items]);
+
   return (
     <div className="flex flex-col gap-4">
       <Card className="app-no-drag min-h-0 space-y-4 overflow-auto overscroll-none">
@@ -75,6 +89,22 @@ export function ScheduleSidebar({
                 <p>Idle</p>
               )}
             </div>
+          </div>
+        </CardContent>
+      </Card>
+      <Card className="app-no-drag">
+        <CardHeader>
+          <CardTitle className="text-sm">Export</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-xs text-muted-foreground">
+            Copy this period summary or save the category-by-day CSV.
+          </p>
+          <div className="mt-3">
+            <ExportActions
+              summary={exportSummary}
+              disabled={!activePeriod || isBackendLoading}
+            />
           </div>
         </CardContent>
       </Card>

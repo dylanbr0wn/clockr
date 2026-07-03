@@ -35,6 +35,7 @@ export function SchedulePage({ titlebarPaddingClass }: SchedulePageProps) {
         />
         <ScheduleSidebar
           activePeriod={schedule.activePeriod}
+          items={schedule.items}
           visibleDayCount={schedule.visibleDayCount}
           totals={schedule.totals}
           preview={schedule.preview}

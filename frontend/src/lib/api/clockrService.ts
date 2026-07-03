@@ -42,6 +42,7 @@ interface ClockrApp {
   SaveAIConfig(baseURL: string, model: string): Promise<void>;
   SaveAIEndpoint(baseURL: string): Promise<void>;
   SaveAIModel(model: string): Promise<void>;
+  SaveExportFile(defaultFilename: string, content: string): Promise<string>;
   SetCalendarDefaultCategory(calendarID: number, categoryID: number | null): Promise<void>;
   SetCalendarSelected(calendarID: number, selected: boolean): Promise<void>;
   SetSetting(key: string, value: string): Promise<void>;
@@ -229,6 +230,23 @@ export function saveAIEndpoint(baseURL: string) {
 
 export function saveAIModel(model: string) {
   return writeToBackend(() => appBackend.SaveAIModel(model));
+}
+
+export function saveExportFile(defaultFilename: string, content: string) {
+  if (!isClockrAppAvailable()) {
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = defaultFilename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    return Promise.resolve(defaultFilename);
+  }
+
+  return writeToBackend(() =>
+    appBackend.SaveExportFile(defaultFilename, content),
+  );
 }
 
 export function listIntegrationConnections() {
