@@ -313,8 +313,8 @@ export function ScheduleTimeline({
                                 height: `${height}%`,
                               }}
                             >
-                              <div className="flex h-full min-h-7 items-start justify-between gap-1 overflow-hidden">
-                                <span className="truncate pt-0.5">
+                              <div className="h-full min-h-7 overflow-hidden pr-10">
+                                <span className="block truncate pt-0.5">
                                   {formatDuration(
                                     gap.endMinutes - gap.startMinutes,
                                   )}{" "}
@@ -324,7 +324,7 @@ export function ScheduleTimeline({
                                   type="button"
                                   data-scheduler-ignore-create=""
                                   className={cn([
-                                    "pointer-events-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-background/90 px-2 py-0.5 text-[11px] font-medium text-foreground shadow-sm transition-colors",
+                                    "pointer-events-auto absolute right-1 top-1 inline-flex size-6 items-center justify-center rounded-full border border-border bg-background/90 text-foreground shadow-sm transition-colors",
                                     aiConfigured
                                       ? "hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-950"
                                       : "hover:bg-muted",
@@ -334,9 +334,13 @@ export function ScheduleTimeline({
                                     event.stopPropagation();
                                     onSelectGap(gap);
                                   }}
+                                  title={
+                                    aiConfigured
+                                      ? "Suggest gap fill"
+                                      : "Configure AI for suggestions"
+                                  }
                                 >
                                   <SparklesIcon className="size-3" />
-                                  Suggest
                                 </button>
                               </div>
                             </div>
