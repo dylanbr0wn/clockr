@@ -26,7 +26,8 @@ export function ExportActions({
     null,
   );
   const isBusy = pendingAction !== null;
-  const buttonClassName = layout === "stacked" ? "w-full justify-start" : "";
+  const buttonClassName =
+    layout === "stacked" ? "w-full justify-start" : "flex-1";
 
   const handleCopySummary = async () => {
     if (!summary) {
@@ -75,9 +76,7 @@ export function ExportActions({
   return (
     <div
       className={
-        layout === "stacked"
-          ? "grid gap-2"
-          : "flex flex-wrap items-center gap-2"
+        layout === "stacked" ? "grid gap-2" : "flex items-center gap-2"
       }
     >
       <Button
@@ -93,7 +92,7 @@ export function ExportActions({
         ) : (
           <Copy className="size-4" />
         )}
-        Copy summary
+        Copy
       </Button>
       <Button
         type="button"

@@ -6,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { buildPeriodExportSummary } from "@/lib/export";
 import { formatMinutes } from "@/lib/scheduler";
 import {
@@ -72,20 +71,6 @@ export function ScheduleSidebar({
               </div>
             ))}
           </div>
-          <Separator className="my-4" />
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">Export</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Copy this period summary or save the category-by-day CSV.
-            </p>
-            <div className="mt-3">
-              <ExportActions
-                summary={exportSummary}
-                disabled={!activePeriod || isBackendLoading}
-                layout="stacked"
-              />
-            </div>
-          </div>
           <div className="border-t border-border pt-4">
             <h2 className="text-sm font-semibold text-foreground">Preview</h2>
             <div className="mt-3 min-h-16 rounded-md border border-border bg-muted p-3 text-sm text-muted-foreground">
@@ -104,6 +89,22 @@ export function ScheduleSidebar({
                 <p>Idle</p>
               )}
             </div>
+          </div>
+        </CardContent>
+      </Card>
+      <Card className="app-no-drag">
+        <CardHeader>
+          <CardTitle className="text-sm">Export</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-xs text-muted-foreground">
+            Copy this period summary or save the category-by-day CSV.
+          </p>
+          <div className="mt-3">
+            <ExportActions
+              summary={exportSummary}
+              disabled={!activePeriod || isBackendLoading}
+            />
           </div>
         </CardContent>
       </Card>
