@@ -231,6 +231,49 @@ func TestResolveReviewItem_NewInGapKeepGapPersistsAcrossSync(t *testing.T) {
 	}
 }
 
+func TestResolveReviewItem_AllDayExcludeKeepsEventVisible(t *testing.T) {
+	e := newSyncEnv(t)
+	ctx := context.Background()
+
+	allDay := service.IncomingEvent{
+		CalendarID: e.calID, Provider: service.ProviderGoogle, ExternalID: "evt-allday", Title: "Holiday",
+		Status: "accepted", AllDay: true, StartDate: "2026-06-03", EndDate: "2026-06-04",
+	}
+	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{allDay}); err != nil {
+		t.Fatal(err)
+	}
+	items := openItems(t, e)
+	if len(items) != 1 || items[0].Kind != "all_day" {
+		t.Fatalf("want one all_day review item, got %+v", items)
+	}
+
+	if _, err := e.svc.ResolveReviewItem(ctx, service.ResolveReviewItemInput{
+		ReviewItemID: items[0].ID,
+		Action:       service.ReviewActionExclude,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	events, err := e.svc.ListEvents(ctx, e.periodID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 1 || !events[0].AllDay || events[0].StartDate != "2026-06-03" {
+		t.Fatalf("all-day event should stay visible after exclude, got %+v", events)
+	}
+
+	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{allDay}); err != nil {
+		t.Fatal(err)
+	}
+	events, err = e.svc.ListEvents(ctx, e.periodID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("all-day event should remain visible across re-sync, got %+v", events)
+	}
+}
+
 func TestResolveReviewItem_TentativeExclude(t *testing.T) {
 	e := newSyncEnv(t)
 	ctx := context.Background()

@@ -181,6 +181,19 @@ func (s *Service) SyncEvents(ctx context.Context, periodID int64, incoming []Inc
 		}
 	}
 
+	allDayRows, err := q.ListAllEventsForPeriod(ctx, periodID)
+	if err != nil {
+		return res, mapErr("list all-day events for heal", err)
+	}
+	for _, row := range allDayRows {
+		if row.AllDay == 0 {
+			continue
+		}
+		if err := s.clearAllDayReviewExclusion(ctx, q, row.ID); err != nil {
+			return res, err
+		}
+	}
+
 	if err := tx.Commit(); err != nil {
 		return res, fmt.Errorf("commit sync tx: %w", err)
 	}
@@ -235,15 +248,10 @@ func (s *Service) handleNewEvent(ctx context.Context, q *sqlc.Queries, periodID 
 		}
 		switch action {
 		case ReviewActionExclude:
-			ev, err := q.GetEvent(ctx, eventID)
-			if err != nil {
-				return mapErr("get event", err)
-			}
-			if err := markEventExcluded(ctx, q, ev); err != nil {
-				return err
-			}
-			return nil
 		case ReviewActionInclude:
+		}
+		if err := s.clearAllDayReviewExclusion(ctx, q, eventID); err != nil {
+			return err
 		}
 	case inc.Status == "tentative" || inc.Status == "needsAction":
 		action, created, err := s.enqueueIfUnresolved(ctx, q, periodID, reviewTentative, eventID,
