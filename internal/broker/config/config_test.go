@@ -77,3 +77,20 @@ func TestLoadFromEnv(t *testing.T) {
 		t.Fatalf("scopes: got %q", got)
 	}
 }
+
+func TestLoadFromEnvUsesRailwayPortWhenListenAddrUnset(t *testing.T) {
+	t.Setenv("CLOCKR_BROKER_PUBLIC_ORIGIN", "https://auth.clockr.app")
+	t.Setenv("CLOCKR_BROKER_GOOGLE_CLIENT_ID", "client-id")
+	t.Setenv("CLOCKR_BROKER_GOOGLE_CLIENT_SECRET", "client-secret")
+	t.Setenv("CLOCKR_BROKER_DATASTORE_DSN", "file:broker.db")
+	t.Setenv("CLOCKR_BROKER_LISTEN_ADDR", "")
+	t.Setenv("PORT", "7654")
+
+	cfg, err := LoadFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ListenAddr != ":7654" {
+		t.Fatalf("listen addr: got %q want %q", cfg.ListenAddr, ":7654")
+	}
+}

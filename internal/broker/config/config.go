@@ -35,7 +35,7 @@ type Config struct {
 // result. The desktop app's local CLOCKR_* config is intentionally separate.
 func LoadFromEnv() (Config, error) {
 	cfg := Config{
-		ListenAddr:         getenv("CLOCKR_BROKER_LISTEN_ADDR", defaultListenAddr),
+		ListenAddr:         listenAddrFromEnv(),
 		PublicOrigin:       os.Getenv("CLOCKR_BROKER_PUBLIC_ORIGIN"),
 		GoogleClientID:     os.Getenv("CLOCKR_BROKER_GOOGLE_CLIENT_ID"),
 		GoogleClientSecret: os.Getenv("CLOCKR_BROKER_GOOGLE_CLIENT_SECRET"),
@@ -158,6 +158,16 @@ func getenv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func listenAddrFromEnv() string {
+	if v := os.Getenv("CLOCKR_BROKER_LISTEN_ADDR"); v != "" {
+		return v
+	}
+	if v := os.Getenv("PORT"); v != "" {
+		return ":" + v
+	}
+	return defaultListenAddr
 }
 
 func splitScopes(raw string) []string {

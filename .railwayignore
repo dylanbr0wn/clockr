@@ -1,0 +1,14 @@
+.git
+.codex
+.agents
+.claude
+build
+design-mockups
+frontend
+node_modules
+**/node_modules
+**/dist
+*.db
+*.sqlite
+*.sqlite3
+clockr.yaml
