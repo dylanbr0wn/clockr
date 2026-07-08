@@ -41,6 +41,7 @@ import { useSetSetting, useSetting } from "@/lib/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { AIModelSettings } from "./AIModelSettings";
 import { CalendarSettings } from "./CalendarSettings";
+import { CategorySettings } from "./CategorySettings";
 import { ExportSettings } from "./ExportSettings";
 import { SettingBlock } from "./SettingBlock";
 
@@ -60,7 +61,7 @@ const sections: Array<{
 }> = [
   { id: "general", label: "General", icon: Settings, ready: true },
   { id: "calendars", label: "Calendars", icon: CalendarDays, ready: true },
-  { id: "categories", label: "Categories", icon: Tags, ready: false },
+  { id: "categories", label: "Categories", icon: Tags, ready: true },
   { id: "ai", label: "AI Model", icon: Sparkles, ready: true },
   { id: "privacy", label: "Privacy", icon: Shield, ready: false },
   { id: "export", label: "Export", icon: Download, ready: true },
@@ -401,6 +402,9 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
             </TabsContent>
             <TabsContent value="calendars" className="min-h-0 overflow-auto p-5">
               <CalendarSettings />
+            </TabsContent>
+            <TabsContent value="categories" className="min-h-0 overflow-auto p-5">
+              <CategorySettings />
             </TabsContent>
             <TabsContent value="ai" className="min-h-0 overflow-auto p-5">
               <AIModelSettings />

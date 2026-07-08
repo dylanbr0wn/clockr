@@ -7,6 +7,7 @@ package sqlc
 
 import (
 	"context"
+	"database/sql"
 )
 
 const clearDefaultGap = `-- name: ClearDefaultGap :exec
@@ -18,25 +19,78 @@ func (q *Queries) ClearDefaultGap(ctx context.Context) error {
 	return err
 }
 
+const countCalendarReferencesToCategory = `-- name: CountCalendarReferencesToCategory :one
+SELECT COUNT(*) FROM calendar WHERE default_category_id = ?
+`
+
+func (q *Queries) CountCalendarReferencesToCategory(ctx context.Context, defaultCategoryID sql.NullInt64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countCalendarReferencesToCategory, defaultCategoryID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countGapFillReferencesToCategory = `-- name: CountGapFillReferencesToCategory :one
+SELECT COUNT(*) FROM gap_fill WHERE category_id = ?
+`
+
+func (q *Queries) CountGapFillReferencesToCategory(ctx context.Context, categoryID sql.NullInt64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countGapFillReferencesToCategory, categoryID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countMemoryReferencesToCategory = `-- name: CountMemoryReferencesToCategory :one
+SELECT COUNT(*) FROM memory WHERE category_id = ?
+`
+
+func (q *Queries) CountMemoryReferencesToCategory(ctx context.Context, categoryID int64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countMemoryReferencesToCategory, categoryID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countOverlayReferencesToCategory = `-- name: CountOverlayReferencesToCategory :one
+SELECT COUNT(*) FROM overlay WHERE category_id = ?
+`
+
+func (q *Queries) CountOverlayReferencesToCategory(ctx context.Context, categoryID sql.NullInt64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countOverlayReferencesToCategory, categoryID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createCategory = `-- name: CreateCategory :one
-INSERT INTO category (name, is_default_gap)
-VALUES (?, ?)
-RETURNING id, name, is_default_gap, created_at
+INSERT INTO category (name, description, key, is_default_gap)
+VALUES (?, ?, ?, ?)
+RETURNING id, name, is_default_gap, created_at, description, "key"
 `
 
 type CreateCategoryParams struct {
 	Name         string `json:"name"`
+	Description  string `json:"description"`
+	Key          string `json:"key"`
 	IsDefaultGap int64  `json:"is_default_gap"`
 }
 
 func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error) {
-	row := q.db.QueryRowContext(ctx, createCategory, arg.Name, arg.IsDefaultGap)
+	row := q.db.QueryRowContext(ctx, createCategory,
+		arg.Name,
+		arg.Description,
+		arg.Key,
+		arg.IsDefaultGap,
+	)
 	var i Category
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.IsDefaultGap,
 		&i.CreatedAt,
+		&i.Description,
+		&i.Key,
 	)
 	return i, err
 }
@@ -51,7 +105,7 @@ func (q *Queries) DeleteCategory(ctx context.Context, id int64) error {
 }
 
 const getCategory = `-- name: GetCategory :one
-SELECT id, name, is_default_gap, created_at FROM category WHERE id = ?
+SELECT id, name, is_default_gap, created_at, description, "key" FROM category WHERE id = ?
 `
 
 func (q *Queries) GetCategory(ctx context.Context, id int64) (Category, error) {
@@ -62,12 +116,32 @@ func (q *Queries) GetCategory(ctx context.Context, id int64) (Category, error) {
 		&i.Name,
 		&i.IsDefaultGap,
 		&i.CreatedAt,
+		&i.Description,
+		&i.Key,
+	)
+	return i, err
+}
+
+const getCategoryByKey = `-- name: GetCategoryByKey :one
+SELECT id, name, is_default_gap, created_at, description, "key" FROM category WHERE key = ?
+`
+
+func (q *Queries) GetCategoryByKey(ctx context.Context, key string) (Category, error) {
+	row := q.db.QueryRowContext(ctx, getCategoryByKey, key)
+	var i Category
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.IsDefaultGap,
+		&i.CreatedAt,
+		&i.Description,
+		&i.Key,
 	)
 	return i, err
 }
 
 const getDefaultGapCategory = `-- name: GetDefaultGapCategory :one
-SELECT id, name, is_default_gap, created_at FROM category WHERE is_default_gap = 1
+SELECT id, name, is_default_gap, created_at, description, "key" FROM category WHERE is_default_gap = 1
 `
 
 func (q *Queries) GetDefaultGapCategory(ctx context.Context) (Category, error) {
@@ -78,12 +152,14 @@ func (q *Queries) GetDefaultGapCategory(ctx context.Context) (Category, error) {
 		&i.Name,
 		&i.IsDefaultGap,
 		&i.CreatedAt,
+		&i.Description,
+		&i.Key,
 	)
 	return i, err
 }
 
 const listCategories = `-- name: ListCategories :many
-SELECT id, name, is_default_gap, created_at FROM category ORDER BY name
+SELECT id, name, is_default_gap, created_at, description, "key" FROM category ORDER BY name
 `
 
 func (q *Queries) ListCategories(ctx context.Context) ([]Category, error) {
@@ -100,6 +176,8 @@ func (q *Queries) ListCategories(ctx context.Context) ([]Category, error) {
 			&i.Name,
 			&i.IsDefaultGap,
 			&i.CreatedAt,
+			&i.Description,
+			&i.Key,
 		); err != nil {
 			return nil, err
 		}
@@ -114,25 +192,34 @@ func (q *Queries) ListCategories(ctx context.Context) ([]Category, error) {
 	return items, nil
 }
 
-const renameCategory = `-- name: RenameCategory :exec
-UPDATE category SET name = ? WHERE id = ?
-`
-
-type RenameCategoryParams struct {
-	Name string `json:"name"`
-	ID   int64  `json:"id"`
-}
-
-func (q *Queries) RenameCategory(ctx context.Context, arg RenameCategoryParams) error {
-	_, err := q.db.ExecContext(ctx, renameCategory, arg.Name, arg.ID)
-	return err
-}
-
 const setDefaultGap = `-- name: SetDefaultGap :exec
 UPDATE category SET is_default_gap = 1 WHERE id = ?
 `
 
 func (q *Queries) SetDefaultGap(ctx context.Context, id int64) error {
 	_, err := q.db.ExecContext(ctx, setDefaultGap, id)
+	return err
+}
+
+const updateCategory = `-- name: UpdateCategory :exec
+UPDATE category
+SET name = ?, description = ?, key = ?
+WHERE id = ?
+`
+
+type UpdateCategoryParams struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Key         string `json:"key"`
+	ID          int64  `json:"id"`
+}
+
+func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) error {
+	_, err := q.db.ExecContext(ctx, updateCategory,
+		arg.Name,
+		arg.Description,
+		arg.Key,
+		arg.ID,
+	)
 	return err
 }

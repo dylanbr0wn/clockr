@@ -4,16 +4,21 @@ SELECT * FROM category ORDER BY name;
 -- name: GetCategory :one
 SELECT * FROM category WHERE id = ?;
 
+-- name: GetCategoryByKey :one
+SELECT * FROM category WHERE key = ?;
+
 -- name: GetDefaultGapCategory :one
 SELECT * FROM category WHERE is_default_gap = 1;
 
 -- name: CreateCategory :one
-INSERT INTO category (name, is_default_gap)
-VALUES (?, ?)
+INSERT INTO category (name, description, key, is_default_gap)
+VALUES (?, ?, ?, ?)
 RETURNING *;
 
--- name: RenameCategory :exec
-UPDATE category SET name = ? WHERE id = ?;
+-- name: UpdateCategory :exec
+UPDATE category
+SET name = ?, description = ?, key = ?
+WHERE id = ?;
 
 -- name: ClearDefaultGap :exec
 UPDATE category SET is_default_gap = 0 WHERE is_default_gap = 1;
@@ -23,3 +28,15 @@ UPDATE category SET is_default_gap = 1 WHERE id = ?;
 
 -- name: DeleteCategory :exec
 DELETE FROM category WHERE id = ?;
+
+-- name: CountOverlayReferencesToCategory :one
+SELECT COUNT(*) FROM overlay WHERE category_id = ?;
+
+-- name: CountMemoryReferencesToCategory :one
+SELECT COUNT(*) FROM memory WHERE category_id = ?;
+
+-- name: CountCalendarReferencesToCategory :one
+SELECT COUNT(*) FROM calendar WHERE default_category_id = ?;
+
+-- name: CountGapFillReferencesToCategory :one
+SELECT COUNT(*) FROM gap_fill WHERE category_id = ?;

@@ -4,7 +4,9 @@ import {
   computeGaps,
   connectGoogle,
   createGapFill,
+  createCategory,
   createManualEvent,
+  deleteCategory,
   deleteManualEvent,
   disconnectGoogle,
   discoverLocalAIEndpoints,
@@ -29,6 +31,7 @@ import {
   setSetting,
   suggestGapFill,
   syncPeriod,
+  updateCategory,
   updateManualEvent,
   validateAIConfig,
 } from "./clockrService";
@@ -96,6 +99,51 @@ export function useCategories() {
   return useQuery({
     queryKey: clockrQueryKeys.categories(),
     queryFn: listCategories,
+  });
+}
+
+function invalidateCategoryQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({
+    queryKey: clockrQueryKeys.categories(),
+  });
+  void queryClient.invalidateQueries({
+    queryKey: clockrQueryKeys.calendars(),
+  });
+  void queryClient.invalidateQueries({
+    queryKey: clockrQueryKeys.selectedCalendars(),
+  });
+}
+
+export function useCreateCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createCategory,
+    onSuccess: () => {
+      invalidateCategoryQueries(queryClient);
+    },
+  });
+}
+
+export function useUpdateCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateCategory,
+    onSuccess: () => {
+      invalidateCategoryQueries(queryClient);
+    },
+  });
+}
+
+export function useDeleteCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteCategory,
+    onSuccess: () => {
+      invalidateCategoryQueries(queryClient);
+    },
   });
 }
 

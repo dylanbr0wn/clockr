@@ -293,12 +293,17 @@ func TestSync_AllDayAndTentativeFlags(t *testing.T) {
 // mustOverlay assigns the env's category to an event occurrence (user override).
 func mustOverlay(t *testing.T, e *syncEnv, gid string) {
 	t.Helper()
+	mustOverlayWithCategory(t, e, gid, e.catID)
+}
+
+func mustOverlayWithCategory(t *testing.T, e *syncEnv, gid string, categoryID int64) {
+	t.Helper()
 	if _, err := e.q.UpsertOverlay(context.Background(), sqlc.UpsertOverlayParams{
 		PeriodID:   e.periodID,
 		Provider:   service.ProviderGoogle,
 		ExternalID: gid,
 		InstanceID:    "",
-		CategoryID:    sql.NullInt64{Int64: e.catID, Valid: true},
+		CategoryID:    sql.NullInt64{Int64: categoryID, Valid: true},
 		Kind:          "category",
 	}); err != nil {
 		t.Fatalf("seed overlay: %v", err)

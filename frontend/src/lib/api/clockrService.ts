@@ -5,6 +5,7 @@ import type {
   AIValidationResult,
   Calendar,
   Category,
+  CreateCategoryInput,
   DayTimeline,
   Event,
   GapFill,
@@ -21,15 +22,18 @@ import type {
   SyncResult,
   TimeWindow,
   TzSegment,
+  UpdateCategoryInput,
 } from "./types";
 
 interface ClockrApp {
   ClassifyAIEndpoint(baseURL: string): Promise<AIClassification>;
   ComputeGaps(periodId: number): Promise<DayTimeline[]>;
   ConnectGoogle(accountID: string, accountLabel: string): Promise<IntegrationConnection>;
+  CreateCategory(input: CreateCategoryInput): Promise<Category>;
   CreateGapFill(input: ManualEventInput): Promise<ManualEventResult>;
   CreateManualEvent(input: ManualEventInput): Promise<ManualEventResult>;
   DeleteManualEvent(input: ManualEventDeleteInput): Promise<ManualEventResult>;
+  DeleteCategory(id: number): Promise<void>;
   DisconnectGoogle(accountID: string): Promise<void>;
   DiscoverLocalAIEndpoints(): Promise<AIEndpoint[]>;
   EnsureCurrentPeriod(today: string, ianaTz: string): Promise<Period>;
@@ -56,6 +60,7 @@ interface ClockrApp {
   SetSetting(key: string, value: string): Promise<void>;
   SuggestGapFill(window: TimeWindow): Promise<GapSuggestion>;
   SyncPeriod(periodID: number): Promise<SyncResult>;
+  UpdateCategory(input: UpdateCategoryInput): Promise<Category>;
   UpdateManualEvent(input: ManualEventUpdateInput): Promise<ManualEventResult>;
   ValidateAIConfig(
     baseURL: string,
@@ -113,6 +118,18 @@ export function listCategories() {
   return readFromBackend<Category[]>([], () =>
     appBackend.ListCategories(),
   );
+}
+
+export function createCategory(input: CreateCategoryInput) {
+  return writeToBackend(() => appBackend.CreateCategory(input));
+}
+
+export function updateCategory(input: UpdateCategoryInput) {
+  return writeToBackend(() => appBackend.UpdateCategory(input));
+}
+
+export function deleteCategory(id: number) {
+  return writeToBackend(() => appBackend.DeleteCategory(id));
 }
 
 export function listCalendars() {

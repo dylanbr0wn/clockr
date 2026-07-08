@@ -37,12 +37,7 @@ func (s *Service) SuggestGapFill(ctx context.Context, window TimeWindow) (GapSug
 	if err != nil {
 		return GapSuggestion{}, err
 	}
-	names := make([]string, 0, len(categories))
-	byName := make(map[string]int64, len(categories))
-	for _, category := range categories {
-		names = append(names, category.Name)
-		byName[category.Name] = category.ID
-	}
+	definitions := categoryDefinitionsForAI(categories)
 
 	local, _ := ai.ClassifyEndpoint(baseURL)
 
@@ -50,11 +45,11 @@ func (s *Service) SuggestGapFill(ctx context.Context, window TimeWindow) (GapSug
 	defer cancel()
 
 	client := ai.NewClient(baseURL, "")
-	category, description, err := ai.SuggestGapFill(
+	categoryKey, description, err := ai.SuggestGapFill(
 		probeCtx,
 		client,
 		model,
-		names,
+		definitions,
 		constToGapContext(window),
 		buildEvidencePayload(evidence, local),
 		local,
@@ -62,12 +57,13 @@ func (s *Service) SuggestGapFill(ctx context.Context, window TimeWindow) (GapSug
 	if err != nil {
 		return GapSuggestion{}, mapErr("suggest gap fill", err)
 	}
-	if _, ok := byName[category]; !ok {
-		return GapSuggestion{}, fmt.Errorf("suggest gap fill: model returned unknown category %q", category)
+	category, ok := resolveCategoryKey(categories, categoryKey)
+	if !ok {
+		return GapSuggestion{}, fmt.Errorf("suggest gap fill: model returned unknown category %q", categoryKey)
 	}
 
 	return GapSuggestion{
-		Category:      category,
+		Category:      category.Name,
 		Description:   description,
 		EvidenceCount: len(evidence),
 	}, nil

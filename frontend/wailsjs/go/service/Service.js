@@ -10,12 +10,20 @@ export function ComputeGaps(arg1, arg2) {
   return window['go']['service']['Service']['ComputeGaps'](arg1, arg2);
 }
 
+export function CreateCategory(arg1, arg2) {
+  return window['go']['service']['Service']['CreateCategory'](arg1, arg2);
+}
+
 export function CreateGapFill(arg1, arg2) {
   return window['go']['service']['Service']['CreateGapFill'](arg1, arg2);
 }
 
 export function CreateManualEvent(arg1, arg2) {
   return window['go']['service']['Service']['CreateManualEvent'](arg1, arg2);
+}
+
+export function DeleteCategory(arg1, arg2) {
+  return window['go']['service']['Service']['DeleteCategory'](arg1, arg2);
 }
 
 export function DeleteManualEvent(arg1, arg2) {
@@ -132,6 +140,10 @@ export function SyncEvents(arg1, arg2, arg3) {
 
 export function SyncPeriod(arg1, arg2) {
   return window['go']['service']['Service']['SyncPeriod'](arg1, arg2);
+}
+
+export function UpdateCategory(arg1, arg2) {
+  return window['go']['service']['Service']['UpdateCategory'](arg1, arg2);
 }
 
 export function UpdateManualEvent(arg1, arg2) {

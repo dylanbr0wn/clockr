@@ -108,7 +108,10 @@ func TestSuggestCategory(t *testing.T) {
 		context.Background(),
 		client,
 		"llama3",
-		[]string{"Meetings", "Deep Work"},
+		[]ai.CategoryDefinition{
+			{Key: "Meetings", Name: "Meetings"},
+			{Key: "deep-work", Name: "Deep Work"},
+		},
 		ai.EventContext{Title: "Focus block"},
 		true,
 		ai.PrivacyFields{Title: true},
@@ -116,8 +119,8 @@ func TestSuggestCategory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SuggestCategory: %v", err)
 	}
-	if got != "Deep Work" {
-		t.Fatalf("got %q want Deep Work", got)
+	if got != "deep-work" {
+		t.Fatalf("got %q want deep-work", got)
 	}
 }
 

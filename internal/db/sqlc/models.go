@@ -30,6 +30,8 @@ type Category struct {
 	Name         string `json:"name"`
 	IsDefaultGap int64  `json:"is_default_gap"`
 	CreatedAt    string `json:"created_at"`
+	Description  string `json:"description"`
+	Key          string `json:"key"`
 }
 
 type Event struct {

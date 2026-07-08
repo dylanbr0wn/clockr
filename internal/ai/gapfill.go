@@ -7,17 +7,17 @@ import (
 	"strings"
 )
 
-// SuggestGapFill asks the model to pick a category and write a short timesheet
+// SuggestGapFill asks the model to pick a category key and write a short timesheet
 // description for an uncovered interval, optionally citing activity evidence.
 func SuggestGapFill(
 	ctx context.Context,
 	client *Client,
 	model string,
-	categories []string,
+	categories []CategoryDefinition,
 	gap GapContext,
 	evidence []EvidencePayload,
 	local bool,
-) (category string, description string, err error) {
+) (categoryKey string, description string, err error) {
 	if len(categories) == 0 {
 		return "", "", fmt.Errorf("no categories configured")
 	}
@@ -35,12 +35,15 @@ func SuggestGapFill(
 	if err != nil {
 		return "", "", err
 	}
+	categoriesJSON, err := json.Marshal(categories)
+	if err != nil {
+		return "", "", err
+	}
 
-	categoryList := strings.Join(categories, ", ")
-	systemPrompt := "You suggest timesheet entries for uncovered work intervals. Reply with JSON only: {\"category\":\"<one category from the list>\",\"description\":\"<short note>\"}."
+	systemPrompt := "You suggest timesheet entries for uncovered work intervals. Reply with JSON only: {\"key\":\"<one category key from the list>\",\"description\":\"<short note>\"}."
 	userPrompt := fmt.Sprintf(
 		"Categories: %s\nGap: %s\nActivity evidence: %s\nJSON:",
-		categoryList,
+		string(categoriesJSON),
 		string(gapJSON),
 		string(evidenceJSON),
 	)
@@ -51,6 +54,7 @@ func SuggestGapFill(
 	}
 
 	var parsed struct {
+		Key         string `json:"key"`
 		Category    string `json:"category"`
 		Description string `json:"description"`
 	}
@@ -58,26 +62,21 @@ func SuggestGapFill(
 		return "", "", fmt.Errorf("parse gap-fill reply: %w", err)
 	}
 
-	category = strings.Trim(parsed.Category, `"' `)
+	candidate := strings.Trim(parsed.Key, `"' `)
+	if candidate == "" {
+		candidate = strings.Trim(parsed.Category, `"' `)
+	}
 	description = strings.TrimSpace(parsed.Description)
-	if category == "" {
-		return "", "", fmt.Errorf("model returned empty category")
+	if candidate == "" {
+		return "", "", fmt.Errorf("model returned empty category key")
 	}
 
-	for _, name := range categories {
-		if strings.EqualFold(category, name) {
-			return name, description, nil
-		}
+	key, ok := MatchCategoryKey(candidate, categories)
+	if !ok {
+		return "", "", fmt.Errorf("model returned unknown category %q", candidate)
 	}
 
-	lowerCategory := strings.ToLower(category)
-	for _, name := range categories {
-		if strings.Contains(lowerCategory, strings.ToLower(name)) {
-			return name, description, nil
-		}
-	}
-
-	return "", "", fmt.Errorf("model returned unknown category %q", category)
+	return key, description, nil
 }
 
 func minimizeEvidence(items []EvidencePayload) []EvidencePayload {

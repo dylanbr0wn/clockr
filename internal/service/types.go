@@ -17,6 +17,8 @@ import (
 type Category struct {
 	ID           int64  `json:"id"`
 	Name         string `json:"name"`
+	Description  string `json:"description"`
+	Key          string `json:"key"`
 	IsDefaultGap bool   `json:"isDefaultGap"`
 }
 
@@ -113,7 +115,13 @@ type GapFill struct {
 // ── converters from sqlc rows ─────────────────────────────────────────
 
 func toCategory(r sqlc.Category) Category {
-	return Category{ID: r.ID, Name: r.Name, IsDefaultGap: r.IsDefaultGap != 0}
+	return Category{
+		ID:           r.ID,
+		Name:         r.Name,
+		Description:  r.Description,
+		Key:          r.Key,
+		IsDefaultGap: r.IsDefaultGap != 0,
+	}
 }
 
 func toPeriod(r sqlc.Period) Period {

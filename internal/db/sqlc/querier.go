@@ -6,10 +6,15 @@ package sqlc
 
 import (
 	"context"
+	"database/sql"
 )
 
 type Querier interface {
 	ClearDefaultGap(ctx context.Context) error
+	CountCalendarReferencesToCategory(ctx context.Context, defaultCategoryID sql.NullInt64) (int64, error)
+	CountGapFillReferencesToCategory(ctx context.Context, categoryID sql.NullInt64) (int64, error)
+	CountMemoryReferencesToCategory(ctx context.Context, categoryID int64) (int64, error)
+	CountOverlayReferencesToCategory(ctx context.Context, categoryID sql.NullInt64) (int64, error)
 	CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error)
 	CreateGapFill(ctx context.Context, arg CreateGapFillParams) (GapFill, error)
 	CreatePeriod(ctx context.Context, arg CreatePeriodParams) (Period, error)
@@ -27,6 +32,7 @@ type Querier interface {
 	GetCalendar(ctx context.Context, id int64) (Calendar, error)
 	GetCalendarByProviderExternalID(ctx context.Context, arg GetCalendarByProviderExternalIDParams) (Calendar, error)
 	GetCategory(ctx context.Context, id int64) (Category, error)
+	GetCategoryByKey(ctx context.Context, key string) (Category, error)
 	GetDefaultGapCategory(ctx context.Context) (Category, error)
 	GetEvent(ctx context.Context, id int64) (Event, error)
 	GetIntegrationConnection(ctx context.Context, arg GetIntegrationConnectionParams) (IntegrationConnection, error)
@@ -58,7 +64,6 @@ type Querier interface {
 	NextSubmissionVersion(ctx context.Context, periodID int64) (int64, error)
 	// Train memory from a user correction; bump hit count on repeat.
 	RememberCategory(ctx context.Context, arg RememberCategoryParams) (Memory, error)
-	RenameCategory(ctx context.Context, arg RenameCategoryParams) error
 	ResolveReviewItem(ctx context.Context, arg ResolveReviewItemParams) error
 	SetCalendarDefaultCategory(ctx context.Context, arg SetCalendarDefaultCategoryParams) error
 	SetCalendarSelected(ctx context.Context, arg SetCalendarSelectedParams) error
@@ -67,6 +72,7 @@ type Querier interface {
 	SetEventActiveByCalendar(ctx context.Context, arg SetEventActiveByCalendarParams) error
 	SetSetting(ctx context.Context, arg SetSettingParams) error
 	TouchPeriodSynced(ctx context.Context, arg TouchPeriodSyncedParams) error
+	UpdateCategory(ctx context.Context, arg UpdateCategoryParams) error
 	UpdateGapFill(ctx context.Context, arg UpdateGapFillParams) (GapFill, error)
 	UpdateGapFillSpan(ctx context.Context, arg UpdateGapFillSpanParams) (GapFill, error)
 	UpdateIntegrationConnectionStatus(ctx context.Context, arg UpdateIntegrationConnectionStatusParams) error

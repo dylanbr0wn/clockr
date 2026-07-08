@@ -42,7 +42,10 @@ func TestSuggestGapFill(t *testing.T) {
 		context.Background(),
 		client,
 		"llama3",
-		[]string{"Meetings", "Deep Work"},
+		[]ai.CategoryDefinition{
+			{Key: "Meetings", Name: "Meetings"},
+			{Key: "deep-work", Name: "Deep Work"},
+		},
 		gap,
 		evidence,
 		true,
@@ -50,8 +53,8 @@ func TestSuggestGapFill(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SuggestGapFill: %v", err)
 	}
-	if category != "Deep Work" {
-		t.Fatalf("category = %q want Deep Work", category)
+	if category != "deep-work" {
+		t.Fatalf("category = %q want deep-work", category)
 	}
 	if description == "" {
 		t.Fatal("expected non-empty description")
@@ -97,7 +100,7 @@ func TestSuggestGapFillCloudOmitsDetailAndURL(t *testing.T) {
 		context.Background(),
 		client,
 		"llama3",
-		[]string{"Deep Work"},
+		[]ai.CategoryDefinition{{Key: "deep-work", Name: "Deep Work"}},
 		ai.GapContext{Duration: "1h0m0s"},
 		evidence,
 		false,

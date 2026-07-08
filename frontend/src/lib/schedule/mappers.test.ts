@@ -205,7 +205,7 @@ describe("schedule mappers", () => {
 
   it("maps gap fills with category names and timezone-local minutes", () => {
     const categoriesById = new Map<number, Category>([
-      [5, { id: 5, name: "Deep Work", isDefaultGap: true }],
+      [5, { id: 5, name: "Deep Work", description: "", key: "Deep Work", isDefaultGap: true }],
     ]);
     const gapFill: GapFill = {
       id: 21,
@@ -235,7 +235,7 @@ describe("schedule mappers", () => {
 
   it("maps ai-confirmed gap fills with the gap kind", () => {
     const categoriesById = new Map<number, Category>([
-      [5, { id: 5, name: "Deep Work", isDefaultGap: true }],
+      [5, { id: 5, name: "Deep Work", description: "", key: "Deep Work", isDefaultGap: true }],
     ]);
     const gapFill: GapFill = {
       id: 22,

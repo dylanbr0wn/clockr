@@ -1,7 +1,24 @@
 export interface Category {
   id: number;
   name: string;
+  description: string;
+  key: string;
   isDefaultGap: boolean;
+}
+
+export interface CreateCategoryInput {
+  name: string;
+  description?: string;
+  key?: string;
+  isDefaultGap?: boolean;
+}
+
+export interface UpdateCategoryInput {
+  id: number;
+  name: string;
+  description?: string;
+  key?: string;
+  isDefaultGap?: boolean;
 }
 
 export interface Calendar {

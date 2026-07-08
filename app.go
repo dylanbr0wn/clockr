@@ -76,6 +76,21 @@ func (a *App) ListCategories() ([]service.Category, error) {
 	return a.Svc.ListCategories(a.callContext())
 }
 
+// CreateCategory adds a user-defined category.
+func (a *App) CreateCategory(input service.CreateCategoryInput) (service.Category, error) {
+	return a.Svc.CreateCategory(a.callContext(), input)
+}
+
+// UpdateCategory updates a user-defined category.
+func (a *App) UpdateCategory(input service.UpdateCategoryInput) (service.Category, error) {
+	return a.Svc.UpdateCategory(a.callContext(), input)
+}
+
+// DeleteCategory removes a category when it is not referenced.
+func (a *App) DeleteCategory(id int64) error {
+	return a.Svc.DeleteCategory(a.callContext(), id)
+}
+
 // ListCalendars returns all known calendars.
 func (a *App) ListCalendars() ([]service.Calendar, error) {
 	return a.Svc.ListCalendars(a.callContext())

@@ -168,6 +168,8 @@ export namespace service {
 	export class Category {
 	    id: number;
 	    name: string;
+	    description: string;
+	    key: string;
 	    isDefaultGap: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -178,6 +180,26 @@ export namespace service {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.key = source["key"];
+	        this.isDefaultGap = source["isDefaultGap"];
+	    }
+	}
+	export class CreateCategoryInput {
+	    name: string;
+	    description: string;
+	    key: string;
+	    isDefaultGap: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new CreateCategoryInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.key = source["key"];
 	        this.isDefaultGap = source["isDefaultGap"];
 	    }
 	}
@@ -683,6 +705,26 @@ export namespace service {
 	        this.periodId = source["periodId"];
 	        this.effectiveFromDate = source["effectiveFromDate"];
 	        this.ianaTz = source["ianaTz"];
+	    }
+	}
+	export class UpdateCategoryInput {
+	    id: number;
+	    name: string;
+	    description: string;
+	    key: string;
+	    isDefaultGap: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateCategoryInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.key = source["key"];
+	        this.isDefaultGap = source["isDefaultGap"];
 	    }
 	}
 

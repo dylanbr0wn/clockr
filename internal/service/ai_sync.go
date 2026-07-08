@@ -27,12 +27,7 @@ func (s *Service) applyAISuggestion(ctx context.Context, q *sqlc.Queries, period
 	if err != nil {
 		return err
 	}
-	names := make([]string, 0, len(categories))
-	byName := make(map[string]int64, len(categories))
-	for _, category := range categories {
-		names = append(names, category.Name)
-		byName[category.Name] = category.ID
-	}
+	definitions := categoryDefinitionsForAI(categories)
 
 	local, _ := ai.ClassifyEndpoint(baseURL)
 	privacy, err := s.loadPrivacyFields(ctx)
@@ -44,11 +39,11 @@ func (s *Service) applyAISuggestion(ctx context.Context, q *sqlc.Queries, period
 	defer cancel()
 
 	client := ai.NewClient(baseURL, "")
-	suggested, err := ai.SuggestCategory(
+	suggestedKey, err := ai.SuggestCategory(
 		probeCtx,
 		client,
 		model,
-		names,
+		definitions,
 		buildEventContext(inc),
 		local,
 		privacy,
@@ -57,10 +52,11 @@ func (s *Service) applyAISuggestion(ctx context.Context, q *sqlc.Queries, period
 		return nil
 	}
 
-	categoryID, ok := byName[suggested]
+	category, ok := resolveCategoryKey(categories, suggestedKey)
 	if !ok {
 		return nil
 	}
+	categoryID := category.ID
 
 	if _, err := q.UpsertOverlay(ctx, sqlc.UpsertOverlayParams{
 		PeriodID:   periodID,

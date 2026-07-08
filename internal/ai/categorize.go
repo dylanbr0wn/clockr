@@ -4,15 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 )
 
-// SuggestCategory asks the model to pick one category name for an event.
+// SuggestCategory asks the model to pick one category key for an event.
 func SuggestCategory(
 	ctx context.Context,
 	client *Client,
 	model string,
-	categories []string,
+	categories []CategoryDefinition,
 	event EventContext,
 	local bool,
 	privacy PrivacyFields,
@@ -31,11 +30,15 @@ func SuggestCategory(
 		return "", err
 	}
 
-	categoryList := strings.Join(categories, ", ")
-	systemPrompt := "You categorize calendar events for a timesheet app. Reply with exactly one category name from the provided list and nothing else."
+	categoriesJSON, err := json.Marshal(categories)
+	if err != nil {
+		return "", err
+	}
+
+	systemPrompt := "You categorize calendar events for a timesheet app. Reply with exactly one category key from the provided list and nothing else."
 	userPrompt := fmt.Sprintf(
-		"Categories: %s\nEvent: %s\nCategory:",
-		categoryList,
+		"Categories: %s\nEvent: %s\nCategory key:",
+		string(categoriesJSON),
 		string(eventJSON),
 	)
 
@@ -44,22 +47,11 @@ func SuggestCategory(
 		return "", err
 	}
 
-	reply = strings.Trim(reply, `"' `)
-	for _, category := range categories {
-		if strings.EqualFold(reply, category) {
-			return category, nil
-		}
+	key, ok := MatchCategoryKey(reply, categories)
+	if !ok {
+		return "", fmt.Errorf("model returned unknown category %q", reply)
 	}
-
-	// Accept a reply that merely contains a known category name.
-	lowerReply := strings.ToLower(reply)
-	for _, category := range categories {
-		if strings.Contains(lowerReply, strings.ToLower(category)) {
-			return category, nil
-		}
-	}
-
-	return "", fmt.Errorf("model returned unknown category %q", reply)
+	return key, nil
 }
 
 func minimizeEvent(event EventContext, privacy PrivacyFields) EventContext {
