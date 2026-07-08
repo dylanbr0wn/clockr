@@ -20,7 +20,7 @@ export function ExportSettings() {
         title="Period export"
         description="Review period stats, then copy a text summary or download a CSV for the current pay period."
       >
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           {exportData.isLoading || currentPeriodQuery.isLoading ? (
             <p className="text-sm text-muted-foreground">Loading period totals</p>
           ) : (

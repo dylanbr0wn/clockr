@@ -10,6 +10,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemFooter,
+  ItemGroup,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
+import {
   useEvents,
   useOpenReviewItems,
   useResolveReviewItem,
@@ -93,62 +102,83 @@ export function ReviewQueueDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[55vh] space-y-3 overflow-y-auto px-6 py-4">
+        <div className="max-h-[55vh] overflow-y-auto px-6 py-4">
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Loading review items…</p>
           ) : null}
 
           {!isLoading && views.length === 0 ? (
-            <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
-              <AlertCircleIcon className="size-4 shrink-0" />
-              <span>Everything is resolved. Sync again if your calendar changes.</span>
-            </div>
+            <ItemGroup>
+              <Item variant="muted">
+                <ItemMedia variant="icon">
+                  <AlertCircleIcon />
+                </ItemMedia>
+                <ItemContent>
+                  <ItemDescription>
+                    Everything is resolved. Sync again if your calendar changes.
+                  </ItemDescription>
+                </ItemContent>
+              </Item>
+            </ItemGroup>
           ) : null}
 
-          {views.map((item) => (
-            <div
-              key={item.id}
-              className="rounded-lg border border-border bg-card p-4 shadow-xs"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${kindBadgeClass(item.kind)}`}
-                >
-                  {item.tag}
-                </span>
-                <span className="font-medium text-foreground">{item.title}</span>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">{item.description}</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {item.secondaryAction ? (
-                  <Button
-                    disabled={pendingId === item.id}
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      handleResolve(item.id, item.secondaryAction!.action)
-                    }
-                  >
-                    {item.secondaryAction.label}
-                  </Button>
-                ) : null}
-                <Button
-                  disabled={pendingId === item.id}
-                  size="sm"
-                  onClick={() =>
-                    handleResolve(item.id, item.primaryAction.action)
-                  }
-                >
-                  {item.primaryAction.label}
-                </Button>
-              </div>
-            </div>
-          ))}
+          {views.length > 0 ? (
+            <ItemGroup className="gap-3">
+              {views.map((item) => (
+              <Item key={item.id} variant="outline">
+                <ItemContent>
+                  <ItemTitle className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${kindBadgeClass(item.kind)}`}
+                    >
+                      {item.tag}
+                    </span>
+                    {item.title}
+                  </ItemTitle>
+                  <ItemDescription>{item.description}</ItemDescription>
+                </ItemContent>
+                <ItemFooter>
+                  <div className="flex flex-wrap gap-2">
+                    {item.secondaryAction ? (
+                      <Button
+                        disabled={pendingId === item.id}
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          handleResolve(item.id, item.secondaryAction!.action)
+                        }
+                      >
+                        {item.secondaryAction.label}
+                      </Button>
+                    ) : null}
+                    <Button
+                      disabled={pendingId === item.id}
+                      size="sm"
+                      onClick={() =>
+                        handleResolve(item.id, item.primaryAction.action)
+                      }
+                    >
+                      {item.primaryAction.label}
+                    </Button>
+                  </div>
+                </ItemFooter>
+              </Item>
+            ))}
+            </ItemGroup>
+          ) : null}
 
           {error ? (
-            <p className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-              {errorMessage(error)}
-            </p>
+            <Item
+              variant="outline"
+              size="sm"
+              className="mt-3 border-destructive/30 bg-destructive/10"
+            >
+              <ItemContent>
+                <ItemDescription className="text-destructive">
+                  {errorMessage(error)}
+                </ItemDescription>
+              </ItemContent>
+            </Item>
           ) : null}
         </div>
 

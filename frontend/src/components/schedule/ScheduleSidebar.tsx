@@ -5,6 +5,11 @@ import { DailyBreakdownCard } from "@/components/stats/DailyBreakdownCard";
 import { NeedsAttentionCard } from "@/components/stats/NeedsAttentionCard";
 import { PeriodProgressCard } from "@/components/stats/PeriodProgressCard";
 import { Button } from "@/components/ui/button";
+import {
+  Item,
+  ItemContent,
+  ItemDescription,
+} from "@/components/ui/item";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Event, Period, ReviewItem } from "@/lib/api";
 import { buildPeriodExportSummary } from "@/lib/export";
@@ -53,16 +58,26 @@ export function ScheduleSidebar({
           onOpenReviewQueue={onOpenReviewQueue}
         />
         <DailyBreakdownCard summary={exportSummary} />
-        <div className="mt-auto space-y-2 pt-1">
+        <div className="mt-auto flex flex-col gap-2 pt-1">
           {isBackendLoading ? (
-            <p className="rounded-md border border-border bg-background p-2 text-xs text-muted-foreground">
-              Loading backend data
-            </p>
+            <Item variant="outline" size="xs">
+              <ItemContent>
+                <ItemDescription>Loading backend data</ItemDescription>
+              </ItemContent>
+            </Item>
           ) : null}
           {backendError ? (
-            <p className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
-              {errorMessage(backendError)}
-            </p>
+            <Item
+              variant="outline"
+              size="xs"
+              className="border-destructive/30 bg-destructive/10"
+            >
+              <ItemContent>
+                <ItemDescription className="text-destructive">
+                  {errorMessage(backendError)}
+                </ItemDescription>
+              </ItemContent>
+            </Item>
           ) : null}
           <ExportActions
             summary={exportSummary}

@@ -12,6 +12,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
 import type { ScheduleGapOverlay } from "@/lib/schedule";
 import { cn } from "@/lib/utils";
 import {
@@ -70,26 +79,28 @@ function AttentionRow({
   onAction?: () => void;
 }) {
   return (
-    <div className="flex items-center gap-2.5 rounded-md border border-border bg-muted px-2.5 py-2">
-      <AttentionIcon tone={item.iconTone} />
-      <div className="min-w-0 flex-1">
-        <p className="text-[12.5px] font-medium leading-tight text-foreground">
-          {item.title}
-        </p>
-        <p className="text-[11.5px] text-muted-foreground">{item.subtitle}</p>
-      </div>
+    <Item variant="muted" size="sm">
+      <ItemMedia>
+        <AttentionIcon tone={item.iconTone} />
+      </ItemMedia>
+      <ItemContent>
+        <ItemTitle className="text-[12.5px] leading-tight">{item.title}</ItemTitle>
+        <ItemDescription className="text-[11.5px]">{item.subtitle}</ItemDescription>
+      </ItemContent>
       {onAction ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-[26px] shrink-0 px-2.5 text-xs"
-          onClick={onAction}
-        >
-          {item.actionLabel}
-        </Button>
+        <ItemActions>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-[26px] shrink-0 px-2.5 text-xs"
+            onClick={onAction}
+          >
+            {item.actionLabel}
+          </Button>
+        </ItemActions>
       ) : null}
-    </div>
+    </Item>
   );
 }
 
@@ -114,14 +125,16 @@ export function NeedsAttentionCard({
       <CardHeader>
         <CardTitle className="text-sm">Needs attention</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2">
-        {items.map((item) => (
-          <AttentionRow
-            key={item.id}
-            item={item}
-            onAction={onOpenReviewQueue}
-          />
-        ))}
+      <CardContent>
+        <ItemGroup className="gap-2">
+          {items.map((item) => (
+            <AttentionRow
+              key={item.id}
+              item={item}
+              onAction={onOpenReviewQueue}
+            />
+          ))}
+        </ItemGroup>
       </CardContent>
     </Card>
   );
