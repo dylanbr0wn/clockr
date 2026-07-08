@@ -9,8 +9,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -153,43 +158,41 @@ export function GapSuggestDialog({
               </p>
             )}
 
-            <div className="grid gap-2">
-              <Label htmlFor="gap-suggest-note">Description</Label>
-              <Input
-                id="gap-suggest-note"
-                value={note}
-                onChange={(changeEvent) => setNote(changeEvent.target.value)}
-                placeholder="What were you working on?"
-              />
-            </div>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="gap-suggest-note">Description</FieldLabel>
+                <Input
+                  id="gap-suggest-note"
+                  value={note}
+                  onChange={(changeEvent) => setNote(changeEvent.target.value)}
+                  placeholder="What were you working on?"
+                />
+              </Field>
 
-            <div className="grid gap-2">
-              <Label>Category</Label>
-              <Select value={categoryValue} onValueChange={setCategoryValue}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Choose category" />
-                </SelectTrigger>
-                <SelectContent position="popper" align="start">
-                  <SelectItem value={UNASSIGNED_CATEGORY_VALUE}>
-                    Unassigned
-                  </SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem
-                      key={category.id}
-                      value={category.id.toString()}
-                    >
-                      {category.name}
+              <Field>
+                <FieldLabel htmlFor="gap-suggest-category">Category</FieldLabel>
+                <Select value={categoryValue} onValueChange={setCategoryValue}>
+                  <SelectTrigger id="gap-suggest-category" className="w-full">
+                    <SelectValue placeholder="Choose category" />
+                  </SelectTrigger>
+                  <SelectContent position="popper" align="start">
+                    <SelectItem value={UNASSIGNED_CATEGORY_VALUE}>
+                      Unassigned
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                    {categories.map((category) => (
+                      <SelectItem
+                        key={category.id}
+                        value={category.id.toString()}
+                      >
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
 
-            {formError && (
-              <p className="rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-sm text-destructive">
-                {formError}
-              </p>
-            )}
+              {formError ? <FieldError>{formError}</FieldError> : null}
+            </FieldGroup>
 
             <DialogFooter>
               <Button

@@ -7,8 +7,12 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Field,
+  FieldError,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -213,10 +217,10 @@ export function CalendarSettings() {
           )}
 
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-            <div className="grid gap-1.5">
-              <Label htmlFor="google-account-email" className="text-xs">
+            <Field>
+              <FieldLabel htmlFor="google-account-email">
                 Google account email
-              </Label>
+              </FieldLabel>
               <Input
                 id="google-account-email"
                 type="email"
@@ -229,7 +233,7 @@ export function CalendarSettings() {
                   }
                 }}
               />
-            </div>
+            </Field>
             <Button
               type="button"
               disabled={!accountEmail.trim() || isBusy}
@@ -243,9 +247,7 @@ export function CalendarSettings() {
             </Button>
           </div>
 
-          {connectError ? (
-            <p className="text-sm text-destructive">{connectError}</p>
-          ) : null}
+          {connectError ? <FieldError>{connectError}</FieldError> : null}
         </div>
       </SettingBlock>
 
@@ -297,33 +299,47 @@ export function CalendarSettings() {
                   {calendar.selected ? "Importing" : "Import"}
                 </Toggle>
 
-                <Select
-                  value={
-                    calendar.defaultCategoryId
-                      ? String(calendar.defaultCategoryId)
-                      : NONE_CATEGORY
-                  }
-                  onValueChange={(value) => {
-                    void setCalendarDefaultCategory.mutateAsync({
-                      calendarID: calendar.id,
-                      categoryID:
-                        value === NONE_CATEGORY ? null : Number(value),
-                    });
-                  }}
-                  disabled={isBusy}
-                >
-                  <SelectTrigger className="w-full bg-background" aria-label={`Default category for ${calendar.name}`}>
-                    <SelectValue placeholder="Default category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE_CATEGORY}>No default</SelectItem>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={String(category.id)}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Field>
+                  <FieldLabel
+                    htmlFor={`calendar-category-${calendar.id}`}
+                    className="sr-only"
+                  >
+                    Default category for {calendar.name}
+                  </FieldLabel>
+                  <Select
+                    value={
+                      calendar.defaultCategoryId
+                        ? String(calendar.defaultCategoryId)
+                        : NONE_CATEGORY
+                    }
+                    onValueChange={(value) => {
+                      void setCalendarDefaultCategory.mutateAsync({
+                        calendarID: calendar.id,
+                        categoryID:
+                          value === NONE_CATEGORY ? null : Number(value),
+                      });
+                    }}
+                    disabled={isBusy}
+                  >
+                    <SelectTrigger
+                      id={`calendar-category-${calendar.id}`}
+                      className="w-full bg-background"
+                    >
+                      <SelectValue placeholder="Default category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE_CATEGORY}>No default</SelectItem>
+                      {categories.map((category) => (
+                        <SelectItem
+                          key={category.id}
+                          value={String(category.id)}
+                        >
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
               </div>
             ))}
           </div>

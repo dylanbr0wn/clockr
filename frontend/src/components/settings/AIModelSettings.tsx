@@ -7,8 +7,14 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+  FieldTitle,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -178,9 +184,9 @@ export function AIModelSettings() {
         title="AI Model"
         description="Bring your own model. Point Clockr at a local runtime or a custom OpenAI-compatible endpoint for categorization suggestions."
       >
-        <div className="space-y-2">
+        <Field>
           <div className="flex items-center justify-between gap-3">
-            <Label className="text-xs">Detected endpoints</Label>
+            <FieldTitle>Detected endpoints</FieldTitle>
             <Button
               type="button"
               variant="ghost"
@@ -233,18 +239,16 @@ export function AIModelSettings() {
               </button>
             ))}
           </div>
-        </div>
+        </Field>
       </SettingBlock>
 
       <SettingBlock
         title="Connection"
         description="Configure the OpenAI-compatible base URL and model Clockr should use."
       >
-        <div className="grid gap-3">
-          <div className="grid gap-1.5">
-            <Label htmlFor="ai-base-url" className="text-xs">
-              Base URL
-            </Label>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor="ai-base-url">Base URL</FieldLabel>
             <Input
               id="ai-base-url"
               className="font-mono"
@@ -258,12 +262,15 @@ export function AIModelSettings() {
               }}
               placeholder="http://127.0.0.1:11434/v1"
             />
-          </div>
+          </Field>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="ai-api-key" className="text-xs">
-              API key <span className="text-muted-foreground">(optional)</span>
-            </Label>
+          <Field>
+            <FieldLabel htmlFor="ai-api-key">
+              API key{" "}
+              <span className="font-normal text-muted-foreground">
+                (optional)
+              </span>
+            </FieldLabel>
             <Input
               id="ai-api-key"
               type="password"
@@ -272,13 +279,11 @@ export function AIModelSettings() {
               onChange={(event) => setApiKey(event.target.value)}
               placeholder="Not required for local models"
             />
-          </div>
+          </Field>
 
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-            <div className="grid gap-1.5">
-              <Label htmlFor="ai-model" className="text-xs">
-                Model
-              </Label>
+            <Field>
+              <FieldLabel htmlFor="ai-model">Model</FieldLabel>
               <Select
                 value={activeModel || undefined}
                 onValueChange={handleModelChange}
@@ -294,7 +299,7 @@ export function AIModelSettings() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
 
             <div className="flex gap-2">
               <Button
@@ -324,26 +329,31 @@ export function AIModelSettings() {
             </div>
           </div>
 
-          <Input
-            aria-label="Custom model name"
-            className="font-mono"
-            value={activeModel}
-            onChange={(event) => setModelDraft(event.target.value)}
-            onBlur={(event) => {
-              const nextModel = event.target.value.trim();
-              setModelDraft(null);
-              if (nextModel) {
-                void saveModel.mutate(nextModel);
-              }
-            }}
-            placeholder="Or type a model name"
-          />
+          <Field>
+            <FieldLabel htmlFor="ai-custom-model" className="sr-only">
+              Custom model name
+            </FieldLabel>
+            <Input
+              id="ai-custom-model"
+              className="font-mono"
+              value={activeModel}
+              onChange={(event) => setModelDraft(event.target.value)}
+              onBlur={(event) => {
+                const nextModel = event.target.value.trim();
+                setModelDraft(null);
+                if (nextModel) {
+                  void saveModel.mutate(nextModel);
+                }
+              }}
+              placeholder="Or type a model name"
+            />
+          </Field>
 
           {isSavedEndpoint ? (
-            <p className="text-sm text-muted-foreground">
+            <FieldDescription>
               Saved endpoint: {savedBaseURL.replace(/^https?:\/\//, "")}
               {isSavedModel && savedModel ? ` · model: ${savedModel}` : null}
-            </p>
+            </FieldDescription>
           ) : null}
 
           {classification ? (
@@ -373,9 +383,9 @@ export function AIModelSettings() {
           ) : null}
 
           {validationMessage ? (
-            <p className="text-sm text-muted-foreground">{validationMessage}</p>
+            <FieldDescription>{validationMessage}</FieldDescription>
           ) : null}
-        </div>
+        </FieldGroup>
       </SettingBlock>
     </div>
   );
