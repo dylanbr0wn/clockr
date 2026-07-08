@@ -40,6 +40,7 @@ auto-migrated and seeded on startup. There are no separate backing services to r
 | Job | Command |
 |-----|---------|
 | Go tests | `go test ./internal/...` |
+| Frontend typecheck | `pnpm -C frontend install --frozen-lockfile && pnpm -C frontend typecheck` |
 | Frontend tests | `pnpm -C frontend install --frozen-lockfile && pnpm -C frontend test` |
 
 Lint is not gated in CI yet (2 pre-existing `react-refresh/only-export-components` errors in shadcn `tabs`/`toggle`).
