@@ -9,6 +9,20 @@ Use **Linear** for all tickets, bugs, and feature requests — not GitHub Issues
 - Do not create GitHub Issues unless the user explicitly asks
 - `gh` is still fine for PRs, CI, and other repo operations
 
+## Agent skills
+
+### Issue tracker
+
+Issues, bugs, feature requests, specs, and ticket breakdowns are tracked in Linear for the Clockr project; GitHub is used for PRs and CI only. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Use the default five-role triage vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, and `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Clockr uses a single-context domain-doc layout: root `CONTEXT.md` plus root `docs/adr/`. See `docs/agents/domain.md`.
+
 ## Cursor Cloud specific instructions
 
 Clockr is a single **Wails v2 desktop app**: a Go backend (root `app.go`/`main.go` + `internal/`)
