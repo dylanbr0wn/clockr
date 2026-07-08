@@ -204,6 +204,9 @@ func (s *Service) resolveIncludeExclude(ctx context.Context, q *sqlc.Queries, it
 
 	switch action {
 	case ReviewActionInclude:
+		if item.Kind == reviewAllDay {
+			return s.clearAllDayReviewExclusion(ctx, q, item.EventID.Int64)
+		}
 		return nil
 	case ReviewActionExclude:
 		ev, err := q.GetEvent(ctx, item.EventID.Int64)
@@ -213,10 +216,44 @@ func (s *Service) resolveIncludeExclude(ctx context.Context, q *sqlc.Queries, it
 		if err := s.deleteCategoryOverlay(ctx, q, ev); err != nil {
 			return err
 		}
+		if item.Kind == reviewAllDay {
+			// All-day markers never occupy gap time; exclude dismisses review only.
+			return s.clearAllDayReviewExclusion(ctx, q, ev.ID)
+		}
 		return markEventExcluded(ctx, q, ev)
 	default:
 		return fmt.Errorf("unsupported action %q for %s", action, item.Kind)
 	}
+}
+
+func (s *Service) clearAllDayReviewExclusion(ctx context.Context, q *sqlc.Queries, eventID int64) error {
+	ev, err := q.GetEvent(ctx, eventID)
+	if err != nil {
+		return mapErr("get event", err)
+	}
+	if ev.AllDay == 0 {
+		return nil
+	}
+	o, err := q.GetOverlay(ctx, sqlc.GetOverlayParams{
+		PeriodID:   ev.PeriodID,
+		Provider:   ev.Provider,
+		ExternalID: ev.ExternalID,
+		InstanceID: ev.InstanceID,
+		Kind:       overlayKindStatus,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return mapErr("get status overlay", err)
+	}
+	if o.Note != overlayStatusExclude {
+		return nil
+	}
+	if err := q.DeleteOverlay(ctx, o.ID); err != nil {
+		return mapErr("delete all-day status overlay", err)
+	}
+	return nil
 }
 
 func markEventExcluded(ctx context.Context, q *sqlc.Queries, ev sqlc.Event) error {

@@ -267,6 +267,27 @@ func TestSync_AllDayAndTentativeFlags(t *testing.T) {
 	if kinds["all_day"] != 1 || kinds["tentative"] != 1 {
 		t.Fatalf("want all_day + tentative, got %+v", kinds)
 	}
+
+	events, err := e.svc.ListEvents(ctx, e.periodID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 2 {
+		t.Fatalf("want 2 listed events, got %+v", events)
+	}
+	var listedAllDay *service.Event
+	for i := range events {
+		if events[i].AllDay {
+			listedAllDay = &events[i]
+			break
+		}
+	}
+	if listedAllDay == nil {
+		t.Fatalf("all-day event missing from ListEvents: %+v", events)
+	}
+	if listedAllDay.StartDate != "2026-06-03" || listedAllDay.EndDate != "2026-06-04" {
+		t.Fatalf("all-day dates: %+v", listedAllDay)
+	}
 }
 
 // mustOverlay assigns the env's category to an event occurrence (user override).
