@@ -173,6 +173,8 @@ export function useSchedulePage(): SchedulePageViewModel {
     activePeriod: derived.activePeriod,
     activePeriodId: derived.activePeriodId,
     categories,
+    events: period.eventsQuery.data ?? [],
+    reviewItems: period.reviewItemsQuery.data ?? [],
     days: derived.days,
     items: derived.items,
     allDayChipsByDay: derived.allDayChipsByDay,

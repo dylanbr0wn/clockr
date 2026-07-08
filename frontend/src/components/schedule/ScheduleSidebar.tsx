@@ -1,34 +1,22 @@
 import { useMemo } from "react";
 import { ExportActions } from "@/components/export/ExportActions";
-import { PeriodStatsPanel } from "@/components/stats/PeriodStatsPanel";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { CategoryTotalsCard } from "@/components/stats/CategoryTotalsCard";
+import { DailyBreakdownCard } from "@/components/stats/DailyBreakdownCard";
+import { NeedsAttentionCard } from "@/components/stats/NeedsAttentionCard";
+import { PeriodProgressCard } from "@/components/stats/PeriodProgressCard";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import type { Event, Period, ReviewItem } from "@/lib/api";
 import { buildPeriodExportSummary } from "@/lib/export";
-import { formatMinutes } from "@/lib/scheduler";
-import {
-  errorMessage,
-  formatCadence,
-  type ScheduleChange,
-} from "@/lib/schedule";
-import type { Period } from "@/lib/api";
+import { errorMessage, localDateKey, type ScheduleGapOverlay } from "@/lib/schedule";
 import type { ScheduleItem } from "@/lib/schedule/types";
 
 interface ScheduleSidebarProps {
   activePeriod: Period | null;
   items: ScheduleItem[];
-  visibleDayCount: number;
-  preview: ScheduleChange | null;
-  counts: {
-    events: number;
-    gapFills: number;
-    categories: number;
-    reviewItems: number;
-  };
+  events: Event[];
+  reviewItems: ReviewItem[];
+  visibleGaps: ScheduleGapOverlay[];
   onOpenReviewQueue?: () => void;
   isBackendLoading: boolean;
   backendError: unknown;
@@ -37,13 +25,14 @@ interface ScheduleSidebarProps {
 export function ScheduleSidebar({
   activePeriod,
   items,
-  visibleDayCount,
-  preview,
-  counts,
+  events,
+  reviewItems,
+  visibleGaps,
   onOpenReviewQueue,
   isBackendLoading,
   backendError,
 }: ScheduleSidebarProps) {
+  const today = useMemo(() => localDateKey(), []);
   const exportSummary = useMemo(() => {
     if (!activePeriod) {
       return null;
@@ -53,121 +42,43 @@ export function ScheduleSidebar({
   }, [activePeriod, items]);
 
   return (
-    <div className="flex flex-col gap-4">
-      <PeriodStatsPanel summary={exportSummary} />
-      <Card className="app-no-drag min-h-0 space-y-4 overflow-auto overscroll-none">
-        <CardHeader>
-          <CardTitle className="text-sm">Preview</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="min-h-16 rounded-md border border-border bg-muted p-3 text-sm text-muted-foreground">
-            {preview ? (
-              <div className="space-y-1">
-                <p className="font-medium text-foreground">
-                  {preview.interaction}
-                </p>
-                <p>{preview.day}</p>
-                <p>
-                  {formatMinutes(preview.startMinutes)}-
-                  {formatMinutes(preview.endMinutes)}
-                </p>
-              </div>
-            ) : (
-              <p>Idle</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-      <Card className="app-no-drag">
-        <CardHeader>
-          <CardTitle className="text-sm">Export</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-xs text-muted-foreground">
-            Copy this period summary or save the category-by-day CSV.
-          </p>
-          <div className="mt-3">
-            <ExportActions
-              summary={exportSummary}
-              disabled={!activePeriod || isBackendLoading}
-            />
-          </div>
-        </CardContent>
-      </Card>
-      <Card className="app-no-drag">
-        <CardHeader>
-          <CardTitle className="text-sm">Schedule</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3 text-sm">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-muted-foreground">Period</span>
-              <span className="truncate font-medium">
-                {activePeriod
-                  ? `${activePeriod.startDate} to ${activePeriod.endDate}`
-                  : "No period"}
-              </span>
-            </div>
-            {activePeriod && (
-              <>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">Cadence</span>
-                  <span className="font-medium">
-                    {formatCadence(activePeriod.cadence)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">Days</span>
-                  <span className="font-medium">{visibleDayCount}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">Target</span>
-                  <span className="font-medium">
-                    {activePeriod.targetHoursPerDay}h/day
-                  </span>
-                </div>
-              </>
-            )}
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-muted-foreground">Events</span>
-              <span className="font-medium">{counts.events}</span>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-muted-foreground">Gap fills</span>
-              <span className="font-medium">{counts.gapFills}</span>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-muted-foreground">Categories</span>
-              <span className="font-medium">{counts.categories}</span>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-muted-foreground">Review</span>
-              {counts.reviewItems > 0 && onOpenReviewQueue ? (
-                <Button
-                  className="h-7 px-2 font-semibold"
-                  size="sm"
-                  variant="secondary"
-                  onClick={onOpenReviewQueue}
-                >
-                  {counts.reviewItems} open
-                </Button>
-              ) : (
-                <span className="font-medium">{counts.reviewItems}</span>
-              )}
-            </div>
-            {isBackendLoading && (
-              <p className="rounded-md border border-border bg-background p-2 text-xs text-muted-foreground">
-                Loading backend data
-              </p>
-            )}
-            {backendError ? (
-              <p className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
-                {errorMessage(backendError)}
-              </p>
-            ) : null}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <ScrollArea className="app-no-drag h-full min-h-0">
+      <div className="flex min-h-full flex-col gap-3 p-1 pr-3">
+        <PeriodProgressCard summary={exportSummary} today={today} />
+        <CategoryTotalsCard summary={exportSummary} />
+        <NeedsAttentionCard
+          reviewItems={reviewItems}
+          events={events}
+          visibleGaps={visibleGaps}
+          onOpenReviewQueue={onOpenReviewQueue}
+        />
+        <DailyBreakdownCard summary={exportSummary} />
+        <div className="mt-auto space-y-2 pt-1">
+          {isBackendLoading ? (
+            <p className="rounded-md border border-border bg-background p-2 text-xs text-muted-foreground">
+              Loading backend data
+            </p>
+          ) : null}
+          {backendError ? (
+            <p className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
+              {errorMessage(backendError)}
+            </p>
+          ) : null}
+          <ExportActions
+            summary={exportSummary}
+            disabled={!activePeriod || isBackendLoading}
+            layout="stacked"
+          />
+          <Button
+            type="button"
+            className="w-full"
+            disabled
+            title="Finalize period is not available yet"
+          >
+            Finalize period
+          </Button>
+        </div>
+      </div>
+    </ScrollArea>
   );
 }

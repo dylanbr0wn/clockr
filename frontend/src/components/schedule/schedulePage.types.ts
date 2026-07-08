@@ -54,6 +54,8 @@ export interface SchedulePageViewModel {
   activePeriod: Period | null;
   activePeriodId: number | undefined;
   categories: Category[];
+  events: Event[];
+  reviewItems: ReviewItem[];
   days: ScheduleDay[];
   items: ScheduleItem[];
   allDayChipsByDay: Map<string, AllDayChip[]>;

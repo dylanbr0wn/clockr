@@ -78,3 +78,23 @@ export function localDateKey(date = new Date()) {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
+
+export function workingDaysRemaining(
+  period: Pick<Period, "startDate" | "endDate">,
+  today: string,
+) {
+  if (today > period.endDate) {
+    return 0;
+  }
+
+  const dayCount = inclusiveDayCount(period.startDate, period.endDate);
+  const days = buildDays(period.startDate, dayCount);
+
+  return days.reduce((count, day) => {
+    if (day.date < today || day.metadata?.isWeekend) {
+      return count;
+    }
+
+    return count + 1;
+  }, 0);
+}

@@ -27,7 +27,7 @@ export function ExportActions({
   );
   const isBusy = pendingAction !== null;
   const buttonClassName =
-    layout === "stacked" ? "w-full justify-start" : "flex-1";
+    layout === "stacked" ? "w-full justify-center" : "flex-1";
 
   const handleCopySummary = async () => {
     if (!summary) {
@@ -107,7 +107,7 @@ export function ExportActions({
         ) : (
           <Download className="size-4" />
         )}
-        Download CSV
+        Export CSV
       </Button>
     </div>
   );

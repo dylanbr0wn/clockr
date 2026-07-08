@@ -1,4 +1,15 @@
 import { formatDuration } from "@/lib/schedule";
+
+export function formatDecimalHours(minutes: number) {
+  const hours = minutes / 60;
+  const rounded = Math.round(hours * 10) / 10;
+
+  if (Number.isInteger(rounded)) {
+    return `${rounded}h`;
+  }
+
+  return `${rounded.toFixed(1)}h`;
+}
 import {
   sortedCategories,
   varianceMinutes,

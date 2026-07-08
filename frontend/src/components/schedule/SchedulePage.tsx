@@ -21,7 +21,7 @@ export function SchedulePage({ titlebarPaddingClass }: SchedulePageProps) {
         schedule={schedule}
       />
       <Separator />
-      <section className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px] p-3 bg-sidebar">
+      <section className="grid min-h-0 flex-1 gap-4 overflow-hidden lg:grid-cols-[minmax(0,1fr)_320px] p-3 bg-sidebar">
         <ScheduleTimeline
           data={{
             days: schedule.days,
@@ -47,9 +47,9 @@ export function SchedulePage({ titlebarPaddingClass }: SchedulePageProps) {
         <ScheduleSidebar
           activePeriod={schedule.activePeriod}
           items={schedule.items}
-          visibleDayCount={schedule.visibleDayCount}
-          preview={schedule.preview}
-          counts={schedule.counts}
+          events={schedule.events}
+          reviewItems={schedule.reviewItems}
+          visibleGaps={schedule.visibleGaps}
           onOpenReviewQueue={() => schedule.setReviewQueueOpen(true)}
           isBackendLoading={schedule.isBackendLoading}
           backendError={schedule.backendError}

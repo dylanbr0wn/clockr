@@ -24,7 +24,7 @@ export function ExportSettings() {
           {exportData.isLoading || currentPeriodQuery.isLoading ? (
             <p className="text-sm text-muted-foreground">Loading period totals</p>
           ) : (
-            <PeriodStatsPanel summary={exportData.summary} />
+            <PeriodStatsPanel summary={exportData.summary} today={today} />
           )}
           <ExportActions
             summary={exportData.summary}

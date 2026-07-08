@@ -92,3 +92,10 @@ export function sortedCategories(summary: PeriodExportSummary) {
 export function sortedCategoryNames(categories: Record<string, number>) {
   return Object.keys(categories).sort((left, right) => left.localeCompare(right));
 }
+
+export function sortCategoriesByMinutes(totals: Record<string, number>) {
+  return Object.keys(totals).sort((left, right) => {
+    const diff = totals[right] - totals[left];
+    return diff !== 0 ? diff : left.localeCompare(right);
+  });
+}
