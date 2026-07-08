@@ -11,6 +11,7 @@ import {
   SCHEDULE_END_MINUTES,
   SCHEDULE_START_MINUTES,
 } from "./constants";
+import { addDays } from "@/lib/scheduler";
 import {
   activeTimeZoneForDay,
   toDate,
@@ -18,6 +19,8 @@ import {
   zonedPosition,
 } from "./timezone";
 import type {
+  AllDayChip,
+  AllDaySpanPosition,
   ScheduleGapOverlay,
   ScheduleItem,
   SchedulePlacement,
@@ -78,7 +81,10 @@ export function eventToSchedulerItem(
         day: event.startDate,
         startMinutes: SCHEDULE_START_MINUTES,
         endMinutes: SCHEDULE_END_MINUTES,
-        metadata,
+        metadata: {
+          ...metadata,
+          isAllDay: true,
+        },
       },
       placement,
     );
@@ -104,6 +110,84 @@ export function eventToSchedulerItem(
     },
     placement,
   );
+}
+
+export function expandAllDayEventDays(event: ClockrEvent): string[] {
+  if (!event.startDate) {
+    return [];
+  }
+
+  const start = event.startDate;
+  const exclusiveEnd = event.endDate ?? addDays(start, 1);
+  const days: string[] = [];
+
+  for (let day = start; day < exclusiveEnd; day = addDays(day, 1)) {
+    days.push(day);
+  }
+
+  return days.length > 0 ? days : [start];
+}
+
+function allDaySpanPosition(
+  day: string,
+  spanDays: string[],
+): AllDaySpanPosition {
+  if (spanDays.length <= 1) {
+    return "single";
+  }
+
+  if (day === spanDays[0]) {
+    return "start";
+  }
+
+  if (day === spanDays[spanDays.length - 1]) {
+    return "end";
+  }
+
+  return "middle";
+}
+
+export function buildAllDayChipsByDay(
+  events: ClockrEvent[],
+  visibleDays: ReadonlySet<string>,
+  reviewByEventId: ReadonlyMap<number, EventReviewState>,
+): Map<string, AllDayChip[]> {
+  const chipsByDay = new Map<string, AllDayChip[]>();
+
+  for (const event of events) {
+    if (!event.allDay || !event.startDate) {
+      continue;
+    }
+
+    const reviewState = reviewByEventId.get(event.id);
+    const spanDays = expandAllDayEventDays(event);
+    const title = event.title || "Untitled event";
+    const kind = reviewState ? "review" : "calendar";
+    const category = reviewState ? "Needs review" : "Calendar";
+
+    for (const day of spanDays) {
+      if (!visibleDays.has(day)) {
+        continue;
+      }
+
+      const chip: AllDayChip = {
+        id: `event-${event.id}@${day}`,
+        eventId: event.id,
+        day,
+        title,
+        category,
+        kind,
+        reviewItemId: reviewState?.reviewItemId,
+        reviewKind: reviewState?.kind,
+        allDaySpan: allDaySpanPosition(day, spanDays),
+      };
+      const dayChips = chipsByDay.get(day) ?? [];
+      dayChips.push(chip);
+      chipsByDay.set(day, dayChips);
+    }
+  }
+
+  return chipsByDay;
 }
 
 export function gapFillToSchedulerItem(

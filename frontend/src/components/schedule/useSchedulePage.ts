@@ -29,6 +29,7 @@ import type { SchedulerCreateRequest } from "@/lib/scheduler";
 import type { SelectedGap } from "./GapSuggestDialog";
 import {
   START_DATE,
+  buildAllDayChipsByDay,
   buildDays,
   defaultTimeZone,
   eventToSchedulerItem,
@@ -37,6 +38,7 @@ import {
   localDateKey,
   periodContainsDate,
   periodDayCount,
+  type AllDayChip,
   type ScheduleChange,
   type ScheduleDay,
   type ScheduleGapOverlay,
@@ -59,6 +61,7 @@ export interface SchedulePageViewModel {
   categories: Category[];
   days: ScheduleDay[];
   items: ScheduleItem[];
+  allDayChipsByDay: Map<string, AllDayChip[]>;
   visibleGaps: ScheduleGapOverlay[];
   resettableDays: ReadonlySet<string>;
   totals: Record<string, number>;
@@ -226,6 +229,13 @@ export function useSchedulePage(): SchedulePageViewModel {
         ]),
     );
   }, [reviewItemsQuery.data]);
+  const allDayChipsByDay = useMemo(() => {
+    return buildAllDayChipsByDay(
+      eventsQuery.data ?? [],
+      visibleDaySet,
+      reviewItemsByEventId,
+    );
+  }, [eventsQuery.data, reviewItemsByEventId, visibleDaySet]);
   const backendItems = useMemo(() => {
     const events = eventsQuery.data ?? [];
     const gapFills = gapFillsQuery.data ?? [];
@@ -655,6 +665,7 @@ export function useSchedulePage(): SchedulePageViewModel {
     categories,
     days,
     items,
+    allDayChipsByDay,
     visibleGaps,
     resettableDays,
     totals,

@@ -25,6 +25,7 @@ export function SchedulePage({ titlebarPaddingClass }: SchedulePageProps) {
         <ScheduleTimeline
           days={schedule.days}
           items={schedule.items}
+          allDayChipsByDay={schedule.allDayChipsByDay}
           visibleGaps={schedule.visibleGaps}
           resettableDays={schedule.resettableDays}
           visibleDayCount={schedule.visibleDayCount}
@@ -37,6 +38,7 @@ export function SchedulePage({ titlebarPaddingClass }: SchedulePageProps) {
           onRemoveItem={schedule.handleRemoveEvent}
           onResetDay={schedule.handleResetDay}
           onSelectGap={schedule.handleSelectGap}
+          onOpenReviewQueue={() => schedule.setReviewQueueOpen(true)}
         />
         <ScheduleSidebar
           activePeriod={schedule.activePeriod}

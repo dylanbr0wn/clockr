@@ -6,3 +6,6 @@ export const WORKING_START_MINUTES = 8 * 60;
 export const WORKING_END_MINUTES = 18 * 60;
 export const INITIAL_SCROLL_CONTEXT_MINUTES = 2 * 60;
 export const TIMELINE_HOUR_HEIGHT = 56;
+export const ALL_DAY_CHIP_HEIGHT = 24;
+export const ALL_DAY_ROW_PADDING = 8;
+export const ALL_DAY_ROW_MIN_HEIGHT = 32;

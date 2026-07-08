@@ -6,12 +6,28 @@ import type {
 
 export type ScheduleKind = "calendar" | "gap" | "manual" | "review";
 
+export type AllDaySpanPosition = "single" | "start" | "middle" | "end";
+
 export interface ScheduleMetadata {
   title: string;
   category: string;
   kind: ScheduleKind;
   reviewItemId?: number;
   reviewKind?: string;
+  isAllDay?: boolean;
+  allDaySpan?: AllDaySpanPosition;
+}
+
+export interface AllDayChip {
+  id: string;
+  eventId: number;
+  day: string;
+  title: string;
+  category: string;
+  kind: ScheduleKind;
+  reviewItemId?: number;
+  reviewKind?: string;
+  allDaySpan: AllDaySpanPosition;
 }
 
 export interface ScheduleDayMetadata {

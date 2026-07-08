@@ -28,6 +28,9 @@ import {
 } from "@/lib/scheduler";
 import {
   INITIAL_SCROLL_CONTEXT_MINUTES,
+  ALL_DAY_CHIP_HEIGHT,
+  ALL_DAY_ROW_MIN_HEIGHT,
+  ALL_DAY_ROW_PADDING,
   SCHEDULE_END_MINUTES,
   SCHEDULE_START_MINUTES,
   TIMELINE_HOUR_HEIGHT,
@@ -36,6 +39,8 @@ import {
   durationLabel,
   formatTimeRange,
   kindClasses,
+  type AllDayChip,
+  type AllDaySpanPosition,
   type ScheduleChange,
   type ScheduleDay,
   type ScheduleDayMetadata,
@@ -47,6 +52,7 @@ import {
 interface ScheduleTimelineProps {
   days: ScheduleDay[];
   items: ScheduleItem[];
+  allDayChipsByDay: Map<string, AllDayChip[]>;
   visibleGaps: ScheduleGapOverlay[];
   resettableDays: ReadonlySet<string>;
   visibleDayCount: number;
@@ -59,11 +65,46 @@ interface ScheduleTimelineProps {
   onRemoveItem: (item: ScheduleItem) => void;
   onResetDay: (day: string) => void;
   onSelectGap: (gap: ScheduleGapOverlay) => void;
+  onOpenReviewQueue: () => void;
+}
+
+function allDaySpanClasses(span: AllDaySpanPosition) {
+  switch (span) {
+    case "single":
+      return "rounded-md";
+    case "start":
+      return "rounded-l-md rounded-r-sm";
+    case "middle":
+      return "rounded-none";
+    case "end":
+      return "rounded-r-md rounded-l-sm";
+  }
+}
+
+function computeAllDayRowHeight(allDayChipsByDay: Map<string, AllDayChip[]>) {
+  let maxChipsPerDay = 0;
+
+  for (const chips of allDayChipsByDay.values()) {
+    maxChipsPerDay = Math.max(maxChipsPerDay, chips.length);
+  }
+
+  if (maxChipsPerDay === 0) {
+    return 0;
+  }
+
+  const chipStackHeight =
+    maxChipsPerDay * ALL_DAY_CHIP_HEIGHT + Math.max(0, maxChipsPerDay - 1) * 4;
+
+  return Math.max(
+    ALL_DAY_ROW_MIN_HEIGHT,
+    ALL_DAY_ROW_PADDING * 2 + chipStackHeight,
+  );
 }
 
 export function ScheduleTimeline({
   days,
   items,
+  allDayChipsByDay,
   visibleGaps,
   resettableDays,
   visibleDayCount,
@@ -76,7 +117,11 @@ export function ScheduleTimeline({
   onRemoveItem,
   onResetDay,
   onSelectGap,
+  onOpenReviewQueue,
 }: ScheduleTimelineProps) {
+  const timedItems = items.filter((item) => !item.metadata?.isAllDay);
+  const allDayRowHeight = computeAllDayRowHeight(allDayChipsByDay);
+  const hasAllDayRow = allDayRowHeight > 0;
   const schedulerViewportRef = useRef<HTMLDivElement | null>(null);
   const didSetInitialScrollRef = useRef(false);
   const backgroundRequestRef = useRef<SchedulerCreateRequest | null>(null);
@@ -107,7 +152,7 @@ export function ScheduleTimeline({
   return (
     <Scheduler<ScheduleMetadata, ScheduleDayMetadata>
       days={days}
-      items={items}
+      items={timedItems}
       config={{
         maxDays: visibleDayCount,
         scheduleStartMinutes: SCHEDULE_START_MINUTES,
@@ -182,7 +227,9 @@ export function ScheduleTimeline({
               style={{
                 minWidth: `${72 + scheduler.days.length * 116}px`,
                 gridTemplateColumns: `72px repeat(${scheduler.days.length}, minmax(116px, 1fr))`,
-                gridTemplateRows: `52px ${timelineHeight}px`,
+                gridTemplateRows: hasAllDayRow
+                  ? `52px ${allDayRowHeight}px ${timelineHeight}px`
+                  : `52px ${timelineHeight}px`,
               }}
             >
               <div className="sticky left-0 top-0 z-40 border-b border-r border-border bg-background" />
@@ -207,6 +254,70 @@ export function ScheduleTimeline({
                   </div>
                 </div>
               ))}
+
+              {hasAllDayRow ? (
+                <>
+                  <div className="sticky left-0 top-[52px] z-30 flex items-center border-b border-r border-border bg-background px-2">
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      All day
+                    </span>
+                  </div>
+                  {scheduler.days.map((day, index) => {
+                    const chips = allDayChipsByDay.get(day.date) ?? [];
+                    const isWeekend = day.metadata?.isWeekend;
+
+                    return (
+                      <div
+                        key={`all-day-${day.date}`}
+                        className={cn([
+                          "sticky top-[52px] z-20 flex flex-col gap-1 border-b border-border px-1 py-1",
+                          isWeekend ? "bg-muted" : "bg-background",
+                          index % visibleDayCount !== visibleDayCount - 1
+                            ? "border-r"
+                            : "",
+                        ])}
+                        style={{ height: `${allDayRowHeight}px` }}
+                      >
+                        {chips.map((chip) => {
+                          const chipClass = kindClasses(chip.kind);
+                          const isReview = chip.kind === "review";
+
+                          return (
+                            <button
+                              key={chip.id}
+                              type="button"
+                              disabled={!isReview}
+                              onClick={() => {
+                                if (isReview) {
+                                  onOpenReviewQueue();
+                                }
+                              }}
+                              className={cn([
+                                "flex min-h-6 w-full flex-col justify-center border px-2 py-0.5 text-left text-[11px] shadow-sm",
+                                allDaySpanClasses(chip.allDaySpan),
+                                chipClass,
+                                isReview
+                                  ? "cursor-pointer hover:brightness-95"
+                                  : "cursor-default",
+                              ])}
+                            >
+                              {isReview ? (
+                                <div className="mb-0.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide opacity-80">
+                                  <AlertTriangleIcon className="size-2.5" />
+                                  <span>Needs review</span>
+                                </div>
+                              ) : null}
+                              <span className="truncate font-medium">
+                                {chip.title}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </>
+              ) : null}
 
               <div className="sticky left-0 z-20 border-r border-border bg-background">
                 {timelineMarks.map((minute) => (

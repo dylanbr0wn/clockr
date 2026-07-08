@@ -6,7 +6,9 @@ import type {
   TzSegment,
 } from "@/lib/api";
 import {
+  buildAllDayChipsByDay,
   eventToSchedulerItem,
+  expandAllDayEventDays,
   gapFillToSchedulerItem,
   gapIntervalToOverlay,
   periodContainsDate,
@@ -44,8 +46,106 @@ describe("schedule mappers", () => {
         title: "Offsite",
         category: "Calendar",
         kind: "calendar",
+        isAllDay: true,
       },
     });
+  });
+
+  it("expands all-day event days with exclusive end dates", () => {
+    expect(
+      expandAllDayEventDays({
+        id: 1,
+        periodId: 1,
+        calendarId: 1,
+        provider: "google",
+        externalId: "single",
+        title: "Single day",
+        allDay: true,
+        startDate: "2026-06-09",
+        active: true,
+      }),
+    ).toEqual(["2026-06-09"]);
+
+    expect(
+      expandAllDayEventDays({
+        id: 2,
+        periodId: 1,
+        calendarId: 1,
+        provider: "google",
+        externalId: "google-single",
+        title: "Google single day",
+        allDay: true,
+        startDate: "2026-06-03",
+        endDate: "2026-06-04",
+        active: true,
+      }),
+    ).toEqual(["2026-06-03"]);
+
+    expect(
+      expandAllDayEventDays({
+        id: 3,
+        periodId: 1,
+        calendarId: 1,
+        provider: "google",
+        externalId: "multi",
+        title: "Multi day",
+        allDay: true,
+        startDate: "2026-06-03",
+        endDate: "2026-06-06",
+        active: true,
+      }),
+    ).toEqual(["2026-06-03", "2026-06-04", "2026-06-05"]);
+  });
+
+  it("builds all-day chips for visible days with span positions", () => {
+    const events: ClockrEvent[] = [
+      {
+        id: 12,
+        periodId: 1,
+        calendarId: 3,
+        provider: "google",
+        externalId: "event-12",
+        title: "Offsite",
+        allDay: true,
+        startDate: "2026-06-09",
+        endDate: "2026-06-12",
+        active: true,
+      },
+      {
+        id: 34,
+        periodId: 1,
+        calendarId: 3,
+        provider: "google",
+        externalId: "event-34",
+        title: "Holiday",
+        allDay: true,
+        startDate: "2026-06-15",
+        active: true,
+      },
+    ];
+    const visibleDays = new Set(["2026-06-09", "2026-06-10", "2026-06-11"]);
+    const chipsByDay = buildAllDayChipsByDay(events, visibleDays, new Map());
+
+    expect(chipsByDay.get("2026-06-09")).toMatchObject([
+      {
+        id: "event-12@2026-06-09",
+        title: "Offsite",
+        allDaySpan: "start",
+      },
+    ]);
+    expect(chipsByDay.get("2026-06-10")).toMatchObject([
+      {
+        id: "event-12@2026-06-10",
+        allDaySpan: "middle",
+      },
+    ]);
+    expect(chipsByDay.get("2026-06-11")).toMatchObject([
+      {
+        id: "event-12@2026-06-11",
+        allDaySpan: "end",
+      },
+    ]);
+    expect(chipsByDay.has("2026-06-15")).toBe(false);
   });
 
   it("maps timed events into the active timezone position", () => {
