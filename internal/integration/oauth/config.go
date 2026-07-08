@@ -11,6 +11,7 @@ type ProviderConfig struct {
 	ClientSecret string
 	AuthURL      string
 	TokenURL     string
+	AuthStyle    oauth2.AuthStyle
 	Scopes       []string
 }
 
@@ -23,8 +24,9 @@ func (c ProviderConfig) OAuth2Config(redirectURL string) oauth2.Config {
 		RedirectURL:  redirectURL,
 		Scopes:       append([]string(nil), c.Scopes...),
 		Endpoint: oauth2.Endpoint{
-			AuthURL:  c.AuthURL,
-			TokenURL: c.TokenURL,
+			AuthURL:   c.AuthURL,
+			TokenURL:  c.TokenURL,
+			AuthStyle: c.AuthStyle,
 		},
 	}
 }

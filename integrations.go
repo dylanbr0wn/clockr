@@ -35,7 +35,7 @@ func (a connectionAdapter) ListByProvider(ctx context.Context, provider string) 
 func wireIntegrations(conn *sql.DB, svc *service.Service, cfg config.Config) (*google.Provider, *connection.Registry) {
 	registry := connection.NewRegistry(conn)
 	provider := &google.Provider{
-		Config:   google.OAuthConfig(cfg.Google.ClientID, cfg.Google.ClientSecret),
+		Config:   google.OAuthConfig(cfg.Google.ClientID),
 		Store:    secrets.NewKeyringStore(),
 		Registry: registry,
 		Queries:  sqlc.New(conn),
