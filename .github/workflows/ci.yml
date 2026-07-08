@@ -40,6 +40,10 @@ jobs:
         working-directory: frontend
         run: pnpm install --frozen-lockfile
 
+      - name: TypeScript check
+        working-directory: frontend
+        run: pnpm typecheck
+
       - name: Run frontend tests
         working-directory: frontend
         run: pnpm test
