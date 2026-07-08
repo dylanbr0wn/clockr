@@ -237,7 +237,7 @@ func (s *Service) handleNewEvent(ctx context.Context, q *sqlc.Queries, periodID 
 			}
 		}
 	case inc.AllDay:
-		action, created, err := s.enqueueIfUnresolved(ctx, q, periodID, reviewAllDay, eventID,
+		_, created, err := s.enqueueIfUnresolved(ctx, q, periodID, reviewAllDay, eventID,
 			reviewConflictKey(identity, inc.StartDate, inc.EndDate),
 			map[string]any{"title": inc.Title})
 		if err != nil {
@@ -245,10 +245,6 @@ func (s *Service) handleNewEvent(ctx context.Context, q *sqlc.Queries, periodID 
 		}
 		if created {
 			res.Flagged++
-		}
-		switch action {
-		case ReviewActionExclude:
-		case ReviewActionInclude:
 		}
 		if err := s.clearAllDayReviewExclusion(ctx, q, eventID); err != nil {
 			return err
