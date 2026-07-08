@@ -42,6 +42,7 @@ describe("schedule mappers", () => {
       day: "2026-06-09",
       startMinutes: 0,
       endMinutes: 24 * 60,
+      disabled: true,
       metadata: {
         title: "Offsite",
         category: "Calendar",
@@ -167,6 +168,7 @@ describe("schedule mappers", () => {
       day: "2026-06-09",
       startMinutes: 9 * 60 + 30,
       endMinutes: 11 * 60,
+      disabled: true,
     });
   });
 
@@ -191,6 +193,7 @@ describe("schedule mappers", () => {
       }),
     ).toMatchObject({
       id: "event-34",
+      disabled: true,
       metadata: {
         category: "Needs review",
         kind: "review",

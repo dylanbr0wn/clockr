@@ -81,6 +81,7 @@ export function eventToSchedulerItem(
         day: event.startDate,
         startMinutes: SCHEDULE_START_MINUTES,
         endMinutes: SCHEDULE_END_MINUTES,
+        disabled: true,
         metadata: {
           ...metadata,
           isAllDay: true,
@@ -106,6 +107,7 @@ export function eventToSchedulerItem(
       day: start.day,
       startMinutes: start.minutes,
       endMinutes: Math.max(start.minutes + 15, endMinutes),
+      disabled: true,
       metadata,
     },
     placement,

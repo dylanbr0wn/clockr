@@ -461,6 +461,11 @@ export function useSchedulePage(): SchedulePageViewModel {
   };
 
   const handleCommit = (change: ScheduleChange) => {
+    if (change.itemId.startsWith("event-")) {
+      setPreview(null);
+      return;
+    }
+
     if (change.itemId.startsWith("gap-fill-")) {
       const gapFill = gapFillsByItemId.get(change.itemId);
 
@@ -497,17 +502,6 @@ export function useSchedulePage(): SchedulePageViewModel {
 
       setPreview(null);
       return;
-    }
-
-    if (change.itemId.startsWith("event-")) {
-      setDraftPlacements((current) => ({
-        ...current,
-        [change.itemId]: {
-          day: change.day,
-          startMinutes: change.startMinutes,
-          endMinutes: change.endMinutes,
-        },
-      }));
     }
 
     setPreview(null);
