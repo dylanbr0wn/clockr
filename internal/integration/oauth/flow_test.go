@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/dylanbr0wn/clockr/internal/integration/oauth"
 	"github.com/dylanbr0wn/clockr/internal/integration/secrets"
@@ -55,7 +57,7 @@ func TestProviderOAuth2Config(t *testing.T) {
 	}
 }
 
-func TestFlowAuthorizeExchangesCodeWithoutClientSecret(t *testing.T) {
+func TestFlowAuthorizeExchangesCodeWithOptionalClientSecret(t *testing.T) {
 	var form url.Values
 	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -76,15 +78,18 @@ func TestFlowAuthorizeExchangesCodeWithoutClientSecret(t *testing.T) {
 	}))
 	defer tokenServer.Close()
 
+	callbackBody := make(chan string, 1)
+	callbackErr := make(chan error, 1)
 	store := secrets.NewMemoryStore()
 	flow := oauth.Flow{
 		Config: oauth.ProviderConfig{
-			Provider:  "google",
-			ClientID:  "client-id",
-			AuthURL:   "https://accounts.google.com/o/oauth2/v2/auth",
-			TokenURL:  tokenServer.URL,
-			AuthStyle: oauth2.AuthStyleInParams,
-			Scopes:    []string{"calendar.readonly"},
+			Provider:     "google",
+			ClientID:     "client-id",
+			ClientSecret: "client-secret",
+			AuthURL:      "https://accounts.google.com/o/oauth2/v2/auth",
+			TokenURL:     tokenServer.URL,
+			AuthStyle:    oauth2.AuthStyleInParams,
+			Scopes:       []string{"calendar.readonly"},
 		},
 		Store: store,
 		OpenURL: func(rawURL string) error {
@@ -115,12 +120,8 @@ func TestFlowAuthorizeExchangesCodeWithoutClientSecret(t *testing.T) {
 			params.Set("state", q.Get("state"))
 			redirectURL.RawQuery = params.Encode()
 
-			resp, err := http.Get(redirectURL.String())
-			if err != nil {
-				return err
-			}
-			_, _ = io.Copy(io.Discard, resp.Body)
-			return resp.Body.Close()
+			go fetchCallbackPage(redirectURL.String(), callbackBody, callbackErr)
+			return nil
 		},
 	}
 
@@ -134,8 +135,8 @@ func TestFlowAuthorizeExchangesCodeWithoutClientSecret(t *testing.T) {
 	if form.Get("client_id") != "client-id" {
 		t.Fatalf("exchange client id: %q", form.Get("client_id"))
 	}
-	if form.Get("client_secret") != "" {
-		t.Fatalf("exchange included client_secret: %q", form.Get("client_secret"))
+	if form.Get("client_secret") != "client-secret" {
+		t.Fatalf("exchange client secret: %q", form.Get("client_secret"))
 	}
 	if form.Get("code") != "auth-code" {
 		t.Fatalf("exchange code: %q", form.Get("code"))
@@ -154,6 +155,127 @@ func TestFlowAuthorizeExchangesCodeWithoutClientSecret(t *testing.T) {
 	if stored.RefreshToken != "refresh" {
 		t.Fatalf("stored token: %+v", stored)
 	}
+
+	body := awaitCallbackBody(t, callbackBody, callbackErr)
+	if !strings.Contains(body, "Authorization complete") {
+		t.Fatalf("callback body: %q", body)
+	}
+}
+
+func TestFlowAuthorizeShowsExchangeFailureOnCallbackPage(t *testing.T) {
+	testCases := []struct {
+		name        string
+		code        string
+		description string
+	}{
+		{
+			name:        "invalid client",
+			code:        "invalid_client",
+			description: "Unauthorized",
+		},
+		{
+			name:        "web client missing secret",
+			code:        "invalid_request",
+			description: "client_secret is missing.",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			runExchangeFailureCallbackTest(t, tc.code, tc.description)
+		})
+	}
+}
+
+func runExchangeFailureCallbackTest(t *testing.T, code, description string) {
+	t.Helper()
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"error":             code,
+			"error_description": description,
+		})
+	}))
+	defer tokenServer.Close()
+
+	callbackBody := make(chan string, 1)
+	callbackErr := make(chan error, 1)
+	flow := oauth.Flow{
+		Config: oauth.ProviderConfig{
+			Provider:  "google",
+			ClientID:  "web-client-id",
+			AuthURL:   "https://accounts.google.com/o/oauth2/v2/auth",
+			TokenURL:  tokenServer.URL,
+			AuthStyle: oauth2.AuthStyleInParams,
+			Scopes:    []string{"calendar.readonly"},
+		},
+		Store: secrets.NewMemoryStore(),
+		OpenURL: func(rawURL string) error {
+			authURL, err := url.Parse(rawURL)
+			if err != nil {
+				return err
+			}
+			q := authURL.Query()
+			redirectURL, err := url.Parse(q.Get("redirect_uri"))
+			if err != nil {
+				return err
+			}
+			params := redirectURL.Query()
+			params.Set("code", "auth-code")
+			params.Set("state", q.Get("state"))
+			redirectURL.RawQuery = params.Encode()
+
+			go fetchCallbackPage(redirectURL.String(), callbackBody, callbackErr)
+			return nil
+		},
+	}
+
+	_, err := flow.Authorize(t.Context(), "user@example.com")
+	if err == nil {
+		t.Fatal("expected exchange error")
+	}
+	if !strings.Contains(err.Error(), "CLOCKR_GOOGLE_CLIENT_SECRET") {
+		t.Fatalf("error should mention client secret configuration: %v", err)
+	}
+
+	body := awaitCallbackBody(t, callbackBody, callbackErr)
+	if !strings.Contains(body, "CLOCKR_GOOGLE_CLIENT_SECRET") {
+		t.Fatalf("callback body should mention client secret configuration: %q", body)
+	}
+}
+
+func fetchCallbackPage(rawURL string, bodyCh chan<- string, errCh chan<- error) {
+	resp, err := http.Get(rawURL)
+	if err != nil {
+		errCh <- err
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		errCh <- err
+		return
+	}
+	bodyCh <- string(body)
+}
+
+func awaitCallbackBody(t *testing.T, bodyCh <-chan string, errCh <-chan error) string {
+	t.Helper()
+	select {
+	case body := <-bodyCh:
+		return body
+	case err := <-errCh:
+		t.Fatal(err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for callback page")
+	}
+	return ""
 }
 
 func cloneValues(values url.Values) url.Values {

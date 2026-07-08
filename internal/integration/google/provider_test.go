@@ -21,15 +21,15 @@ import (
 )
 
 func TestOAuthConfig(t *testing.T) {
-	cfg := google.OAuthConfig("client-id")
+	cfg := google.OAuthConfig("client-id", "client-secret")
 	if cfg.Provider != service.ProviderGoogle {
 		t.Fatalf("provider: %q", cfg.Provider)
 	}
 	if cfg.ClientID != "client-id" {
 		t.Fatalf("client id: %q", cfg.ClientID)
 	}
-	if cfg.ClientSecret != "" {
-		t.Fatalf("client secret should be empty for desktop OAuth: %q", cfg.ClientSecret)
+	if cfg.ClientSecret != "client-secret" {
+		t.Fatalf("client secret: %q", cfg.ClientSecret)
 	}
 	if cfg.AuthURL != "https://accounts.google.com/o/oauth2/v2/auth" {
 		t.Fatalf("auth url: %q", cfg.AuthURL)
@@ -73,7 +73,7 @@ func newProviderEnv(t *testing.T, handler http.Handler) (*google.Provider, *conn
 	t.Cleanup(server.Close)
 
 	store := secrets.NewMemoryStore()
-	cfg := google.OAuthConfig("client-id")
+	cfg := google.OAuthConfig("client-id", "client-secret")
 	reg := connection.NewRegistry(conn)
 	q := sqlc.New(conn)
 

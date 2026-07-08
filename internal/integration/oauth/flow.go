@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"log"
 	"net"
@@ -21,10 +22,10 @@ import (
 )
 
 const (
-	callbackPath     = "/oauth/callback"
-	loopbackHost     = "127.0.0.1"
-	authWaitTimeout  = 5 * time.Minute
-	shutdownGrace    = 250 * time.Millisecond
+	callbackPath    = "/oauth/callback"
+	loopbackHost    = "127.0.0.1"
+	authWaitTimeout = 5 * time.Minute
+	shutdownGrace   = 250 * time.Millisecond
 )
 
 // BrowserOpener opens a URL in the system browser. Injectable for tests.
@@ -43,6 +44,11 @@ type Result struct {
 	AccountID string
 	Token     secrets.Token
 	Scopes    []string
+}
+
+type callbackResult struct {
+	status  int
+	message string
 }
 
 // Authorize opens the system browser, waits for the loopback redirect, exchanges
@@ -81,6 +87,7 @@ func (f *Flow) Authorize(ctx context.Context, accountID string) (Result, error) 
 
 	codeCh := make(chan string, 1)
 	errCh := make(chan error, 1)
+	resultCh := make(chan callbackResult, 1)
 
 	srv := &http.Server{
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -105,9 +112,15 @@ func (f *Flow) Authorize(ctx context.Context, accountID string) (Result, error) 
 				http.Error(w, "missing code", http.StatusBadRequest)
 				return
 			}
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			_, _ = io.WriteString(w, "<html><body><p>Authorization complete. You can close this window and return to Clockr.</p></body></html>")
 			codeCh <- code
+
+			select {
+			case result := <-resultCh:
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				w.WriteHeader(result.status)
+				_, _ = io.WriteString(w, callbackPage(result.message))
+			case <-r.Context().Done():
+			}
 		}),
 	}
 
@@ -141,17 +154,32 @@ func (f *Flow) Authorize(ctx context.Context, accountID string) (Result, error) 
 	case code = <-codeCh:
 	}
 
-	shutdownAndWait(srv, &serveWG)
-
 	oauthTok, err := oauthCfg.Exchange(ctx, code, oauth2.VerifierOption(verifier))
 	if err != nil {
-		return Result{}, fmt.Errorf("exchange code: %w", err)
+		exchangeErr := fmt.Errorf("exchange code: %w", describeExchangeError(err))
+		sendCallbackResult(resultCh, callbackResult{
+			status:  http.StatusBadGateway,
+			message: exchangeErr.Error(),
+		})
+		shutdownAndWait(srv, &serveWG)
+		return Result{}, exchangeErr
 	}
 
 	token := secrets.TokenFromOAuth2(oauthTok)
 	if err := f.Store.Set(f.Config.Provider, accountID, token); err != nil {
+		sendCallbackResult(resultCh, callbackResult{
+			status:  http.StatusInternalServerError,
+			message: "Authorization succeeded, but Clockr could not save the token. Return to Clockr for details.",
+		})
+		shutdownAndWait(srv, &serveWG)
 		return Result{}, fmt.Errorf("persist token: %w", err)
 	}
+
+	sendCallbackResult(resultCh, callbackResult{
+		status:  http.StatusOK,
+		message: "Authorization complete. You can close this window and return to Clockr.",
+	})
+	shutdownAndWait(srv, &serveWG)
 
 	return Result{
 		Provider:  f.Config.Provider,
@@ -159,6 +187,33 @@ func (f *Flow) Authorize(ctx context.Context, accountID string) (Result, error) 
 		Token:     token,
 		Scopes:    append([]string(nil), f.Config.Scopes...),
 	}, nil
+}
+
+func sendCallbackResult(ch chan<- callbackResult, result callbackResult) {
+	select {
+	case ch <- result:
+	default:
+	}
+}
+
+func describeExchangeError(err error) error {
+	var retrieveErr *oauth2.RetrieveError
+	if errors.As(err, &retrieveErr) && isDesktopClientTypeError(retrieveErr) {
+		return fmt.Errorf("%w. Google rejected the OAuth token exchange because the configured client requires a client secret. Set google.client_secret or CLOCKR_GOOGLE_CLIENT_SECRET from the Google Desktop OAuth credential bundle; desktop apps cannot keep this value confidential, so treat it as a provider-required public credential rather than a security boundary", err)
+	}
+	return err
+}
+
+func isDesktopClientTypeError(err *oauth2.RetrieveError) bool {
+	if err.ErrorCode == "invalid_client" {
+		return true
+	}
+	return err.ErrorCode == "invalid_request" &&
+		strings.Contains(strings.ToLower(err.ErrorDescription), "client_secret")
+}
+
+func callbackPage(message string) string {
+	return "<!doctype html><html><body><p>" + html.EscapeString(message) + "</p></body></html>"
 }
 
 func shutdownAndWait(srv *http.Server, serveWG *sync.WaitGroup) {

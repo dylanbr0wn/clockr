@@ -110,10 +110,11 @@ func TestClientRefreshesOn401(t *testing.T) {
 		Provider:  "google",
 		AccountID: "user@example.com",
 		Config: oauth.ProviderConfig{
-			Provider:  "google",
-			ClientID:  "client-id",
-			TokenURL:  tokenServer.URL + "/token",
-			AuthStyle: oauth2.AuthStyleInParams,
+			Provider:     "google",
+			ClientID:     "client-id",
+			ClientSecret: "client-secret",
+			TokenURL:     tokenServer.URL + "/token",
+			AuthStyle:    oauth2.AuthStyleInParams,
 		},
 		Store:    store,
 		Registry: registry,
@@ -142,8 +143,8 @@ func TestClientRefreshesOn401(t *testing.T) {
 	if tokenForm.Get("client_id") != "client-id" {
 		t.Fatalf("refresh client id: %q", tokenForm.Get("client_id"))
 	}
-	if tokenForm.Get("client_secret") != "" {
-		t.Fatalf("refresh included client_secret: %q", tokenForm.Get("client_secret"))
+	if tokenForm.Get("client_secret") != "client-secret" {
+		t.Fatalf("refresh client secret: %q", tokenForm.Get("client_secret"))
 	}
 	if tokenForm.Get("refresh_token") != "refresh" {
 		t.Fatalf("refresh token: %q", tokenForm.Get("refresh_token"))

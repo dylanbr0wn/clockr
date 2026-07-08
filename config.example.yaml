@@ -8,6 +8,9 @@
 #   CLOCKR_DB                  -> db.path
 #   CLOCKR_GOOGLE_CLIENT_ID    -> google.client_id
 #   CLOCKR_GOOGLE_CLIENT_SECRET -> google.client_secret
+#
+# Google Desktop OAuth clients may require client_secret at the token endpoint,
+# but desktop apps cannot keep it confidential once shipped.
 
 db:
   path: ~/.config/clockr/clockr.db

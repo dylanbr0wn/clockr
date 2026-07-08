@@ -468,6 +468,17 @@ export function useIntegrationConnections() {
 
 export function useConnectGoogle() {
   const queryClient = useQueryClient();
+  const refreshGoogleQueries = () => {
+    void queryClient.invalidateQueries({
+      queryKey: clockrQueryKeys.connections(),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: clockrQueryKeys.calendars(),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: clockrQueryKeys.selectedCalendars(),
+    });
+  };
 
   return useMutation({
     mutationFn: ({
@@ -477,17 +488,7 @@ export function useConnectGoogle() {
       accountID: string;
       accountLabel: string;
     }) => connectGoogle(accountID, accountLabel),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.connections(),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.calendars(),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.selectedCalendars(),
-      });
-    },
+    onSettled: refreshGoogleQueries,
   });
 }
 
