@@ -35,6 +35,17 @@ func Migrate(conn *sql.DB) error {
 	return nil
 }
 
+// MigrateTo brings the database up to a specific schema version (dev tooling).
+func MigrateTo(conn *sql.DB, version int64) error {
+	if err := configure(); err != nil {
+		return err
+	}
+	if err := goose.UpTo(conn, migrationsDir, version); err != nil {
+		return fmt.Errorf("goose up to %d: %w", version, err)
+	}
+	return nil
+}
+
 // MigrateDownOne rolls back a single migration (dev tooling).
 func MigrateDownOne(conn *sql.DB) error {
 	if err := configure(); err != nil {

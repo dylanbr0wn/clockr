@@ -6,13 +6,14 @@ import { NeedsAttentionCard } from "@/components/stats/NeedsAttentionCard";
 import { PeriodProgressCard } from "@/components/stats/PeriodProgressCard";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { Event, Period, ReviewItem } from "@/lib/api";
+import type { Category, Event, Period, ReviewItem } from "@/lib/api";
 import { buildPeriodExportSummary } from "@/lib/export";
 import { errorMessage, localDateKey, type ScheduleGapOverlay } from "@/lib/schedule";
 import type { ScheduleItem } from "@/lib/schedule/types";
 
 interface ScheduleSidebarProps {
   activePeriod: Period | null;
+  categories: Category[];
   items: ScheduleItem[];
   events: Event[];
   reviewItems: ReviewItem[];
@@ -24,6 +25,7 @@ interface ScheduleSidebarProps {
 
 export function ScheduleSidebar({
   activePeriod,
+  categories,
   items,
   events,
   reviewItems,
@@ -38,8 +40,8 @@ export function ScheduleSidebar({
       return null;
     }
 
-    return buildPeriodExportSummary(items, activePeriod);
-  }, [activePeriod, items]);
+    return buildPeriodExportSummary(items, activePeriod, { categories });
+  }, [activePeriod, categories, items]);
 
   return (
     <ScrollArea className="app-no-drag h-full min-h-0">

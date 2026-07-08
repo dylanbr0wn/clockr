@@ -1,7 +1,11 @@
-import type { Period } from "@/lib/api";
+import type { Category, Period } from "@/lib/api";
 import { buildDays, formatPeriodLabel } from "@/lib/schedule";
 import { periodDayCount } from "@/lib/schedule/date";
 import type { ScheduleItem } from "@/lib/schedule/types";
+
+export interface BuildPeriodExportSummaryOptions {
+  categories?: Category[];
+}
 
 export interface DayCategoryHours {
   date: string;
@@ -18,12 +22,34 @@ export interface PeriodExportSummary {
   targetMinutes: number;
   actualMinutes: number;
   periodTotals: Record<string, number>;
+  categoryColors: Record<string, string>;
   dailyTotals: DayCategoryHours[];
+}
+
+function buildCategoryColorMap(
+  items: ScheduleItem[],
+  categories: Category[] = [],
+): Record<string, string> {
+  const colors: Record<string, string> = {};
+
+  for (const category of categories) {
+    colors[category.name] = category.color;
+  }
+
+  for (const item of items) {
+    const category = item.metadata?.category ?? "Unassigned";
+    if (item.metadata?.categoryColor) {
+      colors[category] = item.metadata.categoryColor;
+    }
+  }
+
+  return colors;
 }
 
 export function buildPeriodExportSummary(
   items: ScheduleItem[],
   period: Period,
+  options: BuildPeriodExportSummaryOptions = {},
 ): PeriodExportSummary {
   const periodTotals: Record<string, number> = {};
   const dailyMap = new Map<string, Record<string, number>>();
@@ -69,6 +95,7 @@ export function buildPeriodExportSummary(
     targetMinutes,
     actualMinutes,
     periodTotals,
+    categoryColors: buildCategoryColorMap(items, options.categories),
     dailyTotals,
   };
 }

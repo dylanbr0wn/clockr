@@ -19,7 +19,7 @@ import {
   useUpdateCategory,
 } from "@/lib/api";
 import type { Category, CreateCategoryInput, UpdateCategoryInput } from "@/lib/api/types";
-import { CATEGORY_PALETTE } from "@/lib/category/colors";
+import { CATEGORY_PALETTE, DEFAULT_CATEGORY_COLOR } from "@/lib/category/colors";
 import { cn } from "@/lib/utils";
 import { SettingBlock } from "./SettingBlock";
 import { Checkbox } from "../ui/checkbox";
@@ -29,6 +29,7 @@ interface CategoryDraft {
   name: string;
   description: string;
   key: string;
+  color: string;
   isDefaultGap: boolean;
 }
 
@@ -36,6 +37,7 @@ const emptyDraft = (): CategoryDraft => ({
   name: "",
   description: "",
   key: "",
+  color: DEFAULT_CATEGORY_COLOR,
   isDefaultGap: false,
 });
 
@@ -44,31 +46,34 @@ function draftFromCategory(category: Category): CategoryDraft {
     name: category.name,
     description: category.description,
     key: category.key === category.name ? "" : category.key,
+    color: category.color,
     isDefaultGap: category.isDefaultGap,
   };
 }
 
-function CategoryColorSwatches({
-  category,
+function ColorPaletteSwatches({
+  value,
+  label,
   disabled,
   pending,
   onSelect,
 }: {
-  category: Category;
-  disabled: boolean;
-  pending: boolean;
+  value: string;
+  label: string;
+  disabled?: boolean;
+  pending?: boolean;
   onSelect: (color: string) => void;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {CATEGORY_PALETTE.map((color) => {
-        const selected = category.color.toUpperCase() === color.toUpperCase();
+        const selected = value.toUpperCase() === color.toUpperCase();
 
         return (
           <button
-            key={`${category.id}-${color}`}
+            key={color}
             type="button"
-            aria-label={`Set ${category.name} to ${color}`}
+            aria-label={`Set ${label} to ${color}`}
             disabled={disabled || pending}
             onClick={() => {
               if (!selected) {
@@ -89,14 +94,38 @@ function CategoryColorSwatches({
   );
 }
 
+function CategoryColorSwatches({
+  category,
+  disabled,
+  pending,
+  onSelect,
+}: {
+  category: Category;
+  disabled: boolean;
+  pending: boolean;
+  onSelect: (color: string) => void;
+}) {
+  return (
+    <ColorPaletteSwatches
+      value={category.color}
+      label={category.name}
+      disabled={disabled}
+      pending={pending}
+      onSelect={onSelect}
+    />
+  );
+}
+
 function CategoryFormFields({
   draft,
   onChange,
   idPrefix,
+  showColor = false,
 }: {
   draft: CategoryDraft;
   onChange: (next: CategoryDraft) => void;
   idPrefix: string;
+  showColor?: boolean;
 }) {
   return (
     <div className="grid gap-3">
@@ -113,6 +142,16 @@ function CategoryFormFields({
           placeholder="Meetings"
         />
       </div>
+      {showColor ? (
+        <div className="grid gap-1.5">
+          <Label className="text-xs">Color</Label>
+          <ColorPaletteSwatches
+            value={draft.color}
+            label={draft.name.trim() || "category"}
+            onSelect={(color) => onChange({ ...draft, color })}
+          />
+        </div>
+      ) : null}
       <div className="grid gap-1.5">
         <Label htmlFor={`${idPrefix}-description`} className="text-xs">
           Description for AI
@@ -226,6 +265,7 @@ export function CategorySettings() {
           name,
           description: draft.description.trim(),
           key: draft.key.trim(),
+          color: draft.color,
           isDefaultGap: draft.isDefaultGap,
         };
         await createCategory.mutateAsync(input);
@@ -373,6 +413,7 @@ export function CategorySettings() {
             draft={draft}
             onChange={setDraft}
             idPrefix={editingCategory ? "edit" : "create"}
+            showColor={!editingCategory}
           />
 
           {formError ? (

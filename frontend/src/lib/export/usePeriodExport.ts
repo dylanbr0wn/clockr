@@ -67,8 +67,10 @@ export function usePeriodExport(period: Period | null | undefined) {
       return null;
     }
 
-    return buildPeriodExportSummary(items, period);
-  }, [items, period]);
+    return buildPeriodExportSummary(items, period, {
+      categories: categoriesQuery.data ?? [],
+    });
+  }, [categoriesQuery.data, items, period]);
 
   const totals = useMemo(() => {
     return items.reduce<Record<string, number>>((next, item) => {

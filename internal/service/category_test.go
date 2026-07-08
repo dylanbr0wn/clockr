@@ -56,6 +56,22 @@ func TestCreateCategoryDefaultsKeyToName(t *testing.T) {
 	}
 }
 
+func TestCreateCategoryWithColor(t *testing.T) {
+	s := newSvc(t)
+	ctx := context.Background()
+
+	created, err := s.CreateCategory(ctx, service.CreateCategoryInput{
+		Name:  "Design",
+		Color: "#8B5CF6",
+	})
+	if err != nil {
+		t.Fatalf("CreateCategory: %v", err)
+	}
+	if created.Color != "#8B5CF6" {
+		t.Fatalf("color = %q want #8B5CF6", created.Color)
+	}
+}
+
 func TestDeleteCategoryBlocksDefaultGap(t *testing.T) {
 	s := newSvc(t)
 	ctx := context.Background()

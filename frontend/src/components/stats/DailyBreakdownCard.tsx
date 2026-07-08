@@ -14,6 +14,7 @@ import {
 } from "@/lib/export";
 import { formatVariance } from "@/lib/export/formatters";
 import { formatDateKey, formatDuration } from "@/lib/schedule";
+import { categoryStatColor } from "@/lib/category/colors";
 import { cn } from "@/lib/utils";
 import { varianceToneClass } from "./statsShared";
 
@@ -95,8 +96,18 @@ export function DailyBreakdownCard({
                         key={category}
                         className="flex items-center justify-between gap-3 text-xs"
                       >
-                        <span className="truncate text-muted-foreground">
-                          {category}
+                        <span className="flex min-w-0 items-center gap-2 text-muted-foreground">
+                          <span
+                            className="size-2 shrink-0 rounded-sm"
+                            style={{
+                              backgroundColor: categoryStatColor(
+                                category,
+                                summary.categoryColors,
+                              ),
+                            }}
+                            aria-hidden
+                          />
+                          <span className="truncate">{category}</span>
                         </span>
                         <span className="font-medium text-foreground">
                           {formatDuration(day.categories[category])}

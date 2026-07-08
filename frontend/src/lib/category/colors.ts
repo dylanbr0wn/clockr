@@ -19,6 +19,16 @@ export function isCategoryPaletteColor(
   return CATEGORY_PALETTE.includes(color.toUpperCase() as CategoryPaletteColor);
 }
 
+export function categoryStatColor(
+  categoryName: string,
+  categoryColors: Record<string, string>,
+): string {
+  const color = categoryColors[categoryName];
+  return color && isCategoryPaletteColor(color)
+    ? color.toUpperCase()
+    : DEFAULT_CATEGORY_COLOR;
+}
+
 export function categoryColorStyle(color: string | undefined) {
   const resolved = color && isCategoryPaletteColor(color)
     ? color.toUpperCase()

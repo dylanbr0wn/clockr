@@ -38,6 +38,8 @@ export function ListCalendars(arg1:context.Context):Promise<Array<service.Calend
 
 export function ListCategories(arg1:context.Context):Promise<Array<service.Category>>;
 
+export function ListEventCategoryOverlays(arg1:context.Context,arg2:number):Promise<Array<service.EventCategoryOverlay>>;
+
 export function ListEvents(arg1:context.Context,arg2:number):Promise<Array<service.Event>>;
 
 export function ListGapFills(arg1:context.Context,arg2:number):Promise<Array<service.GapFill>>;
@@ -63,6 +65,8 @@ export function SetCalendarDefaultCategory(arg1:context.Context,arg2:number,arg3
 export function SetCalendarSelected(arg1:context.Context,arg2:number,arg3:boolean):Promise<void>;
 
 export function SetCalendarSync(arg1:service.CalendarSyncConfig):Promise<void>;
+
+export function SetCategoryColor(arg1:context.Context,arg2:number,arg3:string):Promise<void>;
 
 export function SetEvidence(arg1:service.EvidenceConfig):Promise<void>;
 

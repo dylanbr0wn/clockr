@@ -26,6 +26,7 @@ const items: ScheduleItem[] = [
     metadata: {
       title: "Meeting",
       category: "Calendar",
+      categoryColor: "#0EA5E9",
       kind: "calendar",
     },
   },
@@ -37,6 +38,7 @@ const items: ScheduleItem[] = [
     metadata: {
       title: "Deep work",
       category: "Development",
+      categoryColor: "#8B5CF6",
       kind: "manual",
     },
   },
@@ -48,6 +50,7 @@ const items: ScheduleItem[] = [
     metadata: {
       title: "Planning",
       category: "Development",
+      categoryColor: "#8B5CF6",
       kind: "manual",
     },
   },
@@ -60,6 +63,10 @@ describe("period export", () => {
     expect(summary.periodTotals).toEqual({
       Calendar: 120,
       Development: 240,
+    });
+    expect(summary.categoryColors).toEqual({
+      Calendar: "#0EA5E9",
+      Development: "#8B5CF6",
     });
     expect(summary.targetHoursPerDay).toBe(8);
     expect(summary.targetMinutes).toBe(8 * 60 * 2);

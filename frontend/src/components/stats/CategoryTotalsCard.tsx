@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/card";
 import { sortCategoriesByMinutes, type PeriodExportSummary } from "@/lib/export";
 import { formatDecimalHours } from "@/lib/export/formatters";
-import { categoryColor } from "@/lib/schedule/categoryColors";
+import { categoryStatColor } from "@/lib/category/colors";
 import { cn } from "@/lib/utils";
 import { categoryBarWidth } from "./statsShared";
 
@@ -39,12 +39,13 @@ export function CategoryTotalsCard({
           <div className="space-y-2">
             {categories.map((category) => {
               const minutes = summary.periodTotals[category];
-              const colors = categoryColor(category);
+              const color = categoryStatColor(category, summary.categoryColors);
 
               return (
                 <div key={category} className="flex items-center gap-2 text-[13px]">
                   <span
-                    className={cn("size-2 shrink-0 rounded-sm", colors.dot)}
+                    className="size-2 shrink-0 rounded-sm"
+                    style={{ backgroundColor: color }}
                     aria-hidden
                   />
                   <span className="min-w-0 flex-1 truncate text-foreground">
@@ -52,8 +53,9 @@ export function CategoryTotalsCard({
                   </span>
                   <span className="h-1 w-16 shrink-0 overflow-hidden rounded-full bg-muted">
                     <span
-                      className={cn("block h-full rounded-full", colors.bar)}
+                      className="block h-full rounded-full"
                       style={{
+                        backgroundColor: color,
                         width: `${categoryBarWidth(minutes, maxCategoryMinutes)}%`,
                       }}
                     />

@@ -19,6 +19,7 @@ type CreateCategoryInput struct {
 	Name         string `json:"name"`
 	Description  string `json:"description"`
 	Key          string `json:"key"`
+	Color        string `json:"color"`
 	IsDefaultGap bool   `json:"isDefaultGap"`
 }
 
@@ -68,12 +69,21 @@ func (s *Service) CreateCategory(ctx context.Context, input CreateCategoryInput)
 		gap = 1
 	}
 
+	color := strings.TrimSpace(input.Color)
+	if color == "" {
+		color = DefaultCategoryColor
+	} else if err := ValidateCategoryColor(color); err != nil {
+		return Category{}, fmt.Errorf("create category: %w", err)
+	} else {
+		color = NormalizeCategoryColor(color)
+	}
+
 	row, err := q.CreateCategory(ctx, sqlc.CreateCategoryParams{
 		Name:         name,
 		Description:  strings.TrimSpace(input.Description),
 		Key:          key,
 		IsDefaultGap: gap,
-		Color:        DefaultCategoryColor,
+		Color:        color,
 	})
 	if err != nil {
 		return Category{}, mapErr("create category", err)

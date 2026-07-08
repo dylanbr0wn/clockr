@@ -11,6 +11,7 @@ export interface CreateCategoryInput {
   name: string;
   description?: string;
   key?: string;
+  color?: string;
   isDefaultGap?: boolean;
 }
 
