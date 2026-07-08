@@ -114,14 +114,8 @@ export function useSchedulePageEditor({
     }
 
     if (change.itemId.startsWith("event-")) {
-      setDraftPlacements((current) => ({
-        ...current,
-        [change.itemId]: {
-          day: change.day,
-          startMinutes: change.startMinutes,
-          endMinutes: change.endMinutes,
-        },
-      }));
+      setPreview(null);
+      return;
     }
     setPreview(null);
   };

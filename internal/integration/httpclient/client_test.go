@@ -5,13 +5,17 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/dylanbr0wn/clockr/internal/db"
+	"github.com/dylanbr0wn/clockr/internal/integration/connection"
 	"github.com/dylanbr0wn/clockr/internal/integration/httpclient"
 	"github.com/dylanbr0wn/clockr/internal/integration/oauth"
 	"github.com/dylanbr0wn/clockr/internal/integration/secrets"
+	"golang.org/x/oauth2"
 )
 
 func TestClientInjectsBearerToken(t *testing.T) {
@@ -54,12 +58,36 @@ func TestClientRefreshesOn401(t *testing.T) {
 		Expiry:       time.Now().Add(-time.Hour),
 	})
 
+	conn, err := db.Open(t.TempDir() + "/test.db")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	if err := db.Migrate(conn); err != nil {
+		t.Fatalf("migrate db: %v", err)
+	}
+	registry := connection.NewRegistry(conn)
+	if _, err := registry.Upsert(context.Background(), connection.UpsertInput{
+		Provider:     "google",
+		AccountID:    "user@example.com",
+		AccountLabel: "Work Google",
+		Scopes:       []string{"calendar.readonly"},
+		Status:       connection.StatusConnected,
+	}); err != nil {
+		t.Fatalf("upsert connection: %v", err)
+	}
+
 	var calls atomic.Int32
+	var tokenForm url.Values
 	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
+		if err := r.ParseForm(); err != nil {
+			t.Fatalf("parse token form: %v", err)
+		}
+		tokenForm = cloneValues(r.PostForm)
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = io.WriteString(w, `{"access_token":"fresh","token_type":"Bearer","expires_in":3600}`)
 	}))
@@ -82,11 +110,13 @@ func TestClientRefreshesOn401(t *testing.T) {
 		Provider:  "google",
 		AccountID: "user@example.com",
 		Config: oauth.ProviderConfig{
-			Provider: "google",
-			ClientID: "client-id",
-			TokenURL: tokenServer.URL + "/token",
+			Provider:  "google",
+			ClientID:  "client-id",
+			TokenURL:  tokenServer.URL + "/token",
+			AuthStyle: oauth2.AuthStyleInParams,
 		},
-		Store: store,
+		Store:    store,
+		Registry: registry,
 	}
 
 	req, _ := http.NewRequest(http.MethodGet, apiServer.URL, nil)
@@ -109,6 +139,30 @@ func TestClientRefreshesOn401(t *testing.T) {
 	if got.AccessToken != "fresh" {
 		t.Fatalf("stored token: %+v", got)
 	}
+	if tokenForm.Get("client_id") != "client-id" {
+		t.Fatalf("refresh client id: %q", tokenForm.Get("client_id"))
+	}
+	if tokenForm.Get("client_secret") != "" {
+		t.Fatalf("refresh included client_secret: %q", tokenForm.Get("client_secret"))
+	}
+	if tokenForm.Get("refresh_token") != "refresh" {
+		t.Fatalf("refresh token: %q", tokenForm.Get("refresh_token"))
+	}
+	storedConnection, err := registry.Get(context.Background(), "google", "user@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if storedConnection.Status != connection.StatusConnected {
+		t.Fatalf("connection status: %q", storedConnection.Status)
+	}
+}
+
+func cloneValues(values url.Values) url.Values {
+	out := make(url.Values, len(values))
+	for key, value := range values {
+		out[key] = append([]string(nil), value...)
+	}
+	return out
 }
 
 func TestClientRetriesRateLimit(t *testing.T) {

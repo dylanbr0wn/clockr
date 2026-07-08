@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"database/sql"
-	"os"
 
+	"github.com/dylanbr0wn/clockr/internal/config"
 	"github.com/dylanbr0wn/clockr/internal/db/sqlc"
 	"github.com/dylanbr0wn/clockr/internal/integration/connection"
 	"github.com/dylanbr0wn/clockr/internal/integration/google"
@@ -32,10 +32,10 @@ func (a connectionAdapter) ListByProvider(ctx context.Context, provider string) 
 	return out, nil
 }
 
-func wireIntegrations(conn *sql.DB, svc *service.Service) (*google.Provider, *connection.Registry) {
+func wireIntegrations(conn *sql.DB, svc *service.Service, cfg config.Config) (*google.Provider, *connection.Registry) {
 	registry := connection.NewRegistry(conn)
 	provider := &google.Provider{
-		Config:   google.OAuthConfig(os.Getenv("CLOCKR_GOOGLE_CLIENT_ID"), os.Getenv("CLOCKR_GOOGLE_CLIENT_SECRET")),
+		Config:   google.OAuthConfig(cfg.Google.ClientID),
 		Store:    secrets.NewKeyringStore(),
 		Registry: registry,
 		Queries:  sqlc.New(conn),

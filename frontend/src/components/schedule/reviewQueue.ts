@@ -117,9 +117,10 @@ export function buildReviewItemView(
         kind,
         tag: "All day",
         title,
-        description: "All-day events need an explicit include/exclude decision before they affect totals.",
+        description:
+          "All-day markers do not affect gap totals. Include to confirm, or dismiss the prompt.",
         primaryAction: { label: "Include", action: "include" },
-        secondaryAction: { label: "Exclude", action: "exclude" },
+        secondaryAction: { label: "Dismiss", action: "exclude" },
       };
     case "overlap":
     case "dedup_ambiguous":

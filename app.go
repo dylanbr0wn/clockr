@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/dylanbr0wn/clockr/internal/ai"
+	"github.com/dylanbr0wn/clockr/internal/config"
 	"github.com/dylanbr0wn/clockr/internal/integration/connection"
 	"github.com/dylanbr0wn/clockr/internal/integration/google"
 	"github.com/dylanbr0wn/clockr/internal/service"
@@ -30,9 +31,9 @@ type ManualEventResult struct {
 // NewApp creates a new App over an already-open database connection. The
 // connection is opened, migrated, and seeded in main before binding, so Svc is
 // live at bind time (Wails reflects bound instances up front).
-func NewApp(conn *sql.DB) *App {
+func NewApp(conn *sql.DB, cfg config.Config) *App {
 	svc := service.New(conn)
-	googleProvider, registry := wireIntegrations(conn, svc)
+	googleProvider, registry := wireIntegrations(conn, svc, cfg)
 	return &App{
 		conn:     conn,
 		Svc:      svc,

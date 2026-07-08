@@ -17,15 +17,28 @@ import (
 	"github.com/dylanbr0wn/clockr/internal/integration/oauth"
 	"github.com/dylanbr0wn/clockr/internal/integration/secrets"
 	"github.com/dylanbr0wn/clockr/internal/service"
+	"golang.org/x/oauth2"
 )
 
 func TestOAuthConfig(t *testing.T) {
-	cfg := google.OAuthConfig("client-id", "client-secret")
+	cfg := google.OAuthConfig("client-id")
 	if cfg.Provider != service.ProviderGoogle {
 		t.Fatalf("provider: %q", cfg.Provider)
 	}
-	if cfg.ClientID != "client-id" || cfg.ClientSecret != "client-secret" {
-		t.Fatalf("client credentials: %+v", cfg)
+	if cfg.ClientID != "client-id" {
+		t.Fatalf("client id: %q", cfg.ClientID)
+	}
+	if cfg.ClientSecret != "" {
+		t.Fatalf("client secret should be empty for desktop OAuth: %q", cfg.ClientSecret)
+	}
+	if cfg.AuthURL != "https://accounts.google.com/o/oauth2/v2/auth" {
+		t.Fatalf("auth url: %q", cfg.AuthURL)
+	}
+	if cfg.TokenURL != "https://oauth2.googleapis.com/token" {
+		t.Fatalf("token url: %q", cfg.TokenURL)
+	}
+	if cfg.AuthStyle != oauth2.AuthStyleInParams {
+		t.Fatalf("auth style: %v", cfg.AuthStyle)
 	}
 	if len(cfg.Scopes) != 1 || cfg.Scopes[0] != "https://www.googleapis.com/auth/calendar.readonly" {
 		t.Fatalf("scopes: %#v", cfg.Scopes)
@@ -60,7 +73,7 @@ func newProviderEnv(t *testing.T, handler http.Handler) (*google.Provider, *conn
 	t.Cleanup(server.Close)
 
 	store := secrets.NewMemoryStore()
-	cfg := google.OAuthConfig("client-id", "client-secret")
+	cfg := google.OAuthConfig("client-id")
 	reg := connection.NewRegistry(conn)
 	q := sqlc.New(conn)
 

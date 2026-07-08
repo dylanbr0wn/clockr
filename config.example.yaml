@@ -1,0 +1,17 @@
+# Clockr app/runtime configuration (optional).
+# Copy to one of:
+#   - ~/.config/clockr/config.yaml
+#   - <UserConfigDir>/clockr/config.yaml  (e.g. ~/Library/Application Support/clockr on macOS)
+#   - ./clockr.yaml  (local dev, cwd)
+#
+# Environment variables override file values (highest precedence):
+#   CLOCKR_DB                  -> db.path
+#   CLOCKR_GOOGLE_CLIENT_ID    -> google.client_id
+#   CLOCKR_GOOGLE_CLIENT_SECRET -> google.client_secret
+
+db:
+  path: ~/.config/clockr/clockr.db
+
+google:
+  client_id: ""
+  client_secret: ""

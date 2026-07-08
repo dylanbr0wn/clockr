@@ -549,12 +549,19 @@ export function ScheduleTimeline({
                                         event.stopPropagation();
                                       },
                                       onDoubleClick: (event) => {
+                                        if (!canMutateItem) {
+                                          return;
+                                        }
+
                                         event.preventDefault();
                                         event.stopPropagation();
                                         onEditItem(item);
                                       },
                                       className: [
-                                        "group z-10 flex min-h-10 cursor-grab flex-col overflow-hidden rounded-md border px-2 py-1 text-left text-xs shadow-sm transition-shadow active:cursor-grabbing",
+                                        "group z-10 flex min-h-10 flex-col overflow-hidden rounded-md border px-2 py-1 text-left text-xs shadow-sm transition-shadow",
+                                        canMutateItem
+                                          ? "cursor-grab active:cursor-grabbing"
+                                          : "cursor-default",
                                         layoutItem.isPreview
                                           ? "opacity-70 ring-2 ring-background/20"
                                           : "hover:shadow-md",
@@ -562,16 +569,18 @@ export function ScheduleTimeline({
                                       ].join(" "),
                                     })}
                                   >
-                                    <div
-                                      {...scheduler.getResizeHandleProps(
-                                        layoutItem,
-                                        "start",
-                                        {
-                                          className:
-                                            "absolute inset-x-2 top-0 h-2 cursor-ns-resize rounded-full opacity-0 group-hover:opacity-100",
-                                        },
-                                      )}
-                                    />
+                                    {canMutateItem ? (
+                                      <div
+                                        {...scheduler.getResizeHandleProps(
+                                          layoutItem,
+                                          "start",
+                                          {
+                                            className:
+                                              "absolute inset-x-2 top-0 h-2 cursor-ns-resize rounded-full opacity-0 group-hover:opacity-100",
+                                          },
+                                        )}
+                                      />
+                                    ) : null}
                                     <div className="min-w-0">
                                       {metadata?.kind === "review" ? (
                                         <div className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide opacity-80">
@@ -593,16 +602,18 @@ export function ScheduleTimeline({
                                     <div className="mt-auto truncate text-[11px] font-medium opacity-80">
                                       {metadata?.category ?? "Unassigned"}
                                     </div>
-                                    <div
-                                      {...scheduler.getResizeHandleProps(
-                                        layoutItem,
-                                        "end",
-                                        {
-                                          className:
-                                            "absolute inset-x-2 bottom-0 h-2 cursor-ns-resize rounded-full opacity-0 group-hover:opacity-100",
-                                        },
-                                      )}
-                                    />
+                                    {canMutateItem ? (
+                                      <div
+                                        {...scheduler.getResizeHandleProps(
+                                          layoutItem,
+                                          "end",
+                                          {
+                                            className:
+                                              "absolute inset-x-2 bottom-0 h-2 cursor-ns-resize rounded-full opacity-0 group-hover:opacity-100",
+                                          },
+                                        )}
+                                      />
+                                    ) : null}
                                   </div>
                                 </ContextMenuTrigger>
                                 <ContextMenuContent data-scheduler-ignore-create="">

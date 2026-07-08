@@ -11,20 +11,6 @@ import (
 	_ "modernc.org/sqlite" // pure-Go driver, registers under the name "sqlite"
 )
 
-// DefaultPath returns the on-disk location of the user's Clockr database,
-// under the OS-specific user config dir (e.g. ~/Library/Application Support
-// on macOS). The CLOCKR_DB env var overrides it (used by dev tooling).
-func DefaultPath() (string, error) {
-	if p := os.Getenv("CLOCKR_DB"); p != "" {
-		return p, nil
-	}
-	cfg, err := os.UserConfigDir()
-	if err != nil {
-		return "", fmt.Errorf("locate user config dir: %w", err)
-	}
-	return filepath.Join(cfg, "clockr", "clockr.db"), nil
-}
-
 // Open opens (creating parent dirs as needed) the SQLite database at path and
 // applies the connection pragmas Clockr relies on: WAL journaling, enforced
 // foreign keys, and a busy timeout. It does NOT run migrations — call Migrate.
@@ -50,11 +36,3 @@ func Open(path string) (*sql.DB, error) {
 	return conn, nil
 }
 
-// OpenDefault opens the database at DefaultPath.
-func OpenDefault() (*sql.DB, error) {
-	path, err := DefaultPath()
-	if err != nil {
-		return nil, err
-	}
-	return Open(path)
-}
