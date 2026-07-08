@@ -15,6 +15,13 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+} from "@/components/ui/item";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -127,35 +134,58 @@ export function GapSuggestDialog({
         </DialogHeader>
 
         {!aiConfigured ? (
-          <div className="rounded-md border border-border bg-muted p-3 text-sm text-muted-foreground">
-            <p>AI is not configured yet.</p>
-            <p className="mt-2">
-              Open Settings → AI Model and connect a local endpoint (e.g. LM
-              Studio) or cloud provider before requesting suggestions.
-            </p>
-          </div>
+          <Item variant="muted">
+            <ItemContent>
+              <ItemDescription>AI is not configured yet.</ItemDescription>
+              <ItemDescription>
+                Open Settings → AI Model and connect a local endpoint (e.g. LM
+                Studio) or cloud provider before requesting suggestions.
+              </ItemDescription>
+            </ItemContent>
+          </Item>
         ) : isSuggesting ? (
-          <div className="flex items-center gap-2 rounded-md border border-border bg-muted p-3 text-sm text-muted-foreground">
-            <LoaderCircle className="size-4 animate-spin" />
-            Asking the model for a suggestion…
-          </div>
+          <Item variant="muted">
+            <ItemMedia variant="icon">
+              <LoaderCircle className="animate-spin" />
+            </ItemMedia>
+            <ItemContent>
+              <ItemDescription>
+                Asking the model for a suggestion…
+              </ItemDescription>
+            </ItemContent>
+          </Item>
         ) : suggestError ? (
-          <div className="space-y-3">
-            <p className="rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-sm text-destructive">
-              {errorMessage(suggestError)}
-            </p>
-            <Button type="button" variant="outline" onClick={onRetrySuggest}>
-              <SparklesIcon data-icon="inline-start" />
-              Retry suggestion
-            </Button>
+          <div className="flex flex-col gap-3">
+            <Item
+              variant="outline"
+              size="sm"
+              className="border-destructive/30 bg-destructive/10"
+            >
+              <ItemContent>
+                <ItemDescription className="text-destructive">
+                  {errorMessage(suggestError)}
+                </ItemDescription>
+              </ItemContent>
+            </Item>
+            <ItemActions>
+              <Button type="button" variant="outline" onClick={onRetrySuggest}>
+                <SparklesIcon data-icon="inline-start" />
+                Retry suggestion
+              </Button>
+            </ItemActions>
           </div>
         ) : (
           <form className="grid gap-4" onSubmit={handleSubmit}>
             {suggestion && aiLocal && suggestion.evidenceCount > 0 && (
-              <p className="rounded-md border border-border bg-muted px-2.5 py-2 text-xs text-muted-foreground">
-                Based on {suggestion.evidenceCount} local activity item
-                {suggestion.evidenceCount === 1 ? "" : "s"} in this interval.
-              </p>
+              <Item variant="muted" size="sm">
+                <ItemContent>
+                  <ItemDescription>
+                    Based on {suggestion.evidenceCount} local activity item
+                    {suggestion.evidenceCount === 1 ? "" : "s"} in this
+                    interval.
+                  </ItemDescription>
+                </ItemContent>
+              </Item>
             )}
 
             <FieldGroup>

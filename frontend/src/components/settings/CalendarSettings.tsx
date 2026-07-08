@@ -20,6 +20,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemTitle,
+} from "@/components/ui/item";
 import { Toggle } from "@/components/ui/toggle";
 import {
   useCalendars,
@@ -161,24 +169,19 @@ export function CalendarSettings() {
       >
         <div className="space-y-3">
           {googleConnections.length > 0 ? (
-            <div className="space-y-2">
+            <ItemGroup className="gap-2">
               {googleConnections.map((connection) => (
-                <div
-                  key={connection.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border px-3 py-2"
-                >
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="truncate text-sm font-medium">
-                        {connection.accountLabel}
-                      </span>
+                <Item key={connection.id} variant="outline">
+                  <ItemContent className="min-w-0">
+                    <ItemTitle className="flex flex-wrap items-center gap-2">
+                      <span className="truncate">{connection.accountLabel}</span>
                       <ConnectionStatusBadge status={connection.status} />
-                    </div>
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                    </ItemTitle>
+                    <ItemDescription className="truncate">
                       {connection.accountId}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
+                    </ItemDescription>
+                  </ItemContent>
+                  <ItemActions>
                     {connection.status === "needs_reauth" ? (
                       <Button
                         type="button"
@@ -206,10 +209,10 @@ export function CalendarSettings() {
                       <LogOut className="size-4" />
                       Disconnect
                     </Button>
-                  </div>
-                </div>
+                  </ItemActions>
+                </Item>
               ))}
-            </div>
+            </ItemGroup>
           ) : (
             <p className="text-sm text-muted-foreground">
               No Google account connected yet.
@@ -264,85 +267,88 @@ export function CalendarSettings() {
               : "Connect a Google account to see calendars here."}
           </p>
         ) : (
-          <div className="space-y-2">
+          <ItemGroup className="gap-2">
             {googleCalendars.map((calendar) => (
-              <div
+              <Item
                 key={calendar.id}
-                className="grid gap-3 rounded-lg border border-border px-3 py-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,180px)] sm:items-center"
+                variant="outline"
+                className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,180px)] sm:items-center"
               >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="truncate text-sm font-medium">
-                      {calendar.name}
-                    </span>
+                <ItemContent className="min-w-0">
+                  <ItemTitle className="flex flex-wrap items-center gap-2">
+                    <span className="truncate">{calendar.name}</span>
                     {calendar.isPrimary ? (
                       <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
                         Primary
                       </span>
                     ) : null}
-                  </div>
-                </div>
+                  </ItemTitle>
+                </ItemContent>
 
-                <Toggle
-                  pressed={calendar.selected}
-                  variant="outline"
-                  size="sm"
-                  disabled={isBusy}
-                  aria-label={`Import ${calendar.name}`}
-                  onPressedChange={(pressed) => {
-                    void setCalendarSelected.mutateAsync({
-                      calendarID: calendar.id,
-                      selected: pressed,
-                    });
-                  }}
-                >
-                  {calendar.selected ? "Importing" : "Import"}
-                </Toggle>
-
-                <Field>
-                  <FieldLabel
-                    htmlFor={`calendar-category-${calendar.id}`}
-                    className="sr-only"
-                  >
-                    Default category for {calendar.name}
-                  </FieldLabel>
-                  <Select
-                    value={
-                      calendar.defaultCategoryId
-                        ? String(calendar.defaultCategoryId)
-                        : NONE_CATEGORY
-                    }
-                    onValueChange={(value) => {
-                      void setCalendarDefaultCategory.mutateAsync({
+                <ItemActions>
+                  <Toggle
+                    pressed={calendar.selected}
+                    variant="outline"
+                    size="sm"
+                    disabled={isBusy}
+                    aria-label={`Import ${calendar.name}`}
+                    onPressedChange={(pressed) => {
+                      void setCalendarSelected.mutateAsync({
                         calendarID: calendar.id,
-                        categoryID:
-                          value === NONE_CATEGORY ? null : Number(value),
+                        selected: pressed,
                       });
                     }}
-                    disabled={isBusy}
                   >
-                    <SelectTrigger
-                      id={`calendar-category-${calendar.id}`}
-                      className="w-full bg-background"
+                    {calendar.selected ? "Importing" : "Import"}
+                  </Toggle>
+                </ItemActions>
+
+                <ItemContent className="min-w-0">
+                  <Field>
+                    <FieldLabel
+                      htmlFor={`calendar-category-${calendar.id}`}
+                      className="sr-only"
                     >
-                      <SelectValue placeholder="Default category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NONE_CATEGORY}>No default</SelectItem>
-                      {categories.map((category) => (
-                        <SelectItem
-                          key={category.id}
-                          value={String(category.id)}
-                        >
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-              </div>
+                      Default category for {calendar.name}
+                    </FieldLabel>
+                    <Select
+                      value={
+                        calendar.defaultCategoryId
+                          ? String(calendar.defaultCategoryId)
+                          : NONE_CATEGORY
+                      }
+                      onValueChange={(value) => {
+                        void setCalendarDefaultCategory.mutateAsync({
+                          calendarID: calendar.id,
+                          categoryID:
+                            value === NONE_CATEGORY ? null : Number(value),
+                        });
+                      }}
+                      disabled={isBusy}
+                    >
+                      <SelectTrigger
+                        id={`calendar-category-${calendar.id}`}
+                        className="w-full bg-background"
+                      >
+                        <SelectValue placeholder="Default category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NONE_CATEGORY}>No default</SelectItem>
+                        {categories.map((category) => (
+                          <SelectItem
+                            key={category.id}
+                            value={String(category.id)}
+                          >
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </ItemContent>
+              </Item>
             ))}
-          </div>
+          </ItemGroup>
         )}
       </SettingBlock>
     </div>

@@ -9,6 +9,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -202,10 +211,21 @@ export function CategorySettings() {
         title="Categories"
         description="Name, describe, and key your time buckets. AI sync and gap-fill receive these definitions — including descriptions — when suggesting categories."
       >
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
-          Cloud AI models receive category names and descriptions. Avoid sensitive
-          client details unless you use a local model.
-        </div>
+        <Item
+          variant="outline"
+          size="sm"
+          className="border-amber-500/30 bg-amber-500/5"
+        >
+          <ItemMedia variant="icon">
+            <AlertCircle className="text-amber-700 dark:text-amber-200" />
+          </ItemMedia>
+          <ItemContent>
+            <ItemDescription className="text-xs text-amber-900 dark:text-amber-200">
+              Cloud AI models receive category names and descriptions. Avoid
+              sensitive client details unless you use a local model.
+            </ItemDescription>
+          </ItemContent>
+        </Item>
 
         <div className="flex justify-end">
           <Button type="button" size="sm" onClick={openCreate} disabled={isBusy}>
@@ -222,15 +242,12 @@ export function CategorySettings() {
         ) : categories.length === 0 ? (
           <p className="text-sm text-muted-foreground">No categories yet.</p>
         ) : (
-          <div className="divide-y divide-border rounded-lg border border-border">
+          <ItemGroup className="gap-2">
             {categories.map((category) => (
-              <div
-                key={category.id}
-                className="flex items-start justify-between gap-3 px-3 py-3"
-              >
-                <div className="min-w-0 space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-medium">{category.name}</p>
+              <Item key={category.id} variant="outline">
+                <ItemContent className="min-w-0">
+                  <ItemTitle className="flex flex-wrap items-center gap-2">
+                    {category.name}
                     {category.isDefaultGap ? (
                       <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
                         Default gap
@@ -241,18 +258,18 @@ export function CategorySettings() {
                         key: {category.key}
                       </span>
                     ) : null}
-                  </div>
+                  </ItemTitle>
                   {category.description ? (
-                    <p className="line-clamp-2 text-xs text-muted-foreground">
+                    <ItemDescription className="line-clamp-2 text-xs">
                       {category.description}
-                    </p>
+                    </ItemDescription>
                   ) : (
-                    <p className="text-xs text-muted-foreground italic">
+                    <ItemDescription className="text-xs italic">
                       No AI description
-                    </p>
+                    </ItemDescription>
                   )}
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
+                </ItemContent>
+                <ItemActions>
                   <Button
                     type="button"
                     size="icon-sm"
@@ -273,10 +290,10 @@ export function CategorySettings() {
                   >
                     <Trash2 className="size-4" />
                   </Button>
-                </div>
-              </div>
+                </ItemActions>
+              </Item>
             ))}
-          </div>
+          </ItemGroup>
         )}
 
         {formError && !editorOpen ? (

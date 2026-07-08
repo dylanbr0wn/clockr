@@ -15,6 +15,14 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -200,44 +208,50 @@ export function AIModelSettings() {
             </Button>
           </div>
 
-          <div className="space-y-2">
+          <ItemGroup className="gap-2">
             {(discovery.data ?? []).map((endpoint) => (
-              <button
+              <Item
                 key={endpoint.baseUrl}
-                type="button"
-                className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left transition-colors ${
+                variant="outline"
+                asChild
+                className={
                   aiEndpointsMatch(activeBaseURL, endpoint.baseUrl)
                     ? "border-primary bg-primary/5"
-                    : "border-border hover:bg-muted/50"
-                }`}
-                onClick={() => void handleSelectEndpoint(endpoint)}
+                    : undefined
+                }
               >
-                <div>
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <span>{endpoint.name}</span>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                        endpoint.running
-                          ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {endpoint.running ? "Running" : "Not running"}
-                    </span>
-                    {isSavedEndpoint &&
-                    aiEndpointsMatch(savedBaseURL, endpoint.baseUrl) ? (
-                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                        Saved
+                <button
+                  type="button"
+                  className="text-left hover:bg-muted/50"
+                  onClick={() => void handleSelectEndpoint(endpoint)}
+                >
+                  <ItemContent>
+                    <ItemTitle className="flex flex-wrap items-center gap-2">
+                      <span>{endpoint.name}</span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                          endpoint.running
+                            ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {endpoint.running ? "Running" : "Not running"}
                       </span>
-                    ) : null}
-                  </div>
-                  <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-                    {endpoint.baseUrl}
-                  </p>
-                </div>
-              </button>
+                      {isSavedEndpoint &&
+                      aiEndpointsMatch(savedBaseURL, endpoint.baseUrl) ? (
+                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                          Saved
+                        </span>
+                      ) : null}
+                    </ItemTitle>
+                    <ItemDescription className="font-mono">
+                      {endpoint.baseUrl}
+                    </ItemDescription>
+                  </ItemContent>
+                </button>
+              </Item>
             ))}
-          </div>
+          </ItemGroup>
         </Field>
       </SettingBlock>
 
@@ -355,29 +369,30 @@ export function AIModelSettings() {
           ) : null}
 
           {classification ? (
-            <div
-              className={`flex gap-3 rounded-lg border px-3 py-3 text-sm ${
+            <Item
+              variant="outline"
+              className={
                 classification.local
                   ? "border-emerald-500/30 bg-emerald-500/5"
                   : "border-amber-500/30 bg-amber-500/5"
-              }`}
+              }
             >
-              {classification.local ? (
-                <ShieldCheck className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-              ) : (
-                <ShieldAlert className="mt-0.5 size-4 shrink-0 text-amber-600" />
-              )}
-              <div>
-                <p className="font-medium">
+              <ItemMedia variant="icon">
+                {classification.local ? (
+                  <ShieldCheck className="text-emerald-600" />
+                ) : (
+                  <ShieldAlert className="text-amber-600" />
+                )}
+              </ItemMedia>
+              <ItemContent>
+                <ItemTitle>
                   {classification.local
                     ? "Private — on-device"
                     : "Cloud — data may leave your device"}
-                </p>
-                <p className="mt-1 text-muted-foreground">
-                  {classification.verdict}
-                </p>
-              </div>
-            </div>
+                </ItemTitle>
+                <ItemDescription>{classification.verdict}</ItemDescription>
+              </ItemContent>
+            </Item>
           ) : null}
 
           {validationMessage ? (
