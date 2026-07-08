@@ -32,6 +32,7 @@ type Category struct {
 	CreatedAt    string `json:"created_at"`
 	Description  string `json:"description"`
 	Key          string `json:"key"`
+	Color        string `json:"color"`
 }
 
 type Event struct {

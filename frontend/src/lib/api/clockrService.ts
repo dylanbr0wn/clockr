@@ -8,6 +8,7 @@ import type {
   CreateCategoryInput,
   DayTimeline,
   Event,
+  EventCategoryOverlay,
   GapFill,
   GapSuggestion,
   IntegrationConnection,
@@ -41,6 +42,7 @@ interface ClockrApp {
   ListAIModels(baseURL: string, apiKey: string): Promise<string[]>;
   ListCalendars(): Promise<Calendar[]>;
   ListCategories(): Promise<Category[]>;
+  ListEventCategoryOverlays(periodId: number): Promise<EventCategoryOverlay[]>;
   ListEvents(periodId: number): Promise<Event[]>;
   ListGapFills(periodId: number): Promise<GapFill[]>;
   ListIntegrationConnections(): Promise<IntegrationConnection[]>;
@@ -57,6 +59,7 @@ interface ClockrApp {
   SaveExportFile(defaultFilename: string, content: string): Promise<string>;
   SetCalendarDefaultCategory(calendarID: number, categoryID: number | null): Promise<void>;
   SetCalendarSelected(calendarID: number, selected: boolean): Promise<void>;
+  SetCategoryColor(categoryID: number, color: string): Promise<void>;
   SetSetting(key: string, value: string): Promise<void>;
   SuggestGapFill(window: TimeWindow): Promise<GapSuggestion>;
   SyncPeriod(periodID: number): Promise<SyncResult>;
@@ -130,6 +133,12 @@ export function updateCategory(input: UpdateCategoryInput) {
 
 export function deleteCategory(id: number) {
   return writeToBackend(() => appBackend.DeleteCategory(id));
+}
+
+export function listEventCategoryOverlays(periodId: number) {
+  return readFromBackend<EventCategoryOverlay[]>([], () =>
+    appBackend.ListEventCategoryOverlays(periodId),
+  );
 }
 
 export function listCalendars() {
@@ -311,6 +320,12 @@ export function setCalendarDefaultCategory(
 ) {
   return writeToBackend(() =>
     appBackend.SetCalendarDefaultCategory(calendarID, categoryID),
+  );
+}
+
+export function setCategoryColor(categoryID: number, color: string) {
+  return writeToBackend(() =>
+    appBackend.SetCategoryColor(categoryID, color),
   );
 }
 

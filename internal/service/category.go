@@ -73,6 +73,7 @@ func (s *Service) CreateCategory(ctx context.Context, input CreateCategoryInput)
 		Description:  strings.TrimSpace(input.Description),
 		Key:          key,
 		IsDefaultGap: gap,
+		Color:        DefaultCategoryColor,
 	})
 	if err != nil {
 		return Category{}, mapErr("create category", err)

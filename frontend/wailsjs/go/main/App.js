@@ -66,6 +66,10 @@ export function ListCategories() {
   return window['go']['main']['App']['ListCategories']();
 }
 
+export function ListEventCategoryOverlays(arg1) {
+  return window['go']['main']['App']['ListEventCategoryOverlays'](arg1);
+}
+
 export function ListEvents(arg1) {
   return window['go']['main']['App']['ListEvents'](arg1);
 }
@@ -120,6 +124,10 @@ export function SetCalendarDefaultCategory(arg1, arg2) {
 
 export function SetCalendarSelected(arg1, arg2) {
   return window['go']['main']['App']['SetCalendarSelected'](arg1, arg2);
+}
+
+export function SetCategoryColor(arg1, arg2) {
+  return window['go']['main']['App']['SetCategoryColor'](arg1, arg2);
 }
 
 export function SetSetting(arg1, arg2) {

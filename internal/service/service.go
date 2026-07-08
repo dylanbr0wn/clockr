@@ -64,6 +64,45 @@ func (s *Service) GetCategory(ctx context.Context, id int64) (Category, error) {
 	return toCategory(r), nil
 }
 
+// SetCategoryColor updates a category's preset palette color.
+func (s *Service) SetCategoryColor(ctx context.Context, id int64, color string) error {
+	if err := ValidateCategoryColor(color); err != nil {
+		return err
+	}
+	normalized := NormalizeCategoryColor(color)
+	if _, err := s.q.GetCategory(ctx, id); err != nil {
+		return mapErr("set category color", err)
+	}
+	if err := s.q.SetCategoryColor(ctx, sqlc.SetCategoryColorParams{
+		Color: normalized,
+		ID:    id,
+	}); err != nil {
+		return mapErr("set category color", err)
+	}
+	return nil
+}
+
+// ListEventCategoryOverlays returns category decisions for imported events in a period.
+func (s *Service) ListEventCategoryOverlays(ctx context.Context, periodID int64) ([]EventCategoryOverlay, error) {
+	rows, err := s.q.ListOverlaysForPeriod(ctx, periodID)
+	if err != nil {
+		return nil, mapErr("list event category overlays", err)
+	}
+	out := make([]EventCategoryOverlay, 0, len(rows))
+	for _, row := range rows {
+		if row.Kind != overlayKindCategory || !row.CategoryID.Valid {
+			continue
+		}
+		out = append(out, EventCategoryOverlay{
+			Provider:   row.Provider,
+			ExternalID: row.ExternalID,
+			InstanceID: row.InstanceID,
+			CategoryID: row.CategoryID.Int64,
+		})
+	}
+	return out, nil
+}
+
 // ── periods ───────────────────────────────────────────────────────────
 
 func (s *Service) ListPeriods(ctx context.Context) ([]Period, error) {

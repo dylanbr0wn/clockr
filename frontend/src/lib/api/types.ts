@@ -3,6 +3,7 @@ export interface Category {
   name: string;
   description: string;
   key: string;
+  color: string;
   isDefaultGap: boolean;
 }
 
@@ -19,6 +20,13 @@ export interface UpdateCategoryInput {
   description?: string;
   key?: string;
   isDefaultGap?: boolean;
+}
+
+export interface EventCategoryOverlay {
+  provider: string;
+  externalId: string;
+  instanceId?: string;
+  categoryId: number;
 }
 
 export interface Calendar {

@@ -37,6 +37,8 @@ export function ListCalendars():Promise<Array<service.Calendar>>;
 
 export function ListCategories():Promise<Array<service.Category>>;
 
+export function ListEventCategoryOverlays(arg1:number):Promise<Array<service.EventCategoryOverlay>>;
+
 export function ListEvents(arg1:number):Promise<Array<service.Event>>;
 
 export function ListGapFills(arg1:number):Promise<Array<service.GapFill>>;
@@ -64,6 +66,8 @@ export function SaveExportFile(arg1:string,arg2:string):Promise<string>;
 export function SetCalendarDefaultCategory(arg1:number,arg2:any):Promise<void>;
 
 export function SetCalendarSelected(arg1:number,arg2:boolean):Promise<void>;
+
+export function SetCategoryColor(arg1:number,arg2:string):Promise<void>;
 
 export function SetSetting(arg1:string,arg2:string):Promise<void>;
 

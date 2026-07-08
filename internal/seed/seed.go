@@ -18,13 +18,14 @@ import (
 var defaultCategories = []struct {
 	name         string
 	description  string
+	color        string
 	isDefaultGap bool
 }{
-	{"Meetings", "Syncs, 1:1s, standups, and client calls", false},
-	{"Deep Work", "Focused individual work without meetings", true},
-	{"Admin", "Operations, planning, and internal admin tasks", false},
-	{"Email & Comms", "Email, Slack, and async communication", false},
-	{"Breaks", "Lunch, breaks, and personal time", false},
+	{"Meetings", "Syncs, 1:1s, standups, and client calls", "#0EA5E9", false},
+	{"Deep Work", "Focused individual work without meetings", "#8B5CF6", true},
+	{"Admin", "Operations, planning, and internal admin tasks", "#F59E0B", false},
+	{"Email & Comms", "Email, Slack, and async communication", "#14B8A6", false},
+	{"Breaks", "Lunch, breaks, and personal time", "#64748B", false},
 }
 
 // defaultSettings are non-secret app defaults mirroring DESIGN.md. Values are
@@ -65,6 +66,7 @@ func Core(ctx context.Context, conn *sql.DB) error {
 				Description:  c.description,
 				Key:          c.name,
 				IsDefaultGap: gap,
+				Color:        c.color,
 			}); err != nil {
 				return fmt.Errorf("create category %q: %w", c.name, err)
 			}

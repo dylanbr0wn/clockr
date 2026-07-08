@@ -7,6 +7,7 @@ import type {
 } from "@/lib/api";
 import {
   buildAllDayChipsByDay,
+  buildEventCategoryOverlayMap,
   eventToSchedulerItem,
   expandAllDayEventDays,
   gapFillToSchedulerItem,
@@ -23,6 +24,27 @@ const tzSegments: TzSegment[] = [
   },
 ];
 
+const categoriesById = new Map<number, Category>([
+  [5, {
+    id: 5,
+    name: "Deep Work",
+    description: "",
+    key: "Deep Work",
+    color: "#8B5CF6",
+    isDefaultGap: true,
+  }],
+  [7, {
+    id: 7,
+    name: "Meetings",
+    description: "",
+    key: "Meetings",
+    color: "#0EA5E9",
+    isDefaultGap: false,
+  }],
+]);
+
+const emptyOverlays = new Map<string, number>();
+
 describe("schedule mappers", () => {
   it("maps all-day events across the whole schedule day", () => {
     const event: ClockrEvent = {
@@ -37,7 +59,14 @@ describe("schedule mappers", () => {
       active: true,
     };
 
-    expect(eventToSchedulerItem(event, tzSegments)).toMatchObject({
+    expect(
+      eventToSchedulerItem(
+        event,
+        tzSegments,
+        categoriesById,
+        undefined,
+      ),
+    ).toMatchObject({
       id: "event-12",
       day: "2026-06-09",
       startMinutes: 0,
@@ -45,9 +74,47 @@ describe("schedule mappers", () => {
       disabled: true,
       metadata: {
         title: "Offsite",
-        category: "Calendar",
+        category: "Unassigned",
         kind: "calendar",
         isAllDay: true,
+      },
+    });
+  });
+
+  it("maps categorized calendar events with category color", () => {
+    const event: ClockrEvent = {
+      id: 34,
+      periodId: 1,
+      calendarId: 3,
+      provider: "google",
+      externalId: "event-34",
+      title: "Focus",
+      allDay: false,
+      start: "2026-06-09T16:30:00Z",
+      end: "2026-06-09T18:00:00Z",
+      active: true,
+    };
+    const overlaysByKey = buildEventCategoryOverlayMap([
+      {
+        provider: "google",
+        externalId: "event-34",
+        categoryId: 7,
+      },
+    ]);
+
+    expect(
+      eventToSchedulerItem(
+        event,
+        tzSegments,
+        categoriesById,
+        overlaysByKey.get("google|event-34|"),
+      ),
+    ).toMatchObject({
+      metadata: {
+        category: "Meetings",
+        categoryId: 7,
+        categoryColor: "#0EA5E9",
+        kind: "calendar",
       },
     });
   });
@@ -125,7 +192,13 @@ describe("schedule mappers", () => {
       },
     ];
     const visibleDays = new Set(["2026-06-09", "2026-06-10", "2026-06-11"]);
-    const chipsByDay = buildAllDayChipsByDay(events, visibleDays, new Map());
+    const chipsByDay = buildAllDayChipsByDay(
+      events,
+      visibleDays,
+      categoriesById,
+      emptyOverlays,
+      new Map(),
+    );
 
     expect(chipsByDay.get("2026-06-09")).toMatchObject([
       {
@@ -163,7 +236,9 @@ describe("schedule mappers", () => {
       active: true,
     };
 
-    expect(eventToSchedulerItem(event, tzSegments)).toMatchObject({
+    expect(
+      eventToSchedulerItem(event, tzSegments, categoriesById, undefined),
+    ).toMatchObject({
       id: "event-34",
       day: "2026-06-09",
       startMinutes: 9 * 60 + 30,
@@ -187,10 +262,17 @@ describe("schedule mappers", () => {
     };
 
     expect(
-      eventToSchedulerItem(event, tzSegments, undefined, {
-        reviewItemId: 12,
-        kind: "new_in_gap",
-      }),
+      eventToSchedulerItem(
+        event,
+        tzSegments,
+        categoriesById,
+        7,
+        undefined,
+        {
+          reviewItemId: 12,
+          kind: "new_in_gap",
+        },
+      ),
     ).toMatchObject({
       id: "event-34",
       disabled: true,
@@ -204,9 +286,6 @@ describe("schedule mappers", () => {
   });
 
   it("maps gap fills with category names and timezone-local minutes", () => {
-    const categoriesById = new Map<number, Category>([
-      [5, { id: 5, name: "Deep Work", description: "", key: "Deep Work", isDefaultGap: true }],
-    ]);
     const gapFill: GapFill = {
       id: 21,
       periodId: 1,
@@ -228,15 +307,13 @@ describe("schedule mappers", () => {
       metadata: {
         title: "Deep Work",
         category: "Deep Work",
+        categoryColor: "#8B5CF6",
         kind: "manual",
       },
     });
   });
 
   it("maps ai-confirmed gap fills with the gap kind", () => {
-    const categoriesById = new Map<number, Category>([
-      [5, { id: 5, name: "Deep Work", description: "", key: "Deep Work", isDefaultGap: true }],
-    ]);
     const gapFill: GapFill = {
       id: 22,
       periodId: 1,
@@ -253,6 +330,7 @@ describe("schedule mappers", () => {
     ).toMatchObject({
       metadata: {
         kind: "gap",
+        categoryColor: "#8B5CF6",
       },
     });
   });

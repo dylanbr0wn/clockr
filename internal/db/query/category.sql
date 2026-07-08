@@ -11,14 +11,17 @@ SELECT * FROM category WHERE key = ?;
 SELECT * FROM category WHERE is_default_gap = 1;
 
 -- name: CreateCategory :one
-INSERT INTO category (name, description, key, is_default_gap)
-VALUES (?, ?, ?, ?)
+INSERT INTO category (name, description, key, is_default_gap, color)
+VALUES (?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: UpdateCategory :exec
 UPDATE category
 SET name = ?, description = ?, key = ?
 WHERE id = ?;
+
+-- name: SetCategoryColor :exec
+UPDATE category SET color = ? WHERE id = ?;
 
 -- name: ClearDefaultGap :exec
 UPDATE category SET is_default_gap = 0 WHERE is_default_gap = 1;

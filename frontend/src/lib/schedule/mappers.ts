@@ -2,6 +2,7 @@ import type {
   Category,
   DayTimeline,
   Event as ClockrEvent,
+  EventCategoryOverlay,
   GapFill,
   Interval,
   Period,
@@ -42,6 +43,53 @@ export function categoryName(
   return categoriesById.get(categoryId)?.name ?? "Unassigned";
 }
 
+export function resolveCategoryColor(
+  categoryId: number | undefined,
+  categoriesById: Map<number, Category>,
+) {
+  if (typeof categoryId !== "number") {
+    return undefined;
+  }
+
+  return categoriesById.get(categoryId)?.color;
+}
+
+export function eventCategoryOverlayKey(
+  provider: string,
+  externalId: string,
+  instanceId = "",
+) {
+  return `${provider}|${externalId}|${instanceId}`;
+}
+
+export function buildEventCategoryOverlayMap(
+  overlays: EventCategoryOverlay[],
+) {
+  return new Map(
+    overlays.map((overlay) => [
+      eventCategoryOverlayKey(
+        overlay.provider,
+        overlay.externalId,
+        overlay.instanceId ?? "",
+      ),
+      overlay.categoryId,
+    ]),
+  );
+}
+
+export function resolveEventCategoryId(
+  event: ClockrEvent,
+  overlaysByKey: ReadonlyMap<string, number>,
+) {
+  return overlaysByKey.get(
+    eventCategoryOverlayKey(
+      event.provider,
+      event.externalId,
+      event.instanceId ?? "",
+    ),
+  );
+}
+
 export function periodContainsDate(period: Period, day: string) {
   return period.startDate <= day && day <= period.endDate;
 }
@@ -63,12 +111,21 @@ export function applyPlacement(
 export function eventToSchedulerItem(
   event: ClockrEvent,
   tzSegments: TzSegment[],
+  categoriesById: Map<number, Category>,
+  categoryId: number | undefined,
   placement?: SchedulePlacement,
   reviewState?: EventReviewState,
 ): ScheduleItem | null {
+  const resolvedCategoryId = reviewState ? undefined : categoryId;
   const metadata = {
     title: event.title || "Untitled event",
-    category: reviewState ? "Needs review" : "Calendar",
+    category: reviewState
+      ? "Needs review"
+      : categoryName(resolvedCategoryId, categoriesById),
+    categoryId: resolvedCategoryId,
+    categoryColor: reviewState
+      ? undefined
+      : resolveCategoryColor(resolvedCategoryId, categoriesById),
     kind: reviewState ? "review" : "calendar",
     reviewItemId: reviewState?.reviewItemId,
     reviewKind: reviewState?.kind,
@@ -152,6 +209,8 @@ function allDaySpanPosition(
 export function buildAllDayChipsByDay(
   events: ClockrEvent[],
   visibleDays: ReadonlySet<string>,
+  categoriesById: Map<number, Category>,
+  overlaysByKey: ReadonlyMap<string, number>,
   reviewByEventId: ReadonlyMap<number, EventReviewState>,
 ): Map<string, AllDayChip[]> {
   const chipsByDay = new Map<string, AllDayChip[]>();
@@ -165,7 +224,15 @@ export function buildAllDayChipsByDay(
     const spanDays = expandAllDayEventDays(event);
     const title = event.title || "Untitled event";
     const kind = reviewState ? "review" : "calendar";
-    const category = reviewState ? "Needs review" : "Calendar";
+    const categoryId = reviewState
+      ? undefined
+      : resolveEventCategoryId(event, overlaysByKey);
+    const category = reviewState
+      ? "Needs review"
+      : categoryName(categoryId, categoriesById);
+    const categoryColorValue = reviewState
+      ? undefined
+      : resolveCategoryColor(categoryId, categoriesById);
 
     for (const day of spanDays) {
       if (!visibleDays.has(day)) {
@@ -178,6 +245,8 @@ export function buildAllDayChipsByDay(
         day,
         title,
         category,
+        categoryId,
+        categoryColor: categoryColorValue,
         kind,
         reviewItemId: reviewState?.reviewItemId,
         reviewKind: reviewState?.kind,
@@ -223,6 +292,8 @@ export function gapFillToSchedulerItem(
       metadata: {
         title: gapFill.note || category,
         category,
+        categoryId: gapFill.categoryId,
+        categoryColor: resolveCategoryColor(gapFill.categoryId, categoriesById),
         kind,
       },
     },

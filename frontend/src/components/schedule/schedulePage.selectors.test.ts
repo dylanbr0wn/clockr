@@ -35,8 +35,9 @@ describe("schedulePage.selectors", () => {
         { id: 1, startDate: "2026-07-01", endDate: "2026-07-14" } as never,
       ],
       currentPeriod: null,
-      categories: [{ id: 10, name: "Work", color: "#000000" } as never],
+      categories: [{ id: 10, name: "Work", color: "#0EA5E9", isDefaultGap: false } as never],
       events: [],
+      eventCategoryOverlays: [],
       gapFills: [
         {
           id: 7,

@@ -1,20 +1,24 @@
 import { useMemo } from "react";
 import {
   useCategories,
+  useEventCategoryOverlays,
   useEvents,
   useGapFills,
   useTzSegments,
   type Period,
 } from "@/lib/api";
 import {
+  buildEventCategoryOverlayMap,
   eventToSchedulerItem,
   gapFillToSchedulerItem,
+  resolveEventCategoryId,
 } from "@/lib/schedule";
 import { buildPeriodExportSummary } from "./summary";
 
 export function usePeriodExport(period: Period | null | undefined) {
   const periodId = period?.id;
   const eventsQuery = useEvents(periodId);
+  const eventCategoryOverlaysQuery = useEventCategoryOverlays(periodId);
   const gapFillsQuery = useGapFills(periodId);
   const tzSegmentsQuery = useTzSegments(periodId);
   const categoriesQuery = useCategories();
@@ -29,10 +33,20 @@ export function usePeriodExport(period: Period | null | undefined) {
     const events = eventsQuery.data ?? [];
     const gapFills = gapFillsQuery.data ?? [];
     const tzSegments = tzSegmentsQuery.data ?? [];
+    const overlaysByKey = buildEventCategoryOverlayMap(
+      eventCategoryOverlaysQuery.data ?? [],
+    );
 
     return [
       ...events
-        .map((event) => eventToSchedulerItem(event, tzSegments))
+        .map((event) =>
+          eventToSchedulerItem(
+            event,
+            tzSegments,
+            categoriesById,
+            resolveEventCategoryId(event, overlaysByKey),
+          ),
+        )
         .filter((item): item is NonNullable<typeof item> => item !== null),
       ...gapFills
         .map((gapFill) =>
@@ -42,6 +56,7 @@ export function usePeriodExport(period: Period | null | undefined) {
     ];
   }, [
     categoriesById,
+    eventCategoryOverlaysQuery.data,
     eventsQuery.data,
     gapFillsQuery.data,
     tzSegmentsQuery.data,
@@ -65,11 +80,13 @@ export function usePeriodExport(period: Period | null | undefined) {
 
   const isLoading =
     eventsQuery.isLoading ||
+    eventCategoryOverlaysQuery.isLoading ||
     gapFillsQuery.isLoading ||
     tzSegmentsQuery.isLoading ||
     categoriesQuery.isLoading;
   const error =
     eventsQuery.error ??
+    eventCategoryOverlaysQuery.error ??
     gapFillsQuery.error ??
     tzSegmentsQuery.error ??
     categoriesQuery.error;

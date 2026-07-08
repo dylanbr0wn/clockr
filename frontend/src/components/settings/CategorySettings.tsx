@@ -15,9 +15,12 @@ import {
   useCategories,
   useCreateCategory,
   useDeleteCategory,
+  useSetCategoryColor,
   useUpdateCategory,
 } from "@/lib/api";
 import type { Category, CreateCategoryInput, UpdateCategoryInput } from "@/lib/api/types";
+import { CATEGORY_PALETTE } from "@/lib/category/colors";
+import { cn } from "@/lib/utils";
 import { SettingBlock } from "./SettingBlock";
 import { Checkbox } from "../ui/checkbox";
 import { Field, FieldContent, FieldDescription, FieldLabel, FieldTitle } from "../ui/field";
@@ -43,6 +46,47 @@ function draftFromCategory(category: Category): CategoryDraft {
     key: category.key === category.name ? "" : category.key,
     isDefaultGap: category.isDefaultGap,
   };
+}
+
+function CategoryColorSwatches({
+  category,
+  disabled,
+  pending,
+  onSelect,
+}: {
+  category: Category;
+  disabled: boolean;
+  pending: boolean;
+  onSelect: (color: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {CATEGORY_PALETTE.map((color) => {
+        const selected = category.color.toUpperCase() === color.toUpperCase();
+
+        return (
+          <button
+            key={`${category.id}-${color}`}
+            type="button"
+            aria-label={`Set ${category.name} to ${color}`}
+            disabled={disabled || pending}
+            onClick={() => {
+              if (!selected) {
+                onSelect(color);
+              }
+            }}
+            className={cn(
+              "size-6 rounded-full border-2 transition-transform hover:scale-105 disabled:opacity-50",
+              selected
+                ? "border-foreground ring-2 ring-foreground/20"
+                : "border-transparent",
+            )}
+            style={{ backgroundColor: color }}
+          />
+        );
+      })}
+    </div>
+  );
 }
 
 function CategoryFormFields({
@@ -97,8 +141,12 @@ function CategoryFormFields({
       </div>
       <FieldLabel>
         <Field orientation="horizontal">
-          <Checkbox checked={draft.isDefaultGap} onCheckedChange={(checked) =>
-            onChange({ ...draft, isDefaultGap: !!checked })} />
+          <Checkbox
+            checked={draft.isDefaultGap}
+            onCheckedChange={(checked) =>
+              onChange({ ...draft, isDefaultGap: !!checked })
+            }
+          />
           <FieldContent>
             <FieldTitle>Default gap category</FieldTitle>
             <FieldDescription>
@@ -116,6 +164,7 @@ export function CategorySettings() {
   const createCategory = useCreateCategory();
   const updateCategory = useUpdateCategory();
   const deleteCategory = useDeleteCategory();
+  const setCategoryColor = useSetCategoryColor();
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -123,14 +172,22 @@ export function CategorySettings() {
   const [formError, setFormError] = useState<string | null>(null);
 
   const categories = useMemo(
-    () => [...(categoriesQuery.data ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
+    () =>
+      [...(categoriesQuery.data ?? [])].sort((a, b) =>
+        a.name.localeCompare(b.name),
+      ),
     [categoriesQuery.data],
   );
+
+  const pendingCategoryId = setCategoryColor.isPending
+    ? setCategoryColor.variables?.categoryId
+    : undefined;
 
   const isBusy =
     createCategory.isPending ||
     updateCategory.isPending ||
-    deleteCategory.isPending;
+    deleteCategory.isPending ||
+    setCategoryColor.isPending;
 
   const openCreate = () => {
     setEditingCategory(null);
@@ -200,7 +257,7 @@ export function CategorySettings() {
     <div className="mx-auto max-w-2xl space-y-6">
       <SettingBlock
         title="Categories"
-        description="Name, describe, and key your time buckets. AI sync and gap-fill receive these definitions — including descriptions — when suggesting categories."
+        description="Name, describe, and color your time buckets. AI sync and gap-fill receive names and descriptions; the schedule uses colors once events are categorized."
       >
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
           Cloud AI models receive category names and descriptions. Avoid sensitive
@@ -226,7 +283,7 @@ export function CategorySettings() {
             {categories.map((category) => (
               <div
                 key={category.id}
-                className="flex items-start justify-between gap-3 px-3 py-3"
+                className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-start sm:justify-between"
               >
                 <div className="min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -247,32 +304,45 @@ export function CategorySettings() {
                       {category.description}
                     </p>
                   ) : (
-                    <p className="text-xs text-muted-foreground italic">
+                    <p className="text-xs italic text-muted-foreground">
                       No AI description
                     </p>
                   )}
                 </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <Button
-                    type="button"
-                    size="icon-sm"
-                    variant="ghost"
-                    onClick={() => openEdit(category)}
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  <CategoryColorSwatches
+                    category={category}
                     disabled={isBusy}
-                    aria-label={`Edit ${category.name}`}
-                  >
-                    <Pencil className="size-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    size="icon-sm"
-                    variant="ghost"
-                    onClick={() => void handleDelete(category)}
-                    disabled={isBusy || category.isDefaultGap}
-                    aria-label={`Delete ${category.name}`}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
+                    pending={pendingCategoryId === category.id}
+                    onSelect={(color) => {
+                      setCategoryColor.mutate({
+                        categoryId: category.id,
+                        color,
+                      });
+                    }}
+                  />
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      size="icon-sm"
+                      variant="ghost"
+                      onClick={() => openEdit(category)}
+                      disabled={isBusy}
+                      aria-label={`Edit ${category.name}`}
+                    >
+                      <Pencil className="size-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon-sm"
+                      variant="ghost"
+                      onClick={() => void handleDelete(category)}
+                      disabled={isBusy || category.isDefaultGap}
+                      aria-label={`Delete ${category.name}`}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}

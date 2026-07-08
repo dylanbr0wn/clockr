@@ -2,6 +2,7 @@ import type {
   Category,
   DayTimeline,
   Event,
+  EventCategoryOverlay,
   GapFill,
   Period,
   ReviewItem,
@@ -11,11 +12,13 @@ import {
   START_DATE,
   buildAllDayChipsByDay,
   buildDays,
+  buildEventCategoryOverlayMap,
   eventToSchedulerItem,
   gapFillToSchedulerItem,
   gapTimelineToOverlays,
   periodContainsDate,
   periodDayCount,
+  resolveEventCategoryId,
   type AllDayChip,
   type ScheduleDay,
   type ScheduleGapOverlay,
@@ -33,6 +36,7 @@ export interface BuildSchedulePageDerivedArgs {
   currentPeriod: Period | null;
   categories: Category[];
   events: Event[];
+  eventCategoryOverlays: EventCategoryOverlay[];
   gapFills: GapFill[];
   gapTimeline: DayTimeline[];
   reviewItems: ReviewItem[];
@@ -70,6 +74,7 @@ export function buildSchedulePageDerived({
   currentPeriod,
   categories,
   events,
+  eventCategoryOverlays,
   gapFills,
   gapTimeline,
   reviewItems,
@@ -93,6 +98,7 @@ export function buildSchedulePageDerived({
   const visibleDaySet = new Set(days.map((day) => day.date));
 
   const categoriesById = new Map(categories.map((category) => [category.id, category]));
+  const overlaysByKey = buildEventCategoryOverlayMap(eventCategoryOverlays);
   const gapFillsByItemId = new Map(
     gapFills.map((gapFill) => [`gap-fill-${gapFill.id}`, gapFill]),
   );
@@ -102,13 +108,21 @@ export function buildSchedulePageDerived({
       .map((item) => [item.eventId as number, { reviewItemId: item.id, kind: item.kind }]),
   );
 
-  const allDayChipsByDay = buildAllDayChipsByDay(events, visibleDaySet, reviewItemsByEventId);
+  const allDayChipsByDay = buildAllDayChipsByDay(
+    events,
+    visibleDaySet,
+    categoriesById,
+    overlaysByKey,
+    reviewItemsByEventId,
+  );
   const items = [
     ...events
       .map((event) =>
         eventToSchedulerItem(
           event,
           tzSegments,
+          categoriesById,
+          resolveEventCategoryId(event, overlaysByKey),
           draftPlacements[`event-${event.id}`],
           reviewItemsByEventId.get(event.id),
         ),
