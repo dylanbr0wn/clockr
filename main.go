@@ -10,6 +10,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 
+	"github.com/dylanbr0wn/clockr/internal/config"
 	"github.com/dylanbr0wn/clockr/internal/db"
 	"github.com/dylanbr0wn/clockr/internal/seed"
 )
@@ -18,9 +19,14 @@ import (
 var assets embed.FS
 
 func main() {
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("load config: %v", err)
+	}
+
 	// Open the local database, self-migrate to the latest schema, and seed core
 	// data before binding so the service is live when the frontend calls it.
-	conn, err := db.OpenDefault()
+	conn, err := db.Open(cfg.DB.Path)
 	if err != nil {
 		log.Fatalf("open database: %v", err)
 	}
@@ -32,7 +38,7 @@ func main() {
 	}
 
 	// Create an instance of the app structure
-	app := NewApp(conn)
+	app := NewApp(conn, cfg)
 
 	// Create application with options
 	err = wails.Run(&options.App{

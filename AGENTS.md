@@ -55,4 +55,4 @@ Lint is not gated in CI yet (2 pre-existing `react-refresh/only-export-component
 - Run only the Vite frontend standalone (no Go): `pnpm --dir frontend dev` (see `.claude/launch.json`).
 - DB dev tooling (migrate/seed/reset a dev DB): `./scripts/db.sh`; regenerate sqlc: `./scripts/sqlc-gen.sh`
   (never hand-edit `internal/db/sqlc/**`).
-- Dev SQLite path override: `CLOCKR_DB`; default app DB lives under `~/.config/clockr/clockr.db`.
+- App/runtime config: layered defaults → optional YAML file → `CLOCKR_*` env (see `config.example.yaml`, `internal/config`). File search: `~/.config/clockr/config.yaml`, `<UserConfigDir>/clockr/config.yaml`, `./clockr.yaml`. Dev SQLite path override: `CLOCKR_DB` (or `db.path` in file); default DB lives under `<UserConfigDir>/clockr/clockr.db`.
