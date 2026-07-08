@@ -1,4 +1,10 @@
 import type { ReactNode } from "react";
+import {
+  FieldDescription,
+  FieldGroup,
+  FieldLegend,
+  FieldSet,
+} from "@/components/ui/field";
 
 export function SettingBlock({
   title,
@@ -10,12 +16,10 @@ export function SettingBlock({
   children: ReactNode;
 }) {
   return (
-    <section className="space-y-3 border-b border-border pb-5 last:border-b-0 last:pb-0">
-      <div>
-        <h3 className="text-sm font-medium">{title}</h3>
-        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      </div>
-      {children}
-    </section>
+    <FieldSet className="border-b border-border pb-5 last:border-b-0 last:pb-0">
+      <FieldLegend variant="label">{title}</FieldLegend>
+      <FieldDescription>{description}</FieldDescription>
+      <FieldGroup>{children}</FieldGroup>
+    </FieldSet>
   );
 }

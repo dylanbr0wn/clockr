@@ -11,8 +11,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
@@ -190,100 +195,104 @@ export function EventEditDialog({
         </DialogHeader>
 
         <form className="grid gap-4" onSubmit={handleSubmit}>
-          <div className="grid gap-2">
-            <Label htmlFor="event-title">Title</Label>
-            <Input
-              id="event-title"
-              value={title}
-              onChange={(changeEvent) => setTitle(changeEvent.target.value)}
-              placeholder={event?.category ?? "Unassigned"}
-            />
-          </div>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="event-title">Title</FieldLabel>
+              <Input
+                id="event-title"
+                value={title}
+                onChange={(changeEvent) => setTitle(changeEvent.target.value)}
+                placeholder={event?.category ?? "Unassigned"}
+              />
+            </Field>
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="grid gap-2">
-              <Label>Date</Label>
-              <Popover
-                modal
-                open={datePickerOpen}
-                onOpenChange={setDatePickerOpen}
-              >
-                <PopoverTrigger
-                  type="button"
-                  data-empty={!selectedDate}
-                  className={cn(
-                    buttonVariants({ variant: "outline" }),
-                    "w-full justify-start text-left font-normal data-[empty=true]:text-muted-foreground",
-                  )}
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Field>
+                <FieldLabel htmlFor="event-date">Date</FieldLabel>
+                <Popover
+                  modal
+                  open={datePickerOpen}
+                  onOpenChange={setDatePickerOpen}
                 >
-                  <CalendarIcon data-icon="inline-start" />
-                  {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    defaultMonth={selectedDate}
-                    onSelect={(nextDate) => {
-                      if (nextDate) {
-                        setDay(dateToDateString(nextDate));
-                        setDatePickerOpen(false);
-                      }
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
+                  <PopoverTrigger
+                    id="event-date"
+                    type="button"
+                    data-empty={!selectedDate}
+                    className={cn(
+                      buttonVariants({ variant: "outline" }),
+                      "w-full justify-start text-left font-normal data-[empty=true]:text-muted-foreground",
+                    )}
+                  >
+                    <CalendarIcon data-icon="inline-start" />
+                    {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      defaultMonth={selectedDate}
+                      onSelect={(nextDate) => {
+                        if (nextDate) {
+                          setDay(dateToDateString(nextDate));
+                          setDatePickerOpen(false);
+                        }
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="event-start">Start</FieldLabel>
+                <Input
+                  id="event-start"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="09:00"
+                  value={startTime}
+                  onChange={(changeEvent) =>
+                    setStartTime(changeEvent.target.value)
+                  }
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="event-end">End</FieldLabel>
+                <Input
+                  id="event-end"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="17:00"
+                  value={endTime}
+                  onChange={(changeEvent) =>
+                    setEndTime(changeEvent.target.value)
+                  }
+                />
+              </Field>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="event-start">Start</Label>
-              <Input
-                id="event-start"
-                type="text"
-                inputMode="numeric"
-                placeholder="09:00"
-                value={startTime}
-                onChange={(changeEvent) =>
-                  setStartTime(changeEvent.target.value)
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="event-end">End</Label>
-              <Input
-                id="event-end"
-                type="text"
-                inputMode="numeric"
-                placeholder="17:00"
-                value={endTime}
-                onChange={(changeEvent) => setEndTime(changeEvent.target.value)}
-              />
-            </div>
-          </div>
 
-          <div className="grid gap-2">
-            <Label>Category</Label>
-            <Select value={categoryValue} onValueChange={setCategoryValue}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Unassigned" />
-              </SelectTrigger>
-              <SelectContent position="popper" align="start">
-                <SelectItem value={UNASSIGNED_CATEGORY_VALUE}>
-                  Unassigned
-                </SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category.id} value={category.id.toString()}>
-                    {category.name}
+            <Field>
+              <FieldLabel htmlFor="event-category">Category</FieldLabel>
+              <Select value={categoryValue} onValueChange={setCategoryValue}>
+                <SelectTrigger id="event-category" className="w-full">
+                  <SelectValue placeholder="Unassigned" />
+                </SelectTrigger>
+                <SelectContent position="popper" align="start">
+                  <SelectItem value={UNASSIGNED_CATEGORY_VALUE}>
+                    Unassigned
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                  {categories.map((category) => (
+                    <SelectItem
+                      key={category.id}
+                      value={category.id.toString()}
+                    >
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
 
-          {formError && (
-            <p className="rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-sm text-destructive">
-              {formError}
-            </p>
-          )}
+            {formError ? <FieldError>{formError}</FieldError> : null}
+          </FieldGroup>
 
           <DialogFooter>
             <Button

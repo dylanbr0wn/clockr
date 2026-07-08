@@ -24,8 +24,11 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Field,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -153,10 +156,8 @@ function EditableNumberSetting({
   };
 
   return (
-    <div className="grid gap-1.5">
-      <Label htmlFor={id} className="text-xs">
-        {label}
-      </Label>
+    <Field>
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
       <Input
         id={id}
         type="number"
@@ -167,7 +168,7 @@ function EditableNumberSetting({
         onBlur={commitDraft}
         onChange={(event) => setDraft(event.target.value)}
       />
-    </div>
+    </Field>
   );
 }
 
@@ -189,10 +190,8 @@ function EditableTimeSetting({
   }, [value]);
 
   return (
-    <div className="grid gap-1.5">
-      <Label htmlFor={id} className="text-xs">
-        {label}
-      </Label>
+    <Field>
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
       <Input
         id={id}
         type="time"
@@ -200,7 +199,7 @@ function EditableTimeSetting({
         onBlur={() => onCommit(draft)}
         onChange={(event) => setDraft(event.target.value)}
       />
-    </div>
+    </Field>
   );
 }
 
@@ -291,10 +290,10 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
                   description="New periods use these values when Clockr opens the current range."
                 >
                   <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="grid gap-1.5">
-                      <Label htmlFor="setting-period-cadence" className="text-xs">
+                    <Field>
+                      <FieldLabel htmlFor="setting-period-cadence">
                         Cadence
-                      </Label>
+                      </FieldLabel>
                       <Select
                         value={cadence.value}
                         onValueChange={(value) =>
@@ -316,7 +315,7 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
                           <SelectItem value="monthly">Monthly</SelectItem>
                         </SelectContent>
                       </Select>
-                    </div>
+                    </Field>
                     <EditableNumberSetting
                       id="setting-target-hours"
                       label="Target hours"
@@ -339,10 +338,8 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
                   title="Appearance"
                   description="Clockr follows the system theme unless a theme is selected."
                 >
-                  <div className="grid max-w-xs gap-1.5">
-                    <Label htmlFor="setting-theme" className="text-xs">
-                      Theme
-                    </Label>
+                  <Field className="max-w-xs">
+                    <FieldLabel htmlFor="setting-theme">Theme</FieldLabel>
                     <Select
                       value={theme.value}
                       onValueChange={(value) =>
@@ -376,7 +373,7 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
                         </SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
+                  </Field>
                 </SettingBlock>
 
                 <SettingBlock
@@ -454,10 +451,8 @@ function EventHandlingSelect({
   onValueChange: (value: EventHandling) => void;
 }) {
   return (
-    <div className="grid gap-1.5">
-      <Label htmlFor={`setting-event-${label}`} className="text-xs">
-        {label}
-      </Label>
+    <Field>
+      <FieldLabel htmlFor={`setting-event-${label}`}>{label}</FieldLabel>
       <Select
         value={value}
         onValueChange={(nextValue) => onValueChange(nextValue as EventHandling)}
@@ -474,6 +469,6 @@ function EventHandlingSelect({
           <SelectItem value="exclude">Exclude</SelectItem>
         </SelectContent>
       </Select>
-    </div>
+    </Field>
   );
 }
