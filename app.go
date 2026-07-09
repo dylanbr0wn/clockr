@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dylanbr0wn/clockr/internal/ai"
-	"github.com/dylanbr0wn/clockr/internal/config"
-	"github.com/dylanbr0wn/clockr/internal/integration/connection"
-	"github.com/dylanbr0wn/clockr/internal/integration/google"
-	"github.com/dylanbr0wn/clockr/internal/service"
+	"github.com/dylanbr0wn/shiet/internal/ai"
+	"github.com/dylanbr0wn/shiet/internal/config"
+	"github.com/dylanbr0wn/shiet/internal/integration/connection"
+	"github.com/dylanbr0wn/shiet/internal/integration/google"
+	"github.com/dylanbr0wn/shiet/internal/service"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 

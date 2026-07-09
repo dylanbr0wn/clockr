@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type {
   Category,
-  Event as ClockrEvent,
+  Event as ShietEvent,
   GapFill,
   TzSegment,
 } from "@/lib/api";
@@ -47,7 +47,7 @@ const emptyOverlays = new Map<string, number>();
 
 describe("schedule mappers", () => {
   it("maps all-day events across the whole schedule day", () => {
-    const event: ClockrEvent = {
+    const event: ShietEvent = {
       id: 12,
       periodId: 1,
       calendarId: 3,
@@ -82,7 +82,7 @@ describe("schedule mappers", () => {
   });
 
   it("maps categorized calendar events with category color", () => {
-    const event: ClockrEvent = {
+    const event: ShietEvent = {
       id: 34,
       periodId: 1,
       calendarId: 3,
@@ -166,7 +166,7 @@ describe("schedule mappers", () => {
   });
 
   it("builds all-day chips for visible days with span positions", () => {
-    const events: ClockrEvent[] = [
+    const events: ShietEvent[] = [
       {
         id: 12,
         periodId: 1,
@@ -223,7 +223,7 @@ describe("schedule mappers", () => {
   });
 
   it("maps timed events into the active timezone position", () => {
-    const event: ClockrEvent = {
+    const event: ShietEvent = {
       id: 34,
       periodId: 1,
       calendarId: 3,
@@ -248,7 +248,7 @@ describe("schedule mappers", () => {
   });
 
   it("marks open review events distinctly on the schedule", () => {
-    const event: ClockrEvent = {
+    const event: ShietEvent = {
       id: 34,
       periodId: 1,
       calendarId: 3,

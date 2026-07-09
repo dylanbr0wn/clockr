@@ -10,16 +10,16 @@ import (
 
 func TestLoad_precedenceDefaultFileEnv(t *testing.T) {
 	dir := t.TempDir()
-	cfgFile := filepath.Join(dir, "clockr.yaml")
+	cfgFile := filepath.Join(dir, "shiet.yaml")
 	if err := os.WriteFile(cfgFile, []byte("db:\n  path: /from/file.db\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	t.Setenv("CLOCKR_DB", "")
-	t.Setenv("CLOCKR_GOOGLE_CLIENT_ID", "")
-	t.Setenv("CLOCKR_GOOGLE_CLIENT_SECRET", "")
-	t.Setenv("CLOCKR_GOOGLE_AUTH_MODE", "")
-	t.Setenv("CLOCKR_GOOGLE_BROKER_BASE_URL", "")
+	t.Setenv("SHIET_DB", "")
+	t.Setenv("SHIET_GOOGLE_CLIENT_ID", "")
+	t.Setenv("SHIET_GOOGLE_CLIENT_SECRET", "")
+	t.Setenv("SHIET_GOOGLE_AUTH_MODE", "")
+	t.Setenv("SHIET_GOOGLE_BROKER_BASE_URL", "")
 
 	// Defaults only (no config files passed).
 	cfg, err := load(nil)
@@ -44,7 +44,7 @@ func TestLoad_precedenceDefaultFileEnv(t *testing.T) {
 	}
 
 	// Env overrides file.
-	t.Setenv("CLOCKR_DB", "/from/env.db")
+	t.Setenv("SHIET_DB", "/from/env.db")
 	cfg, err = load([]string{cfgFile})
 	if err != nil {
 		t.Fatal(err)
@@ -61,14 +61,14 @@ func TestLoad_precedenceDefaultFileEnv(t *testing.T) {
 
 func TestLoad_googleEnvOverrides(t *testing.T) {
 	dir := t.TempDir()
-	cfgFile := filepath.Join(dir, "clockr.yaml")
+	cfgFile := filepath.Join(dir, "shiet.yaml")
 	content := "google:\n  client_id: file-id\n  client_secret: file-secret\n"
 	if err := os.WriteFile(cfgFile, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	t.Setenv("CLOCKR_GOOGLE_CLIENT_ID", "env-id")
-	t.Setenv("CLOCKR_GOOGLE_CLIENT_SECRET", "env-secret")
+	t.Setenv("SHIET_GOOGLE_CLIENT_ID", "env-id")
+	t.Setenv("SHIET_GOOGLE_CLIENT_SECRET", "env-secret")
 
 	cfg, err := load([]string{cfgFile})
 	if err != nil {
@@ -88,11 +88,11 @@ func TestExpandHome(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := expandHome("~/data/clockr.db")
+	got, err := expandHome("~/data/shiet.db")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := filepath.Join(home, "data", "clockr.db")
+	want := filepath.Join(home, "data", "shiet.db")
 	if got != want {
 		t.Fatalf("got %q want %q", got, want)
 	}
@@ -118,7 +118,7 @@ func TestLoad_googleAuthModeDefaultsToBroker(t *testing.T) {
 
 func TestLoad_implicitLocalWhenClientIDPresent(t *testing.T) {
 	dir := t.TempDir()
-	cfgFile := filepath.Join(dir, "clockr.yaml")
+	cfgFile := filepath.Join(dir, "shiet.yaml")
 	content := "google:\n  client_id: byo-id\n  client_secret: byo-secret\n"
 	if err := os.WriteFile(cfgFile, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
@@ -139,11 +139,11 @@ func TestLoad_implicitLocalWhenClientIDPresent(t *testing.T) {
 
 func TestLoad_brokerModeClearsClientSecret(t *testing.T) {
 	dir := t.TempDir()
-	cfgFile := filepath.Join(dir, "clockr.yaml")
+	cfgFile := filepath.Join(dir, "shiet.yaml")
 	content := "" +
 		"google:\n" +
 		"  auth_mode: broker\n" +
-		"  broker_base_url: https://auth.clockr.app\n" +
+		"  broker_base_url: https://auth.shiet.app\n" +
 		"  client_secret: should-be-cleared\n"
 	if err := os.WriteFile(cfgFile, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
@@ -161,7 +161,7 @@ func TestLoad_brokerModeClearsClientSecret(t *testing.T) {
 
 func TestLoad_googleAuthModeFileAndEnvPrecedence(t *testing.T) {
 	dir := t.TempDir()
-	cfgFile := filepath.Join(dir, "clockr.yaml")
+	cfgFile := filepath.Join(dir, "shiet.yaml")
 	content := "" +
 		"google:\n" +
 		"  auth_mode: local\n" +
@@ -185,8 +185,8 @@ func TestLoad_googleAuthModeFileAndEnvPrecedence(t *testing.T) {
 		t.Fatalf("file broker_base_url: got %q", cfg.Google.BrokerBaseURL)
 	}
 
-	t.Setenv("CLOCKR_GOOGLE_AUTH_MODE", "broker")
-	t.Setenv("CLOCKR_GOOGLE_BROKER_BASE_URL", "https://env.example")
+	t.Setenv("SHIET_GOOGLE_AUTH_MODE", "broker")
+	t.Setenv("SHIET_GOOGLE_BROKER_BASE_URL", "https://env.example")
 	cfg, err = load([]string{cfgFile})
 	if err != nil {
 		t.Fatal(err)
@@ -202,7 +202,7 @@ func TestLoad_googleAuthModeFileAndEnvPrecedence(t *testing.T) {
 func TestValidate_brokerModeRequiresHTTPSBrokerURLNotClientSecret(t *testing.T) {
 	cfg := Config{}
 	cfg.Google.AuthMode = AuthModeBroker
-	cfg.Google.BrokerBaseURL = "https://auth.clockr.app"
+	cfg.Google.BrokerBaseURL = "https://auth.shiet.app"
 	cfg.Google.ClientSecret = ""
 	if err := cfg.Validate(); err != nil {
 		t.Fatalf("broker mode with HTTPS URL and empty secret should pass: %v", err)
@@ -216,7 +216,7 @@ func TestValidate_brokerModeRequiresHTTPSBrokerURLNotClientSecret(t *testing.T) 
 	if !errors.Is(err, ErrBrokerConfig) {
 		t.Fatalf("want ErrBrokerConfig, got %v", err)
 	}
-	if !strings.Contains(err.Error(), "broker_base_url") && !strings.Contains(err.Error(), "CLOCKR_GOOGLE_BROKER_BASE_URL") {
+	if !strings.Contains(err.Error(), "broker_base_url") && !strings.Contains(err.Error(), "SHIET_GOOGLE_BROKER_BASE_URL") {
 		t.Fatalf("broker config error should mention broker URL: %v", err)
 	}
 
@@ -247,7 +247,7 @@ func TestValidate_localModeRequiresClientIDNotBrokerURL(t *testing.T) {
 	if !errors.Is(err, ErrLocalCredentials) {
 		t.Fatalf("want ErrLocalCredentials, got %v", err)
 	}
-	if !strings.Contains(err.Error(), "client_id") && !strings.Contains(err.Error(), "CLOCKR_GOOGLE_CLIENT_ID") {
+	if !strings.Contains(err.Error(), "client_id") && !strings.Contains(err.Error(), "SHIET_GOOGLE_CLIENT_ID") {
 		t.Fatalf("local credential error should mention client_id: %v", err)
 	}
 }
@@ -266,7 +266,7 @@ func TestValidate_rejectsUnknownAuthMode(t *testing.T) {
 
 func TestLoad_validatesGoogleAuth(t *testing.T) {
 	dir := t.TempDir()
-	cfgFile := filepath.Join(dir, "clockr.yaml")
+	cfgFile := filepath.Join(dir, "shiet.yaml")
 	content := "google:\n  auth_mode: local\n  client_id: \"\"\n"
 	if err := os.WriteFile(cfgFile, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
@@ -284,9 +284,9 @@ func TestLoad_validatesGoogleAuth(t *testing.T) {
 
 func clearGoogleEnv(t *testing.T) {
 	t.Helper()
-	t.Setenv("CLOCKR_DB", "")
-	t.Setenv("CLOCKR_GOOGLE_CLIENT_ID", "")
-	t.Setenv("CLOCKR_GOOGLE_CLIENT_SECRET", "")
-	t.Setenv("CLOCKR_GOOGLE_AUTH_MODE", "")
-	t.Setenv("CLOCKR_GOOGLE_BROKER_BASE_URL", "")
+	t.Setenv("SHIET_DB", "")
+	t.Setenv("SHIET_GOOGLE_CLIENT_ID", "")
+	t.Setenv("SHIET_GOOGLE_CLIENT_SECRET", "")
+	t.Setenv("SHIET_GOOGLE_AUTH_MODE", "")
+	t.Setenv("SHIET_GOOGLE_BROKER_BASE_URL", "")
 }

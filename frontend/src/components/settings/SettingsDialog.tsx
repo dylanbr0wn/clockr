@@ -287,7 +287,7 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
               <div className="mx-auto max-w-2xl space-y-6">
                 <SettingBlock
                   title="Period Defaults"
-                  description="New periods use these values when Clockr opens the current range."
+                  description="New periods use these values when shiet opens the current range."
                 >
                   <div className="grid gap-3 sm:grid-cols-3">
                     <Field>
@@ -336,7 +336,7 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
 
                 <SettingBlock
                   title="Appearance"
-                  description="Clockr follows the system theme unless a theme is selected."
+                  description="shiet follows the system theme unless a theme is selected."
                 >
                   <Field className="max-w-xs">
                     <FieldLabel htmlFor="setting-theme">Theme</FieldLabel>

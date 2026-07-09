@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dylanbr0wn/clockr/internal/db"
-	"github.com/dylanbr0wn/clockr/internal/db/sqlc"
-	"github.com/dylanbr0wn/clockr/internal/seed"
-	"github.com/dylanbr0wn/clockr/internal/service"
+	"github.com/dylanbr0wn/shiet/internal/db"
+	"github.com/dylanbr0wn/shiet/internal/db/sqlc"
+	"github.com/dylanbr0wn/shiet/internal/seed"
+	"github.com/dylanbr0wn/shiet/internal/service"
 )
 
 type stubPuller struct {

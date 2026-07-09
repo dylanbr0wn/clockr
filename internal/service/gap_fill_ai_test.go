@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dylanbr0wn/clockr/internal/service"
+	"github.com/dylanbr0wn/shiet/internal/service"
 )
 
 type stubEvidenceProvider struct {

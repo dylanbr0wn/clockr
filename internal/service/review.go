@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dylanbr0wn/clockr/internal/db/sqlc"
+	"github.com/dylanbr0wn/shiet/internal/db/sqlc"
 )
 
 // Review resolution actions (must match frontend).

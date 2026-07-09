@@ -17,10 +17,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dylanbr0wn/clockr/internal/config"
-	"github.com/dylanbr0wn/clockr/internal/integration/oauth"
-	"github.com/dylanbr0wn/clockr/internal/integration/secrets"
-	"github.com/dylanbr0wn/clockr/internal/service"
+	"github.com/dylanbr0wn/shiet/internal/config"
+	"github.com/dylanbr0wn/shiet/internal/integration/oauth"
+	"github.com/dylanbr0wn/shiet/internal/integration/secrets"
+	"github.com/dylanbr0wn/shiet/internal/service"
 	"github.com/pkg/browser"
 )
 
@@ -89,7 +89,7 @@ func (f *BrokerFlow) Authorize(ctx context.Context, accountID string) (oauth.Res
 	}
 	base := strings.TrimRight(strings.TrimSpace(f.BaseURL), "/")
 	if base == "" {
-		return oauth.Result{}, fmt.Errorf("%w: set google.broker_base_url or CLOCKR_GOOGLE_BROKER_BASE_URL", config.ErrBrokerConfig)
+		return oauth.Result{}, fmt.Errorf("%w: set google.broker_base_url or SHIET_GOOGLE_BROKER_BASE_URL", config.ErrBrokerConfig)
 	}
 
 	ln, redirectURL, err := listenBrokerHandoff()
@@ -140,7 +140,7 @@ func (f *BrokerFlow) Authorize(ctx context.Context, accountID string) (oauth.Res
 			}
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.WriteHeader(http.StatusOK)
-			_, _ = io.WriteString(w, "<!doctype html><html><body><p>Handoff received. You can close this window and return to Clockr.</p></body></html>")
+			_, _ = io.WriteString(w, "<!doctype html><html><body><p>Handoff received. You can close this window and return to shiet.</p></body></html>")
 		}),
 	}
 

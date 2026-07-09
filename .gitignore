@@ -8,7 +8,7 @@ frontend/dist
 *.out
 coverage.*
 # Compiled local binaries (e.g. `go build` in repo root)
-/clockr
+/shiet
 /db
 
 # ── Frontend (Node / Vite) ────────────────────────────────────────────

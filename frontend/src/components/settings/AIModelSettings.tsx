@@ -189,7 +189,7 @@ export function AIModelSettings() {
     <div className="mx-auto max-w-2xl space-y-6">
       <SettingBlock
         title="AI Model"
-        description="Bring your own model. Point Clockr at a local runtime or a custom OpenAI-compatible endpoint for categorization suggestions."
+        description="Bring your own model. Point shiet at a local runtime or a custom OpenAI-compatible endpoint for categorization suggestions."
       >
         <Field>
           <div className="flex items-center justify-between gap-3">
@@ -257,7 +257,7 @@ export function AIModelSettings() {
 
       <SettingBlock
         title="Connection"
-        description="Configure the OpenAI-compatible base URL and model Clockr should use."
+        description="Configure the OpenAI-compatible base URL and model shiet should use."
       >
         <Field>
             <FieldLabel htmlFor="ai-base-url">Base URL</FieldLabel>

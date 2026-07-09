@@ -17,8 +17,8 @@ import (
 	"strings"
 	"time"
 
-	brokerconfig "github.com/dylanbr0wn/clockr/internal/broker/config"
-	"github.com/dylanbr0wn/clockr/internal/broker/store"
+	brokerconfig "github.com/dylanbr0wn/shiet/internal/broker/config"
+	"github.com/dylanbr0wn/shiet/internal/broker/store"
 )
 
 const (
@@ -197,7 +197,7 @@ func (s Server) startGoogleOAuth(w http.ResponseWriter, r *http.Request) {
 
 func (s Server) googleCallback(w http.ResponseWriter, r *http.Request) {
 	if s.Store == nil {
-		writeHTMLError(w, http.StatusServiceUnavailable, "Broker datastore unavailable. Return to Clockr and retry.")
+		writeHTMLError(w, http.StatusServiceUnavailable, "Broker datastore unavailable. Return to shiet and retry.")
 		return
 	}
 
@@ -208,14 +208,14 @@ func (s Server) googleCallback(w http.ResponseWriter, r *http.Request) {
 		if desc != "" {
 			msg = "Google authorization failed: " + desc
 		}
-		writeHTMLError(w, http.StatusBadRequest, msg+" Return to Clockr and retry.")
+		writeHTMLError(w, http.StatusBadRequest, msg+" Return to shiet and retry.")
 		return
 	}
 
 	code := strings.TrimSpace(q.Get("code"))
 	stateID := strings.TrimSpace(q.Get("state"))
 	if code == "" || stateID == "" {
-		writeHTMLError(w, http.StatusBadRequest, "Missing OAuth code or state. Return to Clockr and retry.")
+		writeHTMLError(w, http.StatusBadRequest, "Missing OAuth code or state. Return to shiet and retry.")
 		return
 	}
 
@@ -224,26 +224,26 @@ func (s Server) googleCallback(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrAlreadyUsed):
-			writeHTMLError(w, http.StatusBadRequest, "This Google authorization was already used. Return to Clockr and start a new connect.")
+			writeHTMLError(w, http.StatusBadRequest, "This Google authorization was already used. Return to shiet and start a new connect.")
 		case errors.Is(err, store.ErrExpired):
-			writeHTMLError(w, http.StatusBadRequest, "This Google authorization expired. Return to Clockr and start a new connect.")
+			writeHTMLError(w, http.StatusBadRequest, "This Google authorization expired. Return to shiet and start a new connect.")
 		case errors.Is(err, store.ErrNotFound):
-			writeHTMLError(w, http.StatusBadRequest, "Unknown Google authorization state. Return to Clockr and start a new connect.")
+			writeHTMLError(w, http.StatusBadRequest, "Unknown Google authorization state. Return to shiet and start a new connect.")
 		default:
-			writeHTMLError(w, http.StatusInternalServerError, "Broker could not validate authorization state. Return to Clockr and retry.")
+			writeHTMLError(w, http.StatusInternalServerError, "Broker could not validate authorization state. Return to shiet and retry.")
 		}
 		return
 	}
 
 	tok, err := s.exchangeGoogleCode(r.Context(), code, state.PKCEVerifier)
 	if err != nil {
-		writeHTMLError(w, http.StatusBadGateway, "Broker could not exchange the Google authorization code. Return to Clockr and retry.")
+		writeHTMLError(w, http.StatusBadGateway, "Broker could not exchange the Google authorization code. Return to shiet and retry.")
 		return
 	}
 
 	handoffCode, err := randomString(32)
 	if err != nil {
-		writeHTMLError(w, http.StatusInternalServerError, "Broker could not create a handoff code. Return to Clockr and retry.")
+		writeHTMLError(w, http.StatusInternalServerError, "Broker could not create a handoff code. Return to shiet and retry.")
 		return
 	}
 	payload, err := encryptTokenPayload(
@@ -257,7 +257,7 @@ func (s Server) googleCallback(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
-		writeHTMLError(w, http.StatusInternalServerError, "Broker could not seal token material. Return to Clockr and retry.")
+		writeHTMLError(w, http.StatusInternalServerError, "Broker could not seal token material. Return to shiet and retry.")
 		return
 	}
 
@@ -276,13 +276,13 @@ func (s Server) googleCallback(w http.ResponseWriter, r *http.Request) {
 		ExpiresAt:             now.Add(s.Config.HandoffTTL),
 	}
 	if err := s.Store.SaveHandoff(r.Context(), handoff); err != nil {
-		writeHTMLError(w, http.StatusInternalServerError, "Broker could not persist the handoff. Return to Clockr and retry.")
+		writeHTMLError(w, http.StatusInternalServerError, "Broker could not persist the handoff. Return to shiet and retry.")
 		return
 	}
 
 	handoffURL, err := s.buildHandoffURL(state, handoffCode)
 	if err != nil {
-		writeHTMLError(w, http.StatusInternalServerError, "Broker could not build the desktop return link. Return to Clockr and retry.")
+		writeHTMLError(w, http.StatusInternalServerError, "Broker could not build the desktop return link. Return to shiet and retry.")
 		return
 	}
 
@@ -477,8 +477,8 @@ func validateDesktopHandoffRedirect(raw string) error {
 func callbackSuccessPage(handoffURL string) string {
 	safe := html.EscapeString(handoffURL)
 	return "<!doctype html><html><body>" +
-		"<p>Authorization complete. Return to Clockr to finish connecting Google Calendar.</p>" +
-		`<p><a href="` + safe + `">Open Clockr</a></p>` +
+		"<p>Authorization complete. Return to shiet to finish connecting Google Calendar.</p>" +
+		`<p><a href="` + safe + `">Open shiet</a></p>` +
 		`<meta http-equiv="refresh" content="0;url=` + safe + `">` +
 		"</body></html>"
 }

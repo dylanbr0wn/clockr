@@ -35,7 +35,7 @@ import {
   updateCategory,
   updateManualEvent,
   validateAIConfig,
-} from "./clockrService";
+} from "./shietService";
 import type { TimeWindow } from "./types";
 
 function parseJsonSetting<T>(raw: string | null | undefined, fallback: T): T {
@@ -50,70 +50,70 @@ function parseJsonSetting<T>(raw: string | null | undefined, fallback: T): T {
   }
 }
 
-export const clockrQueryKeys = {
-  all: ["clockr"] as const,
-  calendars: () => [...clockrQueryKeys.all, "calendars"] as const,
-  categories: () => [...clockrQueryKeys.all, "categories"] as const,
+export const shietQueryKeys = {
+  all: ["shiet"] as const,
+  calendars: () => [...shietQueryKeys.all, "calendars"] as const,
+  categories: () => [...shietQueryKeys.all, "categories"] as const,
   gapTimeline: (periodId: number) =>
-    [...clockrQueryKeys.period(periodId), "gapTimeline"] as const,
+    [...shietQueryKeys.period(periodId), "gapTimeline"] as const,
   period: (periodId: number) =>
-    [...clockrQueryKeys.periods(), periodId] as const,
+    [...shietQueryKeys.periods(), periodId] as const,
   currentPeriod: (today: string, ianaTz: string) =>
-    [...clockrQueryKeys.periods(), "current", today, ianaTz] as const,
-  periods: () => [...clockrQueryKeys.all, "periods"] as const,
+    [...shietQueryKeys.periods(), "current", today, ianaTz] as const,
+  periods: () => [...shietQueryKeys.all, "periods"] as const,
   periodEvents: (periodId: number) =>
-    [...clockrQueryKeys.period(periodId), "events"] as const,
+    [...shietQueryKeys.period(periodId), "events"] as const,
   periodEventCategoryOverlays: (periodId: number) =>
-    [...clockrQueryKeys.period(periodId), "eventCategoryOverlays"] as const,
+    [...shietQueryKeys.period(periodId), "eventCategoryOverlays"] as const,
   periodGapFills: (periodId: number) =>
-    [...clockrQueryKeys.period(periodId), "gapFills"] as const,
+    [...shietQueryKeys.period(periodId), "gapFills"] as const,
   periodReviewItems: (periodId: number) =>
-    [...clockrQueryKeys.period(periodId), "reviewItems"] as const,
+    [...shietQueryKeys.period(periodId), "reviewItems"] as const,
   periodTzSegments: (periodId: number) =>
-    [...clockrQueryKeys.period(periodId), "tzSegments"] as const,
+    [...shietQueryKeys.period(periodId), "tzSegments"] as const,
   selectedCalendars: () =>
-    [...clockrQueryKeys.calendars(), "selected"] as const,
-  connections: () => [...clockrQueryKeys.all, "connections"] as const,
-  setting: (key: string) => [...clockrQueryKeys.all, "settings", key] as const,
-  aiDiscovery: () => [...clockrQueryKeys.all, "ai", "discovery"] as const,
+    [...shietQueryKeys.calendars(), "selected"] as const,
+  connections: () => [...shietQueryKeys.all, "connections"] as const,
+  setting: (key: string) => [...shietQueryKeys.all, "settings", key] as const,
+  aiDiscovery: () => [...shietQueryKeys.all, "ai", "discovery"] as const,
   aiClassification: (baseURL: string) =>
-    [...clockrQueryKeys.all, "ai", "classification", baseURL] as const,
+    [...shietQueryKeys.all, "ai", "classification", baseURL] as const,
   aiModels: (baseURL: string) =>
-    [...clockrQueryKeys.all, "ai", "models", baseURL] as const,
+    [...shietQueryKeys.all, "ai", "models", baseURL] as const,
   aiValidation: (baseURL: string, apiKey: string, model: string) =>
-    [...clockrQueryKeys.all, "ai", "validation", baseURL, apiKey, model] as const,
+    [...shietQueryKeys.all, "ai", "validation", baseURL, apiKey, model] as const,
 };
 
 export function usePeriods() {
   return useQuery({
-    queryKey: clockrQueryKeys.periods(),
+    queryKey: shietQueryKeys.periods(),
     queryFn: listPeriods,
   });
 }
 
 export function useCurrentPeriod(today: string, ianaTz: string) {
   return useQuery({
-    queryKey: clockrQueryKeys.currentPeriod(today, ianaTz),
+    queryKey: shietQueryKeys.currentPeriod(today, ianaTz),
     queryFn: () => ensureCurrentPeriod(today, ianaTz),
   });
 }
 
 export function useCategories() {
   return useQuery({
-    queryKey: clockrQueryKeys.categories(),
+    queryKey: shietQueryKeys.categories(),
     queryFn: listCategories,
   });
 }
 
 function invalidateCategoryQueries(queryClient: ReturnType<typeof useQueryClient>) {
   void queryClient.invalidateQueries({
-    queryKey: clockrQueryKeys.categories(),
+    queryKey: shietQueryKeys.categories(),
   });
   void queryClient.invalidateQueries({
-    queryKey: clockrQueryKeys.calendars(),
+    queryKey: shietQueryKeys.calendars(),
   });
   void queryClient.invalidateQueries({
-    queryKey: clockrQueryKeys.selectedCalendars(),
+    queryKey: shietQueryKeys.selectedCalendars(),
   });
 }
 
@@ -153,21 +153,21 @@ export function useDeleteCategory() {
 export function useEventCategoryOverlays(periodId: number | null | undefined) {
   return useQuery({
     enabled: typeof periodId === "number",
-    queryKey: clockrQueryKeys.periodEventCategoryOverlays(periodId ?? 0),
+    queryKey: shietQueryKeys.periodEventCategoryOverlays(periodId ?? 0),
     queryFn: () => listEventCategoryOverlays(periodId as number),
   });
 }
 
 export function useCalendars() {
   return useQuery({
-    queryKey: clockrQueryKeys.calendars(),
+    queryKey: shietQueryKeys.calendars(),
     queryFn: listCalendars,
   });
 }
 
 export function useSelectedCalendars() {
   return useQuery({
-    queryKey: clockrQueryKeys.selectedCalendars(),
+    queryKey: shietQueryKeys.selectedCalendars(),
     queryFn: listSelectedCalendars,
   });
 }
@@ -175,7 +175,7 @@ export function useSelectedCalendars() {
 export function useEvents(periodId: number | null | undefined) {
   return useQuery({
     enabled: typeof periodId === "number",
-    queryKey: clockrQueryKeys.periodEvents(periodId ?? 0),
+    queryKey: shietQueryKeys.periodEvents(periodId ?? 0),
     queryFn: () => listEvents(periodId as number),
   });
 }
@@ -183,7 +183,7 @@ export function useEvents(periodId: number | null | undefined) {
 export function useGapFills(periodId: number | null | undefined) {
   return useQuery({
     enabled: typeof periodId === "number",
-    queryKey: clockrQueryKeys.periodGapFills(periodId ?? 0),
+    queryKey: shietQueryKeys.periodGapFills(periodId ?? 0),
     queryFn: () => listGapFills(periodId as number),
   });
 }
@@ -197,10 +197,10 @@ export function useCreateManualEvent() {
       const periodId = gapFill.periodId || input.periodId;
 
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.periodGapFills(periodId),
+        queryKey: shietQueryKeys.periodGapFills(periodId),
       });
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.gapTimeline(periodId),
+        queryKey: shietQueryKeys.gapTimeline(periodId),
       });
     },
   });
@@ -215,10 +215,10 @@ export function useCreateGapFill() {
       const periodId = gapFill.periodId || input.periodId;
 
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.periodGapFills(periodId),
+        queryKey: shietQueryKeys.periodGapFills(periodId),
       });
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.gapTimeline(periodId),
+        queryKey: shietQueryKeys.gapTimeline(periodId),
       });
     },
   });
@@ -253,10 +253,10 @@ export function useUpdateManualEvent() {
       const periodId = gapFill.periodId || input.periodId;
 
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.periodGapFills(periodId),
+        queryKey: shietQueryKeys.periodGapFills(periodId),
       });
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.gapTimeline(periodId),
+        queryKey: shietQueryKeys.gapTimeline(periodId),
       });
     },
   });
@@ -271,10 +271,10 @@ export function useDeleteManualEvent() {
       const periodId = result.periodId || input.periodId;
 
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.periodGapFills(periodId),
+        queryKey: shietQueryKeys.periodGapFills(periodId),
       });
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.gapTimeline(periodId),
+        queryKey: shietQueryKeys.gapTimeline(periodId),
       });
     },
   });
@@ -283,7 +283,7 @@ export function useDeleteManualEvent() {
 export function useOpenReviewItems(periodId: number | null | undefined) {
   return useQuery({
     enabled: typeof periodId === "number",
-    queryKey: clockrQueryKeys.periodReviewItems(periodId ?? 0),
+    queryKey: shietQueryKeys.periodReviewItems(periodId ?? 0),
     queryFn: () => listOpenReviewItems(periodId as number),
   });
 }
@@ -296,16 +296,16 @@ export function useResolveReviewItem() {
     onSuccess: (result) => {
       const periodId = result.periodId;
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.periodReviewItems(periodId),
+        queryKey: shietQueryKeys.periodReviewItems(periodId),
       });
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.periodEvents(periodId),
+        queryKey: shietQueryKeys.periodEvents(periodId),
       });
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.periodGapFills(periodId),
+        queryKey: shietQueryKeys.periodGapFills(periodId),
       });
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.gapTimeline(periodId),
+        queryKey: shietQueryKeys.gapTimeline(periodId),
       });
     },
   });
@@ -314,7 +314,7 @@ export function useResolveReviewItem() {
 export function useTzSegments(periodId: number | null | undefined) {
   return useQuery({
     enabled: typeof periodId === "number",
-    queryKey: clockrQueryKeys.periodTzSegments(periodId ?? 0),
+    queryKey: shietQueryKeys.periodTzSegments(periodId ?? 0),
     queryFn: () => listTzSegments(periodId as number),
   });
 }
@@ -322,14 +322,14 @@ export function useTzSegments(periodId: number | null | undefined) {
 export function useGapTimeline(periodId: number | null | undefined) {
   return useQuery({
     enabled: typeof periodId === "number",
-    queryKey: clockrQueryKeys.gapTimeline(periodId ?? 0),
+    queryKey: shietQueryKeys.gapTimeline(periodId ?? 0),
     queryFn: () => computeGaps(periodId as number),
   });
 }
 
 export function useSetting(key: string) {
   return useQuery({
-    queryKey: clockrQueryKeys.setting(key),
+    queryKey: shietQueryKeys.setting(key),
     queryFn: () => getSetting(key),
   });
 }
@@ -341,7 +341,7 @@ export function useSetSetting() {
     mutationFn: ({ key, value }: { key: string; value: string }) =>
       setSetting(key, value),
     onMutate: async ({ key, value }) => {
-      const queryKey = clockrQueryKeys.setting(key);
+      const queryKey = shietQueryKeys.setting(key);
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<string | null | undefined>(
         queryKey,
@@ -354,13 +354,13 @@ export function useSetSetting() {
         return;
       }
       queryClient.setQueryData(
-        clockrQueryKeys.setting(context.key),
+        shietQueryKeys.setting(context.key),
         context.previous,
       );
     },
     onSettled: (_result, _error, { key }) => {
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.setting(key),
+        queryKey: shietQueryKeys.setting(key),
       });
     },
   });
@@ -368,7 +368,7 @@ export function useSetSetting() {
 
 export function useDiscoverLocalAIEndpoints() {
   return useQuery({
-    queryKey: clockrQueryKeys.aiDiscovery(),
+    queryKey: shietQueryKeys.aiDiscovery(),
     queryFn: discoverLocalAIEndpoints,
   });
 }
@@ -376,7 +376,7 @@ export function useDiscoverLocalAIEndpoints() {
 export function useClassifyAIEndpoint(baseURL: string) {
   return useQuery({
     enabled: baseURL.trim().length > 0,
-    queryKey: clockrQueryKeys.aiClassification(baseURL),
+    queryKey: shietQueryKeys.aiClassification(baseURL),
     queryFn: () => classifyAIEndpoint(baseURL),
   });
 }
@@ -384,7 +384,7 @@ export function useClassifyAIEndpoint(baseURL: string) {
 export function useAIModels(baseURL: string, apiKey: string) {
   return useQuery({
     enabled: baseURL.trim().length > 0,
-    queryKey: clockrQueryKeys.aiModels(baseURL),
+    queryKey: shietQueryKeys.aiModels(baseURL),
     queryFn: () => listAIModels(baseURL, apiKey),
     retry: false,
   });
@@ -397,7 +397,7 @@ export function useValidateAIConfig(
 ) {
   return useQuery({
     enabled: false,
-    queryKey: clockrQueryKeys.aiValidation(baseURL, apiKey, model),
+    queryKey: shietQueryKeys.aiValidation(baseURL, apiKey, model),
     queryFn: () => validateAIConfig(baseURL, apiKey, model),
     retry: false,
   });
@@ -405,7 +405,7 @@ export function useValidateAIConfig(
 
 export function useClearAIModel() {
   const queryClient = useQueryClient();
-  const queryKey = clockrQueryKeys.setting("ai.model");
+  const queryKey = shietQueryKeys.setting("ai.model");
 
   return useMutation({
     mutationFn: () => setSetting("ai.model", '""'),
@@ -430,7 +430,7 @@ export function useClearAIModel() {
 
 export function useSaveAIEndpoint() {
   const queryClient = useQueryClient();
-  const queryKey = clockrQueryKeys.setting("ai.base_url");
+  const queryKey = shietQueryKeys.setting("ai.base_url");
 
   return useMutation({
     mutationFn: (baseURL: string) => saveAIEndpoint(baseURL),
@@ -455,7 +455,7 @@ export function useSaveAIEndpoint() {
 
 export function useSaveAIModel() {
   const queryClient = useQueryClient();
-  const queryKey = clockrQueryKeys.setting("ai.model");
+  const queryKey = shietQueryKeys.setting("ai.model");
 
   return useMutation({
     mutationFn: (model: string) => saveAIModel(model),
@@ -480,8 +480,8 @@ export function useSaveAIModel() {
 
 export function useSaveAIConfig() {
   const queryClient = useQueryClient();
-  const baseURLKey = clockrQueryKeys.setting("ai.base_url");
-  const modelKey = clockrQueryKeys.setting("ai.model");
+  const baseURLKey = shietQueryKeys.setting("ai.base_url");
+  const modelKey = shietQueryKeys.setting("ai.model");
 
   return useMutation({
     mutationFn: ({
@@ -520,7 +520,7 @@ export function useSaveAIConfig() {
 
 export function useIntegrationConnections() {
   return useQuery({
-    queryKey: clockrQueryKeys.connections(),
+    queryKey: shietQueryKeys.connections(),
     queryFn: listIntegrationConnections,
   });
 }
@@ -529,13 +529,13 @@ export function useConnectGoogle() {
   const queryClient = useQueryClient();
   const refreshGoogleQueries = () => {
     void queryClient.invalidateQueries({
-      queryKey: clockrQueryKeys.connections(),
+      queryKey: shietQueryKeys.connections(),
     });
     void queryClient.invalidateQueries({
-      queryKey: clockrQueryKeys.calendars(),
+      queryKey: shietQueryKeys.calendars(),
     });
     void queryClient.invalidateQueries({
-      queryKey: clockrQueryKeys.selectedCalendars(),
+      queryKey: shietQueryKeys.selectedCalendars(),
     });
   };
 
@@ -558,13 +558,13 @@ export function useDisconnectGoogle() {
     mutationFn: (accountID: string) => disconnectGoogle(accountID),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.connections(),
+        queryKey: shietQueryKeys.connections(),
       });
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.calendars(),
+        queryKey: shietQueryKeys.calendars(),
       });
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.selectedCalendars(),
+        queryKey: shietQueryKeys.selectedCalendars(),
       });
     },
   });
@@ -583,10 +583,10 @@ export function useSetCalendarSelected() {
     }) => setCalendarSelected(calendarID, selected),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.calendars(),
+        queryKey: shietQueryKeys.calendars(),
       });
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.selectedCalendars(),
+        queryKey: shietQueryKeys.selectedCalendars(),
       });
     },
   });
@@ -605,10 +605,10 @@ export function useSetCalendarDefaultCategory() {
     }) => setCalendarDefaultCategory(calendarID, categoryID),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.calendars(),
+        queryKey: shietQueryKeys.calendars(),
       });
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.selectedCalendars(),
+        queryKey: shietQueryKeys.selectedCalendars(),
       });
     },
   });
@@ -621,28 +621,28 @@ export function useSyncPeriod() {
     mutationFn: (periodID: number) => syncPeriod(periodID),
     onSuccess: (_result, periodID) => {
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.periods(),
+        queryKey: shietQueryKeys.periods(),
       });
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.period(periodID),
+        queryKey: shietQueryKeys.period(periodID),
       });
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.periodEvents(periodID),
+        queryKey: shietQueryKeys.periodEvents(periodID),
       });
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.periodEventCategoryOverlays(periodID),
+        queryKey: shietQueryKeys.periodEventCategoryOverlays(periodID),
       });
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.periodReviewItems(periodID),
+        queryKey: shietQueryKeys.periodReviewItems(periodID),
       });
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.gapTimeline(periodID),
+        queryKey: shietQueryKeys.gapTimeline(periodID),
       });
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.calendars(),
+        queryKey: shietQueryKeys.calendars(),
       });
       void queryClient.invalidateQueries({
-        queryKey: clockrQueryKeys.connections(),
+        queryKey: shietQueryKeys.connections(),
       });
     },
   });

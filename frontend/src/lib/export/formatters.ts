@@ -111,5 +111,5 @@ export function formatSummaryCSV(summary: PeriodExportSummary) {
 }
 
 export function defaultExportFilename(summary: PeriodExportSummary) {
-  return `clockr-${summary.startDate}-to-${summary.endDate}.csv`;
+  return `shiet-${summary.startDate}-to-${summary.endDate}.csv`;
 }

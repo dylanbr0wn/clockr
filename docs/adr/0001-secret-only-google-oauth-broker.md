@@ -6,16 +6,16 @@
 
 ## Context
 
-Clockr currently runs Google OAuth from the local Wails desktop app. The current
+shiet currently runs Google OAuth from the local Wails desktop app. The current
 implementation uses the system browser, a loopback redirect, PKCE, state
 checking, and OS keychain-backed token storage. That is the right native-app
 shape for local OAuth, but it does not solve the product security concern for
-public Clockr builds: a shared Google OAuth `client_secret` shipped in the app
+public shiet builds: a shared Google OAuth `client_secret` shipped in the app
 binary or config can be extracted and reused by impersonators, creating quota,
-reputation, and consent-screen risk for Clockr's Google Cloud project.
+reputation, and consent-screen risk for shiet's Google Cloud project.
 
 The relevant boundary is not "can the local OAuth flow work?" It can. The
-boundary is whether Clockr can treat a distributed shared Google secret as a
+boundary is whether shiet can treat a distributed shared Google secret as a
 confidential credential. It cannot.
 
 Standards and provider guidance support that split:
@@ -29,20 +29,20 @@ Standards and provider guidance support that split:
   application exchanges an authorization code.
 - The IETF browser-based apps draft describes backend-for-frontend and
   token-mediating backend patterns where a server-side component acts as the
-  confidential OAuth client. Clockr's broker is closest to a narrow
+  confidential OAuth client. shiet's broker is closest to a narrow
   token-mediating backend for a native desktop app, with no persistent
   server-side Google token storage.
 
 ## Decision
 
-Clockr public builds will use a small secret-only Google OAuth broker for Google
+shiet public builds will use a small secret-only Google OAuth broker for Google
 Calendar authorization. The broker owns the confidential Google Web OAuth client
 and stores the Google `client_secret` only server-side. The desktop app continues
 to store Google refresh and access tokens only in the OS keychain.
 
 The broker handles:
 
-1. Starting authorization at `https://auth.clockr.app`.
+1. Starting authorization at `https://auth.shiet.app`.
 2. Receiving Google's OAuth callback.
 3. Exchanging Google's authorization code for tokens with the server-side
    `client_secret`.
@@ -64,22 +64,22 @@ credentials are configured.
 
 ### Local-only desktop OAuth
 
-Keep the current local loopback OAuth flow and configure Clockr's shared Google
+Keep the current local loopback OAuth flow and configure shiet's shared Google
 Desktop OAuth credentials in the app.
 
 - Pros: smallest app change; no hosted infrastructure; aligns with native OAuth
   mechanics.
-- Cons: does not protect a shared Clockr `client_secret`; extracted credentials
+- Cons: does not protect a shared shiet `client_secret`; extracted credentials
   can be reused by impersonators; limited leverage for quota abuse monitoring or
   emergency cutoff.
 - Outcome: keep as the shape for BYO/development credentials, but do not use for
-  public builds with shared Clockr credentials.
+  public builds with shared shiet credentials.
 
 ### BYO credentials only
 
 Require every user to create and configure their own Google OAuth client.
 
-- Pros: no shared Clockr secret or quota pool; no broker operations.
+- Pros: no shared shiet secret or quota pool; no broker operations.
 - Cons: poor public-user onboarding; users inherit Google Cloud setup burden;
   support and consent-screen instructions become part of the product.
 - Outcome: keep as an escape hatch, not the public default.
@@ -90,7 +90,7 @@ Host a minimal OAuth broker that keeps the Google client secret server-side but
 returns Google tokens to the desktop for local keychain storage.
 
 - Pros: protects the shared Google `client_secret`; keeps Calendar data and
-  persistent tokens off Clockr servers; adds central rate limiting, monitoring,
+  persistent tokens off shiet servers; adds central rate limiting, monitoring,
   quota alerts, and a kill switch.
 - Cons: broker transiently handles sensitive token material; refresh requires
   sending the user's refresh token over HTTPS to the broker; adds uptime,
@@ -104,7 +104,7 @@ backend.
 
 - Pros: strongest server-side control over tokens, API calls, quota shaping, and
   abuse detection.
-- Cons: turns Clockr into a hosted calendar-sync product; requires persistent
+- Cons: turns shiet into a hosted calendar-sync product; requires persistent
   server-side token or session storage; likely stores or processes Calendar data
   server-side; materially larger privacy and operations footprint.
 - Outcome: reject for the first broker version.
@@ -151,7 +151,7 @@ Requirements:
   requested scopes, app metadata, source IP class, and expiration.
 - Expire unused state after 5 minutes.
 - Do not accept caller-supplied redirect URIs.
-- Scope requests to the minimum Google Calendar scopes Clockr needs.
+- Scope requests to the minimum Google Calendar scopes shiet needs.
 
 ### Google Callback
 
@@ -166,9 +166,9 @@ Behavior:
 - Create a handoff record containing encrypted token material, the desktop
   session id, state id, handoff challenge, issue time, expiry, and unused status.
 - Mark the OAuth state used before responding.
-- Render a minimal browser page telling the user to return to Clockr. The page
-  may include a fixed Clockr return link, such as
-  `clockr://oauth/google/handoff?...`, containing only the broker state and
+- Render a minimal browser page telling the user to return to shiet. The page
+  may include a fixed shiet return link, such as
+  `shiet://oauth/google/handoff?...`, containing only the broker state and
   handoff code. It must not include Google token material.
 
 Requirements:
@@ -292,8 +292,8 @@ Requirements:
 
 ### Client Secret Extraction
 
-Threat: an attacker extracts Clockr's shared Google `client_secret` from a
-public binary or config and reuses it to impersonate Clockr.
+Threat: an attacker extracts shiet's shared Google `client_secret` from a
+public binary or config and reuses it to impersonate shiet.
 
 Controls:
 
@@ -328,7 +328,7 @@ Controls:
 
 Residual risk: a modified desktop client can still call public broker endpoints.
 The broker reduces shared-secret extraction risk; it does not prove every caller
-is an unmodified Clockr binary.
+is an unmodified shiet binary.
 
 ### Handoff-Code Replay
 
@@ -356,7 +356,7 @@ and the token is exposed in transit or server telemetry.
 
 Controls:
 
-- HTTPS-only with HSTS for `auth.clockr.app`.
+- HTTPS-only with HSTS for `auth.shiet.app`.
 - No refresh tokens in URLs, logs, metrics labels, traces, exception messages, or
   durable queues.
 - Request body size limits and structured redaction at the HTTP boundary.
@@ -370,7 +370,7 @@ moving persistent token storage server-side.
 ### Quota Abuse
 
 Threat: attackers drive OAuth starts, token refreshes, or Calendar usage against
-Clockr's Google project and harm quota, reputation, or consent-screen standing.
+shiet's Google project and harm quota, reputation, or consent-screen standing.
 
 Controls:
 
@@ -382,7 +382,7 @@ Controls:
   API proxy.
 
 Residual risk: once a legitimate user grants access, the desktop's local Calendar
-API calls still consume Clockr project quota if using Clockr's OAuth client.
+API calls still consume shiet project quota if using shiet's OAuth client.
 Future work may need per-user quota shaping, finer Google Cloud monitoring, or a
 full proxy if abuse requires central API mediation.
 
@@ -405,7 +405,7 @@ compromise.
 
 ## Deployment Plan
 
-- Domain: provision `auth.clockr.app` with HTTPS, HSTS, and a Google Web OAuth
+- Domain: provision `auth.shiet.app` with HTTPS, HSTS, and a Google Web OAuth
   redirect URI pinned to the callback endpoint.
 - Runtime: deploy a small stateless HTTP service. Any token-bearing record must
   be short-lived and encrypted at rest if it exists outside process memory.
@@ -429,7 +429,7 @@ compromise.
 
 1. Keep the current BYO/local Google credential config for development and
    advanced users: `google.client_id`, `google.client_secret`,
-   `CLOCKR_GOOGLE_CLIENT_ID`, and `CLOCKR_GOOGLE_CLIENT_SECRET`.
+   `SHIET_GOOGLE_CLIENT_ID`, and `SHIET_GOOGLE_CLIENT_SECRET`.
 2. Add broker configuration separately, for example `google.auth_mode` with
    values `broker` and `local`, plus `google.broker_base_url`.
 3. Public builds default to `broker` mode and must not embed a shared
@@ -445,9 +445,9 @@ compromise.
 
 ## Consequences
 
-- Clockr gains a deployable path for public Google Calendar auth without shipping
+- shiet gains a deployable path for public Google Calendar auth without shipping
   a shared Google client secret.
-- Clockr does not become a hosted calendar-sync product in this version.
+- shiet does not become a hosted calendar-sync product in this version.
 - The broker becomes a security-sensitive service even though it does not persist
   Google tokens.
 - The desktop app's local token store remains the long-term holder of user

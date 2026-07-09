@@ -1,9 +1,9 @@
 package google
 
 import (
-	"github.com/dylanbr0wn/clockr/internal/config"
-	"github.com/dylanbr0wn/clockr/internal/integration/oauth"
-	"github.com/dylanbr0wn/clockr/internal/service"
+	"github.com/dylanbr0wn/shiet/internal/config"
+	"github.com/dylanbr0wn/shiet/internal/integration/oauth"
+	"github.com/dylanbr0wn/shiet/internal/service"
 	"golang.org/x/oauth2"
 )
 

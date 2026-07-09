@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dylanbr0wn/clockr/internal/ai"
+	"github.com/dylanbr0wn/shiet/internal/ai"
 )
 
 func TestSuggestGapFill(t *testing.T) {

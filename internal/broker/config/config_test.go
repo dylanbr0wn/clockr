@@ -9,10 +9,10 @@ import (
 func TestValidateRequiresPublicHTTPSOriginAndSecrets(t *testing.T) {
 	cfg := Config{
 		ListenAddr:         ":8080",
-		PublicOrigin:       "http://auth.clockr.app",
+		PublicOrigin:       "http://auth.shiet.app",
 		GoogleClientID:     "client-id",
 		GoogleClientSecret: "client-secret",
-		DesktopHandoffURL:  "clockr://oauth/google/handoff",
+		DesktopHandoffURL:  "shiet://oauth/google/handoff",
 		DatastoreDSN:       "file:broker.db",
 		StateTTL:           5 * time.Minute,
 		HandoffTTL:         2 * time.Minute,
@@ -27,11 +27,11 @@ func TestValidateRequiresPublicHTTPSOriginAndSecrets(t *testing.T) {
 		t.Fatalf("expected https validation error, got %q", err)
 	}
 
-	cfg.PublicOrigin = "https://auth.clockr.app"
+	cfg.PublicOrigin = "https://auth.shiet.app"
 	if err := cfg.Validate(); err != nil {
 		t.Fatalf("expected valid config: %v", err)
 	}
-	if got, want := cfg.RedirectURI(), "https://auth.clockr.app/v1/google/oauth/callback"; got != want {
+	if got, want := cfg.RedirectURI(), "https://auth.shiet.app/v1/google/oauth/callback"; got != want {
 		t.Fatalf("redirect uri: got %q want %q", got, want)
 	}
 }
@@ -39,10 +39,10 @@ func TestValidateRequiresPublicHTTPSOriginAndSecrets(t *testing.T) {
 func TestValidateRejectsOverlongTTLs(t *testing.T) {
 	cfg := Config{
 		ListenAddr:         ":8080",
-		PublicOrigin:       "https://auth.clockr.app",
+		PublicOrigin:       "https://auth.shiet.app",
 		GoogleClientID:     "client-id",
 		GoogleClientSecret: "client-secret",
-		DesktopHandoffURL:  "clockr://oauth/google/handoff",
+		DesktopHandoffURL:  "shiet://oauth/google/handoff",
 		DatastoreDSN:       "file:broker.db",
 		StateTTL:           11 * time.Minute,
 		HandoffTTL:         6 * time.Minute,
@@ -59,12 +59,12 @@ func TestValidateRejectsOverlongTTLs(t *testing.T) {
 }
 
 func TestLoadFromEnv(t *testing.T) {
-	t.Setenv("CLOCKR_BROKER_PUBLIC_ORIGIN", "https://auth.clockr.app")
-	t.Setenv("CLOCKR_BROKER_GOOGLE_CLIENT_ID", "client-id")
-	t.Setenv("CLOCKR_BROKER_GOOGLE_CLIENT_SECRET", "client-secret")
-	t.Setenv("CLOCKR_BROKER_DATASTORE_DSN", "file:broker.db")
-	t.Setenv("CLOCKR_BROKER_STATE_TTL", "3m")
-	t.Setenv("CLOCKR_BROKER_GOOGLE_SCOPES", "scope-a,scope-b")
+	t.Setenv("SHIET_BROKER_PUBLIC_ORIGIN", "https://auth.shiet.app")
+	t.Setenv("SHIET_BROKER_GOOGLE_CLIENT_ID", "client-id")
+	t.Setenv("SHIET_BROKER_GOOGLE_CLIENT_SECRET", "client-secret")
+	t.Setenv("SHIET_BROKER_DATASTORE_DSN", "file:broker.db")
+	t.Setenv("SHIET_BROKER_STATE_TTL", "3m")
+	t.Setenv("SHIET_BROKER_GOOGLE_SCOPES", "scope-a,scope-b")
 
 	cfg, err := LoadFromEnv()
 	if err != nil {
@@ -79,11 +79,11 @@ func TestLoadFromEnv(t *testing.T) {
 }
 
 func TestLoadFromEnvUsesRailwayPortWhenListenAddrUnset(t *testing.T) {
-	t.Setenv("CLOCKR_BROKER_PUBLIC_ORIGIN", "https://auth.clockr.app")
-	t.Setenv("CLOCKR_BROKER_GOOGLE_CLIENT_ID", "client-id")
-	t.Setenv("CLOCKR_BROKER_GOOGLE_CLIENT_SECRET", "client-secret")
-	t.Setenv("CLOCKR_BROKER_DATASTORE_DSN", "file:broker.db")
-	t.Setenv("CLOCKR_BROKER_LISTEN_ADDR", "")
+	t.Setenv("SHIET_BROKER_PUBLIC_ORIGIN", "https://auth.shiet.app")
+	t.Setenv("SHIET_BROKER_GOOGLE_CLIENT_ID", "client-id")
+	t.Setenv("SHIET_BROKER_GOOGLE_CLIENT_SECRET", "client-secret")
+	t.Setenv("SHIET_BROKER_DATASTORE_DSN", "file:broker.db")
+	t.Setenv("SHIET_BROKER_LISTEN_ADDR", "")
 	t.Setenv("PORT", "7654")
 
 	cfg, err := LoadFromEnv()

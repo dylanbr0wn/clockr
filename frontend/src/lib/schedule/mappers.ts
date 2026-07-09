@@ -1,7 +1,7 @@
 import type {
   Category,
   DayTimeline,
-  Event as ClockrEvent,
+  Event as ShietEvent,
   EventCategoryOverlay,
   GapFill,
   Interval,
@@ -78,7 +78,7 @@ export function buildEventCategoryOverlayMap(
 }
 
 export function resolveEventCategoryId(
-  event: ClockrEvent,
+  event: ShietEvent,
   overlaysByKey: ReadonlyMap<string, number>,
 ) {
   return overlaysByKey.get(
@@ -109,7 +109,7 @@ export function applyPlacement(
 }
 
 export function eventToSchedulerItem(
-  event: ClockrEvent,
+  event: ShietEvent,
   tzSegments: TzSegment[],
   categoriesById: Map<number, Category>,
   categoryId: number | undefined,
@@ -171,7 +171,7 @@ export function eventToSchedulerItem(
   );
 }
 
-export function expandAllDayEventDays(event: ClockrEvent): string[] {
+export function expandAllDayEventDays(event: ShietEvent): string[] {
   if (!event.startDate) {
     return [];
   }
@@ -207,7 +207,7 @@ function allDaySpanPosition(
 }
 
 export function buildAllDayChipsByDay(
-  events: ClockrEvent[],
+  events: ShietEvent[],
   visibleDays: ReadonlySet<string>,
   categoriesById: Map<number, Category>,
   overlaysByKey: ReadonlyMap<string, number>,

@@ -11,14 +11,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dylanbr0wn/clockr/internal/config"
-	"github.com/dylanbr0wn/clockr/internal/db"
-	"github.com/dylanbr0wn/clockr/internal/db/sqlc"
-	"github.com/dylanbr0wn/clockr/internal/integration/connection"
-	"github.com/dylanbr0wn/clockr/internal/integration/google"
-	"github.com/dylanbr0wn/clockr/internal/integration/oauth"
-	"github.com/dylanbr0wn/clockr/internal/integration/secrets"
-	"github.com/dylanbr0wn/clockr/internal/service"
+	"github.com/dylanbr0wn/shiet/internal/config"
+	"github.com/dylanbr0wn/shiet/internal/db"
+	"github.com/dylanbr0wn/shiet/internal/db/sqlc"
+	"github.com/dylanbr0wn/shiet/internal/integration/connection"
+	"github.com/dylanbr0wn/shiet/internal/integration/google"
+	"github.com/dylanbr0wn/shiet/internal/integration/oauth"
+	"github.com/dylanbr0wn/shiet/internal/integration/secrets"
+	"github.com/dylanbr0wn/shiet/internal/service"
 	"golang.org/x/oauth2"
 )
 
@@ -50,7 +50,7 @@ func TestOAuthConfig(t *testing.T) {
 func TestAuthSettingsFromConfig_brokerOmitsClientSecret(t *testing.T) {
 	var cfg config.Config
 	cfg.Google.AuthMode = config.AuthModeBroker
-	cfg.Google.BrokerBaseURL = "https://auth.clockr.app"
+	cfg.Google.BrokerBaseURL = "https://auth.shiet.app"
 	cfg.Google.ClientID = "should-not-matter"
 	cfg.Google.ClientSecret = "must-not-copy"
 
@@ -58,7 +58,7 @@ func TestAuthSettingsFromConfig_brokerOmitsClientSecret(t *testing.T) {
 	if got.Mode != config.AuthModeBroker {
 		t.Fatalf("mode: %q", got.Mode)
 	}
-	if got.BrokerBaseURL != "https://auth.clockr.app" {
+	if got.BrokerBaseURL != "https://auth.shiet.app" {
 		t.Fatalf("broker url: %q", got.BrokerBaseURL)
 	}
 	if got.ClientSecret != "" {

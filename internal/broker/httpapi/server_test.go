@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	brokerconfig "github.com/dylanbr0wn/clockr/internal/broker/config"
-	"github.com/dylanbr0wn/clockr/internal/broker/store"
+	brokerconfig "github.com/dylanbr0wn/shiet/internal/broker/config"
+	"github.com/dylanbr0wn/shiet/internal/broker/store"
 )
 
 func TestHealthAndReady(t *testing.T) {
@@ -89,7 +89,7 @@ func TestStartGoogleOAuthPersistsStateAndReturnsAuthURL(t *testing.T) {
 	if got := q.Get("client_id"); got != "google-client-id" {
 		t.Fatalf("client_id: got %q", got)
 	}
-	if got := q.Get("redirect_uri"); got != "https://auth.clockr.app/v1/google/oauth/callback" {
+	if got := q.Get("redirect_uri"); got != "https://auth.shiet.app/v1/google/oauth/callback" {
 		t.Fatalf("redirect_uri: got %q", got)
 	}
 	if got := q.Get("state"); got != resp.BrokerState {
@@ -129,7 +129,7 @@ func TestGoogleCallbackExchangesCodeAndCreatesHandoff(t *testing.T) {
 		if got := r.Form.Get("code_verifier"); got != "pkce-verifier" {
 			t.Fatalf("code_verifier: %q", got)
 		}
-		if got := r.Form.Get("redirect_uri"); got != "https://auth.clockr.app/v1/google/oauth/callback" {
+		if got := r.Form.Get("redirect_uri"); got != "https://auth.shiet.app/v1/google/oauth/callback" {
 			t.Fatalf("redirect_uri: %q", got)
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -386,10 +386,10 @@ func TestHandoffExchangeRejectsMismatchExpiryAndBadVerifier(t *testing.T) {
 func testConfig() brokerconfig.Config {
 	return brokerconfig.Config{
 		ListenAddr:         ":8080",
-		PublicOrigin:       "https://auth.clockr.app",
+		PublicOrigin:       "https://auth.shiet.app",
 		GoogleClientID:     "google-client-id",
 		GoogleClientSecret: "google-client-secret",
-		DesktopHandoffURL:  "clockr://oauth/google/handoff",
+		DesktopHandoffURL:  "shiet://oauth/google/handoff",
 		DatastoreDSN:       "file:broker.db",
 		StateTTL:           5 * time.Minute,
 		HandoffTTL:         2 * time.Minute,

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dylanbr0wn/clockr/internal/ai"
+	"github.com/dylanbr0wn/shiet/internal/ai"
 )
 
 // GapSuggestion is an AI-proposed category and description for an uncovered

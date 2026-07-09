@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/dylanbr0wn/clockr/internal/ai"
+	"github.com/dylanbr0wn/shiet/internal/ai"
 )
 
 func TestClassifyEndpoint(t *testing.T) {

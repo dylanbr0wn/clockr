@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dylanbr0wn/clockr/internal/service"
+	"github.com/dylanbr0wn/shiet/internal/service"
 )
 
-// mapEvent converts a Google Calendar API event into a Clockr IncomingEvent.
+// mapEvent converts a Google Calendar API event into a shiet IncomingEvent.
 func mapEvent(calendarID int64, ev event) (service.IncomingEvent, error) {
 	if ev.Status == "cancelled" {
 		return service.IncomingEvent{}, errCancelled

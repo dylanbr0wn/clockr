@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dylanbr0wn/clockr/internal/integration/google"
+	"github.com/dylanbr0wn/shiet/internal/integration/google"
 )
 
 func TestBrokerFlowAuthorizeSuccess(t *testing.T) {

@@ -1,4 +1,4 @@
-# Clockr OAuth Broker
+# shiet OAuth Broker
 
 The OAuth broker is a separate deployable Go binary:
 
@@ -15,28 +15,28 @@ Calendar event data.
 
 Required:
 
-- `CLOCKR_BROKER_PUBLIC_ORIGIN`: public HTTPS origin, for example
-  `https://auth.clockr.app`.
-- `CLOCKR_BROKER_GOOGLE_CLIENT_ID`: Google Web OAuth client id.
-- `CLOCKR_BROKER_GOOGLE_CLIENT_SECRET`: Google Web OAuth client secret.
-- `CLOCKR_BROKER_DATASTORE_DSN`: SQLite DSN for the broker datastore.
+- `SHIET_BROKER_PUBLIC_ORIGIN`: public HTTPS origin, for example
+  `https://auth.shiet.app`.
+- `SHIET_BROKER_GOOGLE_CLIENT_ID`: Google Web OAuth client id.
+- `SHIET_BROKER_GOOGLE_CLIENT_SECRET`: Google Web OAuth client secret.
+- `SHIET_BROKER_DATASTORE_DSN`: SQLite DSN for the broker datastore.
 
 Optional:
 
-- `CLOCKR_BROKER_LISTEN_ADDR`: listen address, default `:8080`. If unset,
+- `SHIET_BROKER_LISTEN_ADDR`: listen address, default `:8080`. If unset,
   Railway's `PORT` variable is used when present.
-- `CLOCKR_BROKER_DESKTOP_HANDOFF_URL`: desktop handoff URL, default
-  `clockr://oauth/google/handoff`.
-- `CLOCKR_BROKER_STATE_TTL`: OAuth state TTL, default `5m`, maximum `10m`.
-- `CLOCKR_BROKER_HANDOFF_TTL`: handoff TTL, default `2m`, maximum `5m`.
-- `CLOCKR_BROKER_GOOGLE_SCOPES`: space- or comma-separated Google scopes,
+- `SHIET_BROKER_DESKTOP_HANDOFF_URL`: desktop handoff URL, default
+  `shiet://oauth/google/handoff`.
+- `SHIET_BROKER_STATE_TTL`: OAuth state TTL, default `5m`, maximum `10m`.
+- `SHIET_BROKER_HANDOFF_TTL`: handoff TTL, default `2m`, maximum `5m`.
+- `SHIET_BROKER_GOOGLE_SCOPES`: space- or comma-separated Google scopes,
   default `https://www.googleapis.com/auth/calendar.readonly`.
 
 ## Deployment Notes
 
-- HTTPS/domain: provision `auth.clockr.app` with HTTPS and HSTS. Configure the
+- HTTPS/domain: provision `auth.shiet.app` with HTTPS and HSTS. Configure the
   Google Web OAuth redirect URI as
-  `https://auth.clockr.app/v1/google/oauth/callback`.
+  `https://auth.shiet.app/v1/google/oauth/callback`.
 - Secret management: inject the Google client id and client secret from a
   managed secret store. Restrict runtime access and keep audit logs for reads
   and rotations.
@@ -62,14 +62,14 @@ This repo includes Railway config-as-code for the broker service:
   upload context.
 
 Railway injects a `PORT` environment variable at runtime. The broker listens on
-that port when `CLOCKR_BROKER_LISTEN_ADDR` is not set.
+that port when `SHIET_BROKER_LISTEN_ADDR` is not set.
 
 Recommended Railway service variables:
 
-- `CLOCKR_BROKER_PUBLIC_ORIGIN=https://auth.clockr.app`
-- `CLOCKR_BROKER_GOOGLE_CLIENT_ID=<Google Web OAuth client id>`
-- `CLOCKR_BROKER_GOOGLE_CLIENT_SECRET=<Google Web OAuth client secret>`
-- `CLOCKR_BROKER_DATASTORE_DSN=file:/data/oauth-broker.sqlite`
+- `SHIET_BROKER_PUBLIC_ORIGIN=https://auth.shiet.app`
+- `SHIET_BROKER_GOOGLE_CLIENT_ID=<Google Web OAuth client id>`
+- `SHIET_BROKER_GOOGLE_CLIENT_SECRET=<Google Web OAuth client secret>`
+- `SHIET_BROKER_DATASTORE_DSN=file:/data/oauth-broker.sqlite`
 
 Mark the Google client secret as a sealed Railway variable. Attach a Railway
 Volume at `/data` before using the SQLite DSN above.
