@@ -59,7 +59,6 @@ interface ClockrApp {
   SaveExportFile(defaultFilename: string, content: string): Promise<string>;
   SetCalendarDefaultCategory(calendarID: number, categoryID: number | null): Promise<void>;
   SetCalendarSelected(calendarID: number, selected: boolean): Promise<void>;
-  SetCategoryColor(categoryID: number, color: string): Promise<void>;
   SetSetting(key: string, value: string): Promise<void>;
   SuggestGapFill(window: TimeWindow): Promise<GapSuggestion>;
   SyncPeriod(periodID: number): Promise<SyncResult>;
@@ -320,12 +319,6 @@ export function setCalendarDefaultCategory(
 ) {
   return writeToBackend(() =>
     appBackend.SetCalendarDefaultCategory(calendarID, categoryID),
-  );
-}
-
-export function setCategoryColor(categoryID: number, color: string) {
-  return writeToBackend(() =>
-    appBackend.SetCategoryColor(categoryID, color),
   );
 }
 

@@ -91,11 +91,6 @@ func (a *App) DeleteCategory(id int64) error {
 	return a.Svc.DeleteCategory(a.callContext(), id)
 }
 
-// SetCategoryColor updates a category's preset palette color.
-func (a *App) SetCategoryColor(categoryID int64, color string) error {
-	return a.Svc.SetCategoryColor(a.callContext(), categoryID, color)
-}
-
 // ListEventCategoryOverlays returns category decisions for imported events.
 func (a *App) ListEventCategoryOverlays(periodID int64) ([]service.EventCategoryOverlay, error) {
 	return a.Svc.ListEventCategoryOverlays(a.callContext(), periodID)

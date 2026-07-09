@@ -24,7 +24,6 @@ import {
   useCategories,
   useCreateCategory,
   useDeleteCategory,
-  useSetCategoryColor,
   useUpdateCategory,
 } from "@/lib/api";
 import type { Category, CreateCategoryInput, UpdateCategoryInput } from "@/lib/api/types";
@@ -60,6 +59,21 @@ function draftFromCategory(category: Category): CategoryDraft {
   };
 }
 
+function categoryUpdateInput(
+  category: Category,
+  overrides: Partial<UpdateCategoryInput> = {},
+): UpdateCategoryInput {
+  return {
+    id: category.id,
+    name: category.name,
+    description: category.description,
+    key: category.key,
+    color: category.color,
+    isDefaultGap: category.isDefaultGap,
+    ...overrides,
+  };
+}
+
 function ColorPaletteSwatches({
   value,
   label,
@@ -90,7 +104,7 @@ function ColorPaletteSwatches({
               }
             }}
             className={cn(
-              "size-6 rounded-full border-2 transition-transform hover:scale-105 disabled:opacity-50",
+              "size-6 rounded-full border-4 transition-transform hover:scale-105 disabled:opacity-50",
               selected
                 ? "border-foreground ring-2 ring-foreground/20"
                 : "border-transparent",
@@ -212,7 +226,6 @@ export function CategorySettings() {
   const createCategory = useCreateCategory();
   const updateCategory = useUpdateCategory();
   const deleteCategory = useDeleteCategory();
-  const setCategoryColor = useSetCategoryColor();
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -227,15 +240,14 @@ export function CategorySettings() {
     [categoriesQuery.data],
   );
 
-  const pendingCategoryId = setCategoryColor.isPending
-    ? setCategoryColor.variables?.categoryId
+  const pendingCategoryId = updateCategory.isPending
+    ? updateCategory.variables?.id
     : undefined;
 
   const isBusy =
     createCategory.isPending ||
     updateCategory.isPending ||
-    deleteCategory.isPending ||
-    setCategoryColor.isPending;
+    deleteCategory.isPending;
 
   const openCreate = () => {
     setEditingCategory(null);
@@ -266,6 +278,7 @@ export function CategorySettings() {
           name,
           description: draft.description.trim(),
           key: draft.key.trim(),
+          color: draft.color,
           isDefaultGap: draft.isDefaultGap,
         };
         await updateCategory.mutateAsync(input);
@@ -372,10 +385,9 @@ export function CategorySettings() {
                     disabled={isBusy}
                     pending={pendingCategoryId === category.id}
                     onSelect={(color) => {
-                      setCategoryColor.mutate({
-                        categoryId: category.id,
-                        color,
-                      });
+                      updateCategory.mutate(
+                        categoryUpdateInput(category, { color }),
+                      );
                     }}
                   />
                   <div className="flex items-center gap-1">
@@ -430,7 +442,7 @@ export function CategorySettings() {
             draft={draft}
             onChange={setDraft}
             idPrefix={editingCategory ? "edit" : "create"}
-            showColor={!editingCategory}
+            showColor
           />
 
           {formError ? (

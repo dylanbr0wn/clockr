@@ -126,10 +126,6 @@ export function SetCalendarSync(arg1) {
   return window['go']['service']['Service']['SetCalendarSync'](arg1);
 }
 
-export function SetCategoryColor(arg1, arg2, arg3) {
-  return window['go']['service']['Service']['SetCategoryColor'](arg1, arg2, arg3);
-}
-
 export function SetEvidence(arg1) {
   return window['go']['service']['Service']['SetEvidence'](arg1);
 }

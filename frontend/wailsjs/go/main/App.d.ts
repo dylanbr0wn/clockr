@@ -67,8 +67,6 @@ export function SetCalendarDefaultCategory(arg1:number,arg2:any):Promise<void>;
 
 export function SetCalendarSelected(arg1:number,arg2:boolean):Promise<void>;
 
-export function SetCategoryColor(arg1:number,arg2:string):Promise<void>;
-
 export function SetSetting(arg1:string,arg2:string):Promise<void>;
 
 export function SuggestGapFill(arg1:service.TimeWindow):Promise<service.GapSuggestion>;

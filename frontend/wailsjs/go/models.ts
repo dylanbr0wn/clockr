@@ -734,6 +734,7 @@ export namespace service {
 	    name: string;
 	    description: string;
 	    key: string;
+	    color: string;
 	    isDefaultGap: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -746,6 +747,7 @@ export namespace service {
 	        this.name = source["name"];
 	        this.description = source["description"];
 	        this.key = source["key"];
+	        this.color = source["color"];
 	        this.isDefaultGap = source["isDefaultGap"];
 	    }
 	}

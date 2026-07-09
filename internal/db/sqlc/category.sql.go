@@ -199,20 +199,6 @@ func (q *Queries) ListCategories(ctx context.Context) ([]Category, error) {
 	return items, nil
 }
 
-const setCategoryColor = `-- name: SetCategoryColor :exec
-UPDATE category SET color = ? WHERE id = ?
-`
-
-type SetCategoryColorParams struct {
-	Color string `json:"color"`
-	ID    int64  `json:"id"`
-}
-
-func (q *Queries) SetCategoryColor(ctx context.Context, arg SetCategoryColorParams) error {
-	_, err := q.db.ExecContext(ctx, setCategoryColor, arg.Color, arg.ID)
-	return err
-}
-
 const setDefaultGap = `-- name: SetDefaultGap :exec
 UPDATE category SET is_default_gap = 1 WHERE id = ?
 `
@@ -224,7 +210,7 @@ func (q *Queries) SetDefaultGap(ctx context.Context, id int64) error {
 
 const updateCategory = `-- name: UpdateCategory :exec
 UPDATE category
-SET name = ?, description = ?, key = ?
+SET name = ?, description = ?, key = ?, color = ?
 WHERE id = ?
 `
 
@@ -232,6 +218,7 @@ type UpdateCategoryParams struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Key         string `json:"key"`
+	Color       string `json:"color"`
 	ID          int64  `json:"id"`
 }
 
@@ -240,6 +227,7 @@ func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) 
 		arg.Name,
 		arg.Description,
 		arg.Key,
+		arg.Color,
 		arg.ID,
 	)
 	return err

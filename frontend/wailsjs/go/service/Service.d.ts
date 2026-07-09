@@ -66,8 +66,6 @@ export function SetCalendarSelected(arg1:context.Context,arg2:number,arg3:boolea
 
 export function SetCalendarSync(arg1:service.CalendarSyncConfig):Promise<void>;
 
-export function SetCategoryColor(arg1:context.Context,arg2:number,arg3:string):Promise<void>;
-
 export function SetEvidence(arg1:service.EvidenceConfig):Promise<void>;
 
 export function SetSetting(arg1:context.Context,arg2:string,arg3:string):Promise<void>;

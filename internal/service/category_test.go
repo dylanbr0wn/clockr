@@ -72,6 +72,43 @@ func TestCreateCategoryWithColor(t *testing.T) {
 	}
 }
 
+func TestUpdateCategoryWithColor(t *testing.T) {
+	s := newSvc(t)
+	ctx := context.Background()
+
+	created, err := s.CreateCategory(ctx, service.CreateCategoryInput{
+		Name: "Design",
+	})
+	if err != nil {
+		t.Fatalf("CreateCategory: %v", err)
+	}
+
+	updated, err := s.UpdateCategory(ctx, service.UpdateCategoryInput{
+		ID:          created.ID,
+		Name:        "Design",
+		Description: created.Description,
+		Key:         created.Key,
+		Color:       "#10B981",
+	})
+	if err != nil {
+		t.Fatalf("UpdateCategory: %v", err)
+	}
+	if updated.Color != "#10B981" {
+		t.Fatalf("color = %q want #10B981", updated.Color)
+	}
+
+	_, err = s.UpdateCategory(ctx, service.UpdateCategoryInput{
+		ID:          created.ID,
+		Name:        "Design",
+		Description: created.Description,
+		Key:         created.Key,
+		Color:       "#bad",
+	})
+	if err == nil {
+		t.Fatal("expected invalid color to fail")
+	}
+}
+
 func TestDeleteCategoryBlocksDefaultGap(t *testing.T) {
 	s := newSvc(t)
 	ctx := context.Background()

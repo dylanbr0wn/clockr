@@ -29,7 +29,6 @@ import {
   saveAIModel,
   setCalendarDefaultCategory,
   setCalendarSelected,
-  setCategoryColor,
   setSetting,
   suggestGapFill,
   syncPeriod,
@@ -123,23 +122,6 @@ export function useCreateCategory() {
 
   return useMutation({
     mutationFn: createCategory,
-    onSuccess: () => {
-      invalidateCategoryQueries(queryClient);
-    },
-  });
-}
-
-export function useSetCategoryColor() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      categoryId,
-      color,
-    }: {
-      categoryId: number;
-      color: string;
-    }) => setCategoryColor(categoryId, color),
     onSuccess: () => {
       invalidateCategoryQueries(queryClient);
     },

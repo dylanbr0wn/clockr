@@ -67,7 +67,6 @@ type Querier interface {
 	ResolveReviewItem(ctx context.Context, arg ResolveReviewItemParams) error
 	SetCalendarDefaultCategory(ctx context.Context, arg SetCalendarDefaultCategoryParams) error
 	SetCalendarSelected(ctx context.Context, arg SetCalendarSelectedParams) error
-	SetCategoryColor(ctx context.Context, arg SetCategoryColorParams) error
 	SetDefaultGap(ctx context.Context, id int64) error
 	// Soft-hide / restore all events from a calendar when it is deselected / reselected.
 	SetEventActiveByCalendar(ctx context.Context, arg SetEventActiveByCalendarParams) error

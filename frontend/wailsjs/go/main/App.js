@@ -126,10 +126,6 @@ export function SetCalendarSelected(arg1, arg2) {
   return window['go']['main']['App']['SetCalendarSelected'](arg1, arg2);
 }
 
-export function SetCategoryColor(arg1, arg2) {
-  return window['go']['main']['App']['SetCategoryColor'](arg1, arg2);
-}
-
 export function SetSetting(arg1, arg2) {
   return window['go']['main']['App']['SetSetting'](arg1, arg2);
 }
