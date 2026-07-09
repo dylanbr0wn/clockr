@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dylanbr0wn/clockr/internal/ai"
+	"github.com/dylanbr0wn/shiet/internal/ai"
 )
 
 const (

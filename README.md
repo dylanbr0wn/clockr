@@ -1,6 +1,6 @@
-# Clockr
+# shiet
 
-Clockr is what I use to summarize my time spent on various activities each pay period. I use it to import my calendar, categorize events, fill in any gaps, and then export a report that I can use for my timesheet.
+shiet is what I use to summarize my time spent on various activities each pay period. I use it to import my calendar, categorize events, fill in any gaps, and then export a report that I can use for my timesheet.
 
 ## 🛠️ Development
 

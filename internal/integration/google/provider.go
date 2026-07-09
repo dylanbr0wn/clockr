@@ -10,12 +10,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dylanbr0wn/clockr/internal/db/sqlc"
-	"github.com/dylanbr0wn/clockr/internal/integration/connection"
-	"github.com/dylanbr0wn/clockr/internal/integration/httpclient"
-	"github.com/dylanbr0wn/clockr/internal/integration/oauth"
-	"github.com/dylanbr0wn/clockr/internal/integration/secrets"
-	"github.com/dylanbr0wn/clockr/internal/service"
+	"github.com/dylanbr0wn/shiet/internal/db/sqlc"
+	"github.com/dylanbr0wn/shiet/internal/integration/connection"
+	"github.com/dylanbr0wn/shiet/internal/integration/httpclient"
+	"github.com/dylanbr0wn/shiet/internal/integration/oauth"
+	"github.com/dylanbr0wn/shiet/internal/integration/secrets"
+	"github.com/dylanbr0wn/shiet/internal/service"
 )
 
 var errCancelled = errors.New("cancelled event")

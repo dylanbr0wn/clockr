@@ -1,5 +1,5 @@
 // Package db owns the SQLite connection, schema migrations, and (via the sqlc
-// subpackage) type-safe queries for Clockr's local store.
+// subpackage) type-safe queries for shiet's local store.
 package db
 
 import (
@@ -12,7 +12,7 @@ import (
 )
 
 // Open opens (creating parent dirs as needed) the SQLite database at path and
-// applies the connection pragmas Clockr relies on: WAL journaling, enforced
+// applies the connection pragmas shiet relies on: WAL journaling, enforced
 // foreign keys, and a busy timeout. It does NOT run migrations — call Migrate.
 func Open(path string) (*sql.DB, error) {
 	if dir := filepath.Dir(path); dir != "" && dir != "." {

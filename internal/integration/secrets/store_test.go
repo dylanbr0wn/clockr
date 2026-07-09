@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dylanbr0wn/clockr/internal/integration/secrets"
+	"github.com/dylanbr0wn/shiet/internal/integration/secrets"
 )
 
 func TestMemoryStoreRoundTrip(t *testing.T) {

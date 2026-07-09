@@ -1,6 +1,6 @@
-# Clockr UI Redesign Mockups
+# shiet UI Redesign Mockups
 
-shadcn/ui-styled (zinc, light mode) redesign mockups for Clockr, built per DESIGN.md goals:
+shadcn/ui-styled (zinc, light mode) redesign mockups for shiet, built per DESIGN.md goals:
 import calendar → categorize → fill gaps → export.
 
 | File | Screen |
@@ -18,7 +18,7 @@ python3 -m http.server 4173 --directory design-mockups
 
 ## Push into Figma
 
-Target file: https://www.figma.com/design/HOLmlqTZ0Sw3eOXnr8qIYn (Clockr UI Redesign — already
+Target file: https://www.figma.com/design/HOLmlqTZ0Sw3eOXnr8qIYn (shiet UI Redesign — already
 contains shadcn variable collection + finished top bar built via use_figma).
 
 Figma MCP on the Starter plan allows only **6 tool calls/month** — exhausted June 2026.

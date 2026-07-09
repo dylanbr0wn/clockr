@@ -4,7 +4,7 @@
 
 Use **Linear** for all tickets, bugs, and feature requests — not GitHub Issues.
 
-- Project: **Clockr** (team: Dylans apps, key: DYL)
+- Project: **Shiet** (team: Dylans apps, key: DYL)
 - Create/update issues via Linear MCP (`save_issue`, `list_issues`, etc.)
 - Do not create GitHub Issues unless the user explicitly asks
 - `gh` is still fine for PRs, CI, and other repo operations
@@ -13,7 +13,7 @@ Use **Linear** for all tickets, bugs, and feature requests — not GitHub Issues
 
 ### Issue tracker
 
-Issues, bugs, feature requests, specs, and ticket breakdowns are tracked in Linear for the Clockr project; GitHub is used for PRs and CI only. See `docs/agents/issue-tracker.md`.
+Issues, bugs, feature requests, specs, and ticket breakdowns are tracked in Linear for the Shiet project; GitHub is used for PRs and CI only. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
@@ -21,11 +21,11 @@ Use the default five-role triage vocabulary: `needs-triage`, `needs-info`, `read
 
 ### Domain docs
 
-Clockr uses a single-context domain-doc layout: root `CONTEXT.md` plus root `docs/adr/`. See `docs/agents/domain.md`.
+shiet uses a single-context domain-doc layout: root `CONTEXT.md` plus root `docs/adr/`. See `docs/agents/domain.md`.
 
 ## Cursor Cloud specific instructions
 
-Clockr is a single **Wails v2 desktop app**: a Go backend (root `app.go`/`main.go` + `internal/`)
+shiet is a single **Wails v2 desktop app**: a Go backend (root `app.go`/`main.go` + `internal/`)
 compiled together with a React/TypeScript frontend (`frontend/`, pnpm) into one native binary.
 There is no server/API between front and back — the frontend calls Go via generated Wails bindings
 (`frontend/wailsjs/`). Data lives in an embedded SQLite file (pure-Go `modernc.org/sqlite`),
@@ -69,4 +69,4 @@ Lint is not gated in CI yet (2 pre-existing `react-refresh/only-export-component
 - Run only the Vite frontend standalone (no Go): `pnpm --dir frontend dev` (see `.claude/launch.json`).
 - DB dev tooling (migrate/seed/reset a dev DB): `./scripts/db.sh`; regenerate sqlc: `./scripts/sqlc-gen.sh`
   (never hand-edit `internal/db/sqlc/**`).
-- App/runtime config: layered defaults → optional YAML file → `CLOCKR_*` env (see `config.example.yaml`, `internal/config`). File search: `~/.config/clockr/config.yaml`, `<UserConfigDir>/clockr/config.yaml`, `./clockr.yaml`. Dev SQLite path override: `CLOCKR_DB` (or `db.path` in file); default DB lives under `<UserConfigDir>/clockr/clockr.db`.
+- App/runtime config: layered defaults → optional YAML file → `SHIET_*` env (see `config.example.yaml`, `internal/config`). File search: `~/.config/shiet/config.yaml`, `<UserConfigDir>/shiet/config.yaml`, `./shiet.yaml`. Dev SQLite path override: `SHIET_DB` (or `db.path` in file); default DB lives under `<UserConfigDir>/shiet/shiet.db`.

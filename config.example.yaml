@@ -1,19 +1,19 @@
-# Clockr app/runtime configuration (optional).
+# shiet app/runtime configuration (optional).
 # Copy to one of:
-#   - ~/.config/clockr/config.yaml
-#   - <UserConfigDir>/clockr/config.yaml  (e.g. ~/Library/Application Support/clockr on macOS)
-#   - ./clockr.yaml  (local dev, cwd)
+#   - ~/.config/shiet/config.yaml
+#   - <UserConfigDir>/shiet/config.yaml  (e.g. ~/Library/Application Support/shiet on macOS)
+#   - ./shiet.yaml  (local dev, cwd)
 #
 # Environment variables override file values (highest precedence):
-#   CLOCKR_DB                  -> db.path
-#   CLOCKR_GOOGLE_CLIENT_ID    -> google.client_id
-#   CLOCKR_GOOGLE_CLIENT_SECRET -> google.client_secret
+#   SHIET_DB                  -> db.path
+#   SHIET_GOOGLE_CLIENT_ID    -> google.client_id
+#   SHIET_GOOGLE_CLIENT_SECRET -> google.client_secret
 #
 # Google Desktop OAuth clients may require client_secret at the token endpoint,
 # but desktop apps cannot keep it confidential once shipped.
 
 db:
-  path: ~/.config/clockr/clockr.db
+  path: ~/.config/shiet/shiet.db
 
 google:
   client_id: ""

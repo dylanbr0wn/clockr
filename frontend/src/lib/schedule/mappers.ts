@@ -1,7 +1,7 @@
 import type {
   Category,
   DayTimeline,
-  Event as ClockrEvent,
+  Event as ShietEvent,
   GapFill,
   Interval,
   Period,
@@ -61,7 +61,7 @@ export function applyPlacement(
 }
 
 export function eventToSchedulerItem(
-  event: ClockrEvent,
+  event: ShietEvent,
   tzSegments: TzSegment[],
   placement?: SchedulePlacement,
   reviewState?: EventReviewState,
@@ -114,7 +114,7 @@ export function eventToSchedulerItem(
   );
 }
 
-export function expandAllDayEventDays(event: ClockrEvent): string[] {
+export function expandAllDayEventDays(event: ShietEvent): string[] {
   if (!event.startDate) {
     return [];
   }
@@ -150,7 +150,7 @@ function allDaySpanPosition(
 }
 
 export function buildAllDayChipsByDay(
-  events: ClockrEvent[],
+  events: ShietEvent[],
   visibleDays: ReadonlySet<string>,
   reviewByEventId: ReadonlyMap<number, EventReviewState>,
 ): Map<string, AllDayChip[]> {

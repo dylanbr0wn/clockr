@@ -4,7 +4,7 @@ How the engineering skills should consume this repo's domain documentation when 
 
 ## Layout
 
-Clockr uses a single-context domain-doc layout:
+shiet uses a single-context domain-doc layout:
 
 - `CONTEXT.md` at the repo root
 - `docs/adr/` at the repo root

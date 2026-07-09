@@ -8,14 +8,14 @@ import (
 
 func TestLoad_precedenceDefaultFileEnv(t *testing.T) {
 	dir := t.TempDir()
-	cfgFile := filepath.Join(dir, "clockr.yaml")
+	cfgFile := filepath.Join(dir, "shiet.yaml")
 	if err := os.WriteFile(cfgFile, []byte("db:\n  path: /from/file.db\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	t.Setenv("CLOCKR_DB", "")
-	t.Setenv("CLOCKR_GOOGLE_CLIENT_ID", "")
-	t.Setenv("CLOCKR_GOOGLE_CLIENT_SECRET", "")
+	t.Setenv("SHIET_DB", "")
+	t.Setenv("SHIET_GOOGLE_CLIENT_ID", "")
+	t.Setenv("SHIET_GOOGLE_CLIENT_SECRET", "")
 
 	// Defaults only (no config files passed).
 	cfg, err := load(nil)
@@ -40,7 +40,7 @@ func TestLoad_precedenceDefaultFileEnv(t *testing.T) {
 	}
 
 	// Env overrides file.
-	t.Setenv("CLOCKR_DB", "/from/env.db")
+	t.Setenv("SHIET_DB", "/from/env.db")
 	cfg, err = load([]string{cfgFile})
 	if err != nil {
 		t.Fatal(err)
@@ -57,14 +57,14 @@ func TestLoad_precedenceDefaultFileEnv(t *testing.T) {
 
 func TestLoad_googleEnvOverrides(t *testing.T) {
 	dir := t.TempDir()
-	cfgFile := filepath.Join(dir, "clockr.yaml")
+	cfgFile := filepath.Join(dir, "shiet.yaml")
 	content := "google:\n  client_id: file-id\n  client_secret: file-secret\n"
 	if err := os.WriteFile(cfgFile, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	t.Setenv("CLOCKR_GOOGLE_CLIENT_ID", "env-id")
-	t.Setenv("CLOCKR_GOOGLE_CLIENT_SECRET", "env-secret")
+	t.Setenv("SHIET_GOOGLE_CLIENT_ID", "env-id")
+	t.Setenv("SHIET_GOOGLE_CLIENT_SECRET", "env-secret")
 
 	cfg, err := load([]string{cfgFile})
 	if err != nil {
@@ -84,11 +84,11 @@ func TestExpandHome(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := expandHome("~/data/clockr.db")
+	got, err := expandHome("~/data/shiet.db")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := filepath.Join(home, "data", "clockr.db")
+	want := filepath.Join(home, "data", "shiet.db")
 	if got != want {
 		t.Fatalf("got %q want %q", got, want)
 	}

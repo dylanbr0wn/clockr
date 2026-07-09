@@ -1,5 +1,5 @@
-// Package config loads Clockr's app/runtime configuration from layered sources:
-// baked-in defaults, an optional YAML file, and CLOCKR_* environment variables.
+// Package config loads shiet's app/runtime configuration from layered sources:
+// baked-in defaults, an optional YAML file, and SHIET_* environment variables.
 package config
 
 import (
@@ -26,20 +26,20 @@ type Config struct {
 	} `koanf:"google"`
 }
 
-// envKeyMap maps legacy CLOCKR_* env vars to koanf dotted keys.
+// envKeyMap maps legacy SHIET_* env vars to koanf dotted keys.
 var envKeyMap = map[string]string{
-	"CLOCKR_DB":                  "db.path",
-	"CLOCKR_GOOGLE_CLIENT_ID":     "google.client_id",
-	"CLOCKR_GOOGLE_CLIENT_SECRET": "google.client_secret",
+	"SHIET_DB":                  "db.path",
+	"SHIET_GOOGLE_CLIENT_ID":     "google.client_id",
+	"SHIET_GOOGLE_CLIENT_SECRET": "google.client_secret",
 }
 
 // Load reads configuration using the standard discovery order:
 //
 //  1. Defaults (OS user config dir for db.path)
 //  2. Config files, when present (first match wins per path; later paths override):
-//     - $XDG_CONFIG_HOME/clockr/config.yaml, or ~/.config/clockr/config.yaml
-//     - <UserConfigDir>/clockr/config.yaml (e.g. ~/Library/Application Support/clockr on macOS)
-//     - ./clockr.yaml in the process working directory
+//     - $XDG_CONFIG_HOME/shiet/config.yaml, or ~/.config/shiet/config.yaml
+//     - <UserConfigDir>/shiet/config.yaml (e.g. ~/Library/Application Support/shiet on macOS)
+//     - ./shiet.yaml in the process working directory
 //  3. Environment variables (highest precedence)
 //
 // A missing config file is fine — defaults and env are enough.
@@ -104,16 +104,16 @@ func discoverConfigFiles() []string {
 	}
 
 	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
-		add(filepath.Join(xdg, "clockr", "config.yaml"))
+		add(filepath.Join(xdg, "shiet", "config.yaml"))
 	}
 	if home, err := os.UserHomeDir(); err == nil {
-		add(filepath.Join(home, ".config", "clockr", "config.yaml"))
+		add(filepath.Join(home, ".config", "shiet", "config.yaml"))
 	}
 	if cfgDir, err := os.UserConfigDir(); err == nil {
-		add(filepath.Join(cfgDir, "clockr", "config.yaml"))
+		add(filepath.Join(cfgDir, "shiet", "config.yaml"))
 	}
 	if cwd, err := os.Getwd(); err == nil {
-		add(filepath.Join(cwd, "clockr.yaml"))
+		add(filepath.Join(cwd, "shiet.yaml"))
 	}
 
 	return paths
@@ -124,7 +124,7 @@ func defaultDBPath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("locate user config dir: %w", err)
 	}
-	return filepath.Join(cfg, "clockr", "clockr.db"), nil
+	return filepath.Join(cfg, "shiet", "shiet.db"), nil
 }
 
 func applyEnv(k *koanf.Koanf) {

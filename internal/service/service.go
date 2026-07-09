@@ -1,4 +1,4 @@
-// Package service is Clockr's application layer over the SQLite store. It wraps
+// Package service is shiet's application layer over the SQLite store. It wraps
 // the generated sqlc queries, converting raw rows into clean domain types and
 // adding the cross-table logic (re-sync merge, gap computation) the UI needs.
 //
@@ -12,7 +12,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dylanbr0wn/clockr/internal/db/sqlc"
+	"github.com/dylanbr0wn/shiet/internal/db/sqlc"
 )
 
 // ErrNotFound is returned when a requested row does not exist. Callers can test

@@ -1,8 +1,8 @@
 package google
 
 import (
-	"github.com/dylanbr0wn/clockr/internal/integration/oauth"
-	"github.com/dylanbr0wn/clockr/internal/service"
+	"github.com/dylanbr0wn/shiet/internal/integration/oauth"
+	"github.com/dylanbr0wn/shiet/internal/service"
 	"golang.org/x/oauth2"
 )
 
@@ -14,7 +14,7 @@ const (
 	calendarListPath  = "/users/me/calendarList"
 	eventsListPath    = "/calendars/%s/events"
 
-	// Fill these with Clockr's Google Desktop OAuth credentials once the Google
+	// Fill these with shiet's Google Desktop OAuth credentials once the Google
 	// Cloud OAuth consent/app setup is ready. The client secret is part of
 	// Google's desktop credential bundle, but desktop apps cannot keep it
 	// confidential once shipped.

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dylanbr0wn/clockr/internal/db/sqlc"
+	"github.com/dylanbr0wn/shiet/internal/db/sqlc"
 )
 
 // CalendarPuller syncs calendar metadata and fetches events for a pay period.

@@ -25,7 +25,7 @@ import type {
   UpdateCategoryInput,
 } from "./types";
 
-interface ClockrApp {
+interface ShietApp {
   ClassifyAIEndpoint(baseURL: string): Promise<AIClassification>;
   ComputeGaps(periodId: number): Promise<DayTimeline[]>;
   ConnectGoogle(accountID: string, accountLabel: string): Promise<IntegrationConnection>;
@@ -79,9 +79,9 @@ declare global {
   }
 }
 
-const appBackend = generatedApp as unknown as ClockrApp;
+const appBackend = generatedApp as unknown as ShietApp;
 
-export function isClockrAppAvailable() {
+export function isShietAppAvailable() {
   return Boolean(
     typeof window !== "undefined" &&
       window.go?.main?.App,
@@ -89,7 +89,7 @@ export function isClockrAppAvailable() {
 }
 
 async function readFromBackend<T>(fallback: T, read: () => Promise<T>) {
-  if (!isClockrAppAvailable()) {
+  if (!isShietAppAvailable()) {
     return fallback;
   }
 
@@ -97,8 +97,8 @@ async function readFromBackend<T>(fallback: T, read: () => Promise<T>) {
 }
 
 async function writeToBackend<T>(write: () => Promise<T>) {
-  if (!isClockrAppAvailable()) {
-    throw new Error("Clockr backend is unavailable");
+  if (!isShietAppAvailable()) {
+    throw new Error("shiet backend is unavailable");
   }
 
   return write();
@@ -202,14 +202,14 @@ export function computeGaps(periodId: number) {
 
 export function getSetting(key: string) {
   return readFromBackend<string | null>(
-    localStorage.getItem(`clockr.setting.${key}`),
+    localStorage.getItem(`shiet.setting.${key}`),
     () => appBackend.GetSetting(key),
   );
 }
 
 export function setSetting(key: string, value: string) {
-  if (!isClockrAppAvailable()) {
-    localStorage.setItem(`clockr.setting.${key}`, value);
+  if (!isShietAppAvailable()) {
+    localStorage.setItem(`shiet.setting.${key}`, value);
     return Promise.resolve();
   }
 
@@ -223,7 +223,7 @@ export function discoverLocalAIEndpoints() {
 }
 
 export async function classifyAIEndpoint(baseURL: string) {
-  if (!isClockrAppAvailable()) {
+  if (!isShietAppAvailable()) {
     const local =
       baseURL.includes("localhost") ||
       baseURL.includes("127.0.0.1") ||
@@ -267,7 +267,7 @@ export function saveAIModel(model: string) {
 }
 
 export function saveExportFile(defaultFilename: string, content: string) {
-  if (!isClockrAppAvailable()) {
+  if (!isShietAppAvailable()) {
     const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");

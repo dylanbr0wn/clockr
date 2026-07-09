@@ -1,4 +1,4 @@
-module github.com/dylanbr0wn/clockr
+module github.com/dylanbr0wn/shiet
 
 go 1.26.2
 

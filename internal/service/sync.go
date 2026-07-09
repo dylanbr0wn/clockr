@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dylanbr0wn/clockr/internal/db/sqlc"
+	"github.com/dylanbr0wn/shiet/internal/db/sqlc"
 )
 
 // IncomingEvent is one event from a fresh calendar pull, decoupled from the

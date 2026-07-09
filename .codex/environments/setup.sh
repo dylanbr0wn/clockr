@@ -38,16 +38,16 @@ persist_shell_env() {
   mkdir -p "$(dirname "$bashrc")"
   touch "$bashrc"
 
-  if grep -q "# Clockr Codex environment" "$bashrc"; then
-    log "Clockr shell environment already persisted"
+  if grep -q "# Shiet Codex environment" "$bashrc"; then
+    log "Shiet shell environment already persisted"
     return
   fi
 
-  log "Persisting Clockr shell environment"
+  log "Persisting Shiet shell environment"
   {
-    printf '\n# Clockr Codex environment\n'
+    printf '\n# Shiet Codex environment\n'
     printf 'export PATH="%s:$PATH"\n' "$gopath_bin"
-    printf 'export GOCACHE="${GOCACHE:-/tmp/clockr-gocache}"\n'
+    printf 'export GOCACHE="${GOCACHE:-/tmp/shiet-gocache}"\n'
   } >> "$bashrc"
 }
 
@@ -123,7 +123,7 @@ install_go_tools() {
     return
   fi
 
-  export GOCACHE="${GOCACHE:-/tmp/clockr-gocache}"
+  export GOCACHE="${GOCACHE:-/tmp/shiet-gocache}"
   mkdir -p "$GOCACHE"
 
   log "Downloading Go modules"
@@ -139,5 +139,5 @@ ensure_pnpm
 install_frontend
 install_go_tools
 
-log "Clockr environment setup complete"
+log "Shiet environment setup complete"
 printf 'Use DISPLAY=:1 wails dev -tags webkit2_41 on Ubuntu 24.04 environments.\n'

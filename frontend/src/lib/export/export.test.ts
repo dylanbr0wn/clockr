@@ -116,7 +116,7 @@ describe("period export", () => {
     const summary = buildPeriodExportSummary(items, period);
 
     expect(defaultExportFilename(summary)).toBe(
-      "clockr-2026-06-01-to-2026-06-02.csv",
+      "shiet-2026-06-01-to-2026-06-02.csv",
     );
   });
 });

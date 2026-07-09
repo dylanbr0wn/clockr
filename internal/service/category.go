@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dylanbr0wn/clockr/internal/ai"
-	"github.com/dylanbr0wn/clockr/internal/db/sqlc"
+	"github.com/dylanbr0wn/shiet/internal/ai"
+	"github.com/dylanbr0wn/shiet/internal/db/sqlc"
 )
 
 // ErrCategoryInUse is returned when a category cannot be deleted because it is referenced.

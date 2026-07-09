@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dylanbr0wn/clockr/internal/integration/oauth"
-	"github.com/dylanbr0wn/clockr/internal/integration/secrets"
+	"github.com/dylanbr0wn/shiet/internal/integration/oauth"
+	"github.com/dylanbr0wn/shiet/internal/integration/secrets"
 	"golang.org/x/oauth2"
 )
 
@@ -239,12 +239,12 @@ func runExchangeFailureCallbackTest(t *testing.T, code, description string) {
 	if err == nil {
 		t.Fatal("expected exchange error")
 	}
-	if !strings.Contains(err.Error(), "CLOCKR_GOOGLE_CLIENT_SECRET") {
+	if !strings.Contains(err.Error(), "SHIET_GOOGLE_CLIENT_SECRET") {
 		t.Fatalf("error should mention client secret configuration: %v", err)
 	}
 
 	body := awaitCallbackBody(t, callbackBody, callbackErr)
-	if !strings.Contains(body, "CLOCKR_GOOGLE_CLIENT_SECRET") {
+	if !strings.Contains(body, "SHIET_GOOGLE_CLIENT_SECRET") {
 		t.Fatalf("callback body should mention client secret configuration: %q", body)
 	}
 }

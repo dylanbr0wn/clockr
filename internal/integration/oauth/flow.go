@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dylanbr0wn/clockr/internal/integration/secrets"
+	"github.com/dylanbr0wn/shiet/internal/integration/secrets"
 	"github.com/pkg/browser"
 	"golang.org/x/oauth2"
 )
@@ -169,7 +169,7 @@ func (f *Flow) Authorize(ctx context.Context, accountID string) (Result, error) 
 	if err := f.Store.Set(f.Config.Provider, accountID, token); err != nil {
 		sendCallbackResult(resultCh, callbackResult{
 			status:  http.StatusInternalServerError,
-			message: "Authorization succeeded, but Clockr could not save the token. Return to Clockr for details.",
+			message: "Authorization succeeded, but shiet could not save the token. Return to shiet for details.",
 		})
 		shutdownAndWait(srv, &serveWG)
 		return Result{}, fmt.Errorf("persist token: %w", err)
@@ -177,7 +177,7 @@ func (f *Flow) Authorize(ctx context.Context, accountID string) (Result, error) 
 
 	sendCallbackResult(resultCh, callbackResult{
 		status:  http.StatusOK,
-		message: "Authorization complete. You can close this window and return to Clockr.",
+		message: "Authorization complete. You can close this window and return to shiet.",
 	})
 	shutdownAndWait(srv, &serveWG)
 
@@ -199,7 +199,7 @@ func sendCallbackResult(ch chan<- callbackResult, result callbackResult) {
 func describeExchangeError(err error) error {
 	var retrieveErr *oauth2.RetrieveError
 	if errors.As(err, &retrieveErr) && isDesktopClientTypeError(retrieveErr) {
-		return fmt.Errorf("%w. Google rejected the OAuth token exchange because the configured client requires a client secret. Set google.client_secret or CLOCKR_GOOGLE_CLIENT_SECRET from the Google Desktop OAuth credential bundle; desktop apps cannot keep this value confidential, so treat it as a provider-required public credential rather than a security boundary", err)
+		return fmt.Errorf("%w. Google rejected the OAuth token exchange because the configured client requires a client secret. Set google.client_secret or SHIET_GOOGLE_CLIENT_SECRET from the Google Desktop OAuth credential bundle; desktop apps cannot keep this value confidential, so treat it as a provider-required public credential rather than a security boundary", err)
 	}
 	return err
 }
