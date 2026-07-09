@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -16,6 +17,7 @@ var (
 	ErrNotFound    = errors.New("record not found")
 	ErrExpired     = errors.New("record expired")
 	ErrAlreadyUsed = errors.New("record already used")
+	ErrMismatch    = errors.New("record binding mismatch")
 )
 
 // SQLiteStore stores broker state in a minimal SQLite datastore. It intentionally
@@ -25,17 +27,18 @@ type SQLiteStore struct {
 }
 
 type OAuthState struct {
-	ID               string
-	DesktopSessionID string
-	PKCEVerifier     string
-	PKCEChallenge    string
-	HandoffChallenge string
-	Scopes           []string
-	AppVersion       string
-	Platform         string
-	SourceIPBucket   string
-	ExpiresAt        time.Time
-	UsedAt           *time.Time
+	ID                     string
+	DesktopSessionID       string
+	PKCEVerifier           string
+	PKCEChallenge          string
+	HandoffChallenge       string
+	DesktopHandoffRedirect string
+	Scopes                 []string
+	AppVersion             string
+	Platform               string
+	SourceIPBucket         string
+	ExpiresAt              time.Time
+	UsedAt                 *time.Time
 }
 
 type HandoffRecord struct {
@@ -75,6 +78,13 @@ func (s *SQLiteStore) Migrate(ctx context.Context) error {
 	if _, err := s.db.ExecContext(ctx, schema); err != nil {
 		return fmt.Errorf("migrate broker datastore: %w", err)
 	}
+	// Existing DYL-81 databases may lack the desktop handoff redirect column.
+	if _, err := s.db.ExecContext(ctx, `
+ALTER TABLE broker_oauth_states ADD COLUMN desktop_handoff_redirect TEXT NOT NULL DEFAULT ''`); err != nil {
+		if !strings.Contains(strings.ToLower(err.Error()), "duplicate column") {
+			return fmt.Errorf("migrate broker oauth state redirect column: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -86,10 +96,10 @@ func (s *SQLiteStore) SaveOAuthState(ctx context.Context, rec OAuthState) error 
 	_, err = s.db.ExecContext(ctx, `
 INSERT INTO broker_oauth_states (
 	id, desktop_session_id, pkce_verifier, pkce_challenge, handoff_challenge,
-	scopes_json, app_version, platform, source_ip_bucket, expires_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+	desktop_handoff_redirect, scopes_json, app_version, platform, source_ip_bucket, expires_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		rec.ID, rec.DesktopSessionID, rec.PKCEVerifier, rec.PKCEChallenge,
-		rec.HandoffChallenge, string(scopes), rec.AppVersion, rec.Platform,
+		rec.HandoffChallenge, rec.DesktopHandoffRedirect, string(scopes), rec.AppVersion, rec.Platform,
 		rec.SourceIPBucket, formatTime(rec.ExpiresAt),
 	)
 	if err != nil {
@@ -154,7 +164,14 @@ INSERT INTO broker_handoffs (
 	return nil
 }
 
-func (s *SQLiteStore) ConsumeHandoff(ctx context.Context, codeHash string, now time.Time) (HandoffRecord, error) {
+// ConsumeHandoff verifies desktop session, broker state, and handoff challenge
+// bindings before marking the record used and scrubbing the sealed payload.
+// Binding mismatches leave the handoff reusable so a wrong guess cannot burn it.
+func (s *SQLiteStore) ConsumeHandoff(
+	ctx context.Context,
+	codeHash, desktopSessionID, stateID, handoffChallenge string,
+	now time.Time,
+) (HandoffRecord, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return HandoffRecord{}, err
@@ -170,6 +187,9 @@ func (s *SQLiteStore) ConsumeHandoff(ctx context.Context, codeHash string, now t
 	}
 	if !now.Before(rec.ExpiresAt) {
 		return HandoffRecord{}, ErrExpired
+	}
+	if rec.DesktopSessionID != desktopSessionID || rec.StateID != stateID || rec.HandoffChallenge != handoffChallenge {
+		return HandoffRecord{}, ErrMismatch
 	}
 	usedAt := formatTime(now)
 	result, err := tx.ExecContext(ctx, `
@@ -209,10 +229,10 @@ func selectOAuthState(ctx context.Context, q queryer, id string) (OAuthState, er
 	var scopesJSON, expiresAt, usedAt sql.NullString
 	err := q.QueryRowContext(ctx, `
 SELECT id, desktop_session_id, pkce_verifier, pkce_challenge, handoff_challenge,
-	scopes_json, app_version, platform, source_ip_bucket, expires_at, used_at
+	desktop_handoff_redirect, scopes_json, app_version, platform, source_ip_bucket, expires_at, used_at
 FROM broker_oauth_states WHERE id = ?`, id).
 		Scan(&rec.ID, &rec.DesktopSessionID, &rec.PKCEVerifier, &rec.PKCEChallenge,
-			&rec.HandoffChallenge, &scopesJSON, &rec.AppVersion, &rec.Platform,
+			&rec.HandoffChallenge, &rec.DesktopHandoffRedirect, &scopesJSON, &rec.AppVersion, &rec.Platform,
 			&rec.SourceIPBucket, &expiresAt, &usedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return OAuthState{}, ErrNotFound
@@ -281,6 +301,7 @@ CREATE TABLE IF NOT EXISTS broker_oauth_states (
 	pkce_verifier TEXT NOT NULL,
 	pkce_challenge TEXT NOT NULL,
 	handoff_challenge TEXT NOT NULL,
+	desktop_handoff_redirect TEXT NOT NULL DEFAULT '',
 	scopes_json TEXT NOT NULL,
 	app_version TEXT NOT NULL DEFAULT '',
 	platform TEXT NOT NULL DEFAULT '',

@@ -59,21 +59,20 @@ func (p *Provider) Connect(ctx context.Context, accountID, accountLabel string) 
 		return connection.Connection{}, errors.New("connection registry is required")
 	}
 
-	if p.usesBrokerAuth() {
-		base := strings.TrimSpace(p.BrokerBaseURL)
-		if base == "" {
-			return connection.Connection{}, fmt.Errorf("%w: set google.broker_base_url or CLOCKR_GOOGLE_BROKER_BASE_URL", config.ErrBrokerConfig)
-		}
-		return connection.Connection{}, fmt.Errorf("%w: cannot complete Google connect via broker at %s; retry later or use google.auth_mode=local with BYO credentials for development", ErrBrokerUnavailable, base)
-	}
-
-	if strings.TrimSpace(p.Config.ClientID) == "" {
-		return connection.Connection{}, fmt.Errorf("%w: set google.client_id or CLOCKR_GOOGLE_CLIENT_ID for local/BYO Google OAuth", config.ErrLocalCredentials)
-	}
-
 	auth := p.Authorizer
 	if auth == nil {
-		auth = &oauth.Flow{Config: p.Config, Store: p.Store}
+		if p.usesBrokerAuth() {
+			base := strings.TrimSpace(p.BrokerBaseURL)
+			if base == "" {
+				return connection.Connection{}, fmt.Errorf("%w: set google.broker_base_url or CLOCKR_GOOGLE_BROKER_BASE_URL", config.ErrBrokerConfig)
+			}
+			auth = &BrokerFlow{BaseURL: base}
+		} else {
+			if strings.TrimSpace(p.Config.ClientID) == "" {
+				return connection.Connection{}, fmt.Errorf("%w: set google.client_id or CLOCKR_GOOGLE_CLIENT_ID for local/BYO Google OAuth", config.ErrLocalCredentials)
+			}
+			auth = &oauth.Flow{Config: p.Config, Store: p.Store}
+		}
 	}
 
 	result, err := auth.Authorize(ctx, accountID)

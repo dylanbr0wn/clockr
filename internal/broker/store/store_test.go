@@ -83,14 +83,19 @@ func TestHandoffOneTimeUseScrubsPayloadAndExpiry(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rec, err := s.ConsumeHandoff(ctx, "hash-1", now)
+	_, err := s.ConsumeHandoff(ctx, "hash-1", "wrong-desktop", "state-1", "handoff-challenge", now)
+	if !errors.Is(err, ErrMismatch) {
+		t.Fatalf("binding mismatch: got %v want %v", err, ErrMismatch)
+	}
+
+	rec, err := s.ConsumeHandoff(ctx, "hash-1", "desktop-1", "state-1", "handoff-challenge", now)
 	if err != nil {
 		t.Fatalf("consume handoff: %v", err)
 	}
 	if string(rec.EncryptedTokenPayload) != "ciphertext" {
 		t.Fatalf("returned payload: got %q", rec.EncryptedTokenPayload)
 	}
-	_, err = s.ConsumeHandoff(ctx, "hash-1", now)
+	_, err = s.ConsumeHandoff(ctx, "hash-1", "desktop-1", "state-1", "handoff-challenge", now)
 	if !errors.Is(err, ErrAlreadyUsed) {
 		t.Fatalf("second consume: got %v want %v", err, ErrAlreadyUsed)
 	}

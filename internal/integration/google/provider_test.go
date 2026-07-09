@@ -86,8 +86,9 @@ func TestConnect_brokerModeReportsUnavailable(t *testing.T) {
 		http.NotFound(w, r)
 	}))
 	p.AuthMode = config.AuthModeBroker
-	p.BrokerBaseURL = "https://auth.clockr.app"
+	p.BrokerBaseURL = "https://127.0.0.1:1" // nothing listening
 	p.Config.ClientSecret = "must-not-be-required"
+	p.Authorizer = nil
 
 	_, err := p.Connect(context.Background(), "user@example.com", "Work")
 	if err == nil {
@@ -98,6 +99,67 @@ func TestConnect_brokerModeReportsUnavailable(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), "client_secret") || strings.Contains(err.Error(), "client_id") {
 		t.Fatalf("broker error must not look like local credential gap: %v", err)
+	}
+}
+
+func TestConnect_brokerModeSuccessStoresTokenAndRefreshesCalendars(t *testing.T) {
+	p, reg, q := newProviderEnv(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/users/me/calendarList" {
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"items": []map[string]any{
+					{"id": "primary", "summary": "Primary", "primary": true},
+				},
+			})
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	p.AuthMode = config.AuthModeBroker
+	p.BrokerBaseURL = "https://auth.example"
+	p.Config.ClientID = ""
+	p.Config.ClientSecret = ""
+	p.Authorizer = stubAuthorizer{
+		result: oauth.Result{
+			Provider:  service.ProviderGoogle,
+			AccountID: "user@example.com",
+			Token: secrets.Token{
+				AccessToken:  "broker-access",
+				RefreshToken: "broker-refresh",
+				TokenType:    "Bearer",
+			},
+			Scopes: []string{"https://www.googleapis.com/auth/calendar.readonly"},
+		},
+	}
+
+	got, err := p.Connect(context.Background(), "user@example.com", "Work")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != connection.StatusConnected {
+		t.Fatalf("status: %q", got.Status)
+	}
+	token, err := p.Store.Get(service.ProviderGoogle, "user@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if token.AccessToken != "broker-access" || token.RefreshToken != "broker-refresh" {
+		t.Fatalf("token: %+v", token)
+	}
+	stored, err := reg.Get(context.Background(), service.ProviderGoogle, "user@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.AccountLabel != "Work" {
+		t.Fatalf("label: %q", stored.AccountLabel)
+	}
+	cal, err := q.GetCalendarByProviderExternalID(context.Background(), sqlc.GetCalendarByProviderExternalIDParams{
+		Provider: service.ProviderGoogle, ExternalID: "primary",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cal.Name != "Primary" {
+		t.Fatalf("calendar: %+v", cal)
 	}
 }
 

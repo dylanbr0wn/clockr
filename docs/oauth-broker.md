@@ -106,7 +106,10 @@ schema guarantees.
 - `GET /readyz`: validates configuration and checks datastore connectivity.
 - `POST /v1/google/oauth/start`: creates a short-lived broker state and returns
   a Google authorization URL.
-- `GET /v1/google/oauth/callback`: reserved for DYL-82.
-- `POST /v1/google/oauth/handoff`: reserved for DYL-82.
+- `GET /v1/google/oauth/callback`: exchanges Google's authorization code with
+  the server-side client secret, mints a short-lived one-time handoff, and
+  renders a return page with broker_state + handoff_code (no token material).
+- `POST /v1/google/oauth/handoff`: exchanges a one-time handoff for Google token
+  material bound to the initiating desktop session and handoff verifier.
 - `POST /v1/google/oauth/refresh`: reserved for broker refresh work.
 - `POST /v1/google/oauth/revoke`: reserved for broker disconnect/revoke work.
