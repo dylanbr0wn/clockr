@@ -3,6 +3,7 @@ package google_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -10,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dylanbr0wn/clockr/internal/config"
 	"github.com/dylanbr0wn/clockr/internal/db"
 	"github.com/dylanbr0wn/clockr/internal/db/sqlc"
 	"github.com/dylanbr0wn/clockr/internal/integration/connection"
@@ -42,6 +44,76 @@ func TestOAuthConfig(t *testing.T) {
 	}
 	if len(cfg.Scopes) != 1 || cfg.Scopes[0] != "https://www.googleapis.com/auth/calendar.readonly" {
 		t.Fatalf("scopes: %#v", cfg.Scopes)
+	}
+}
+
+func TestAuthSettingsFromConfig_brokerOmitsClientSecret(t *testing.T) {
+	var cfg config.Config
+	cfg.Google.AuthMode = config.AuthModeBroker
+	cfg.Google.BrokerBaseURL = "https://auth.clockr.app"
+	cfg.Google.ClientID = "should-not-matter"
+	cfg.Google.ClientSecret = "must-not-copy"
+
+	got := google.AuthSettingsFromConfig(cfg)
+	if got.Mode != config.AuthModeBroker {
+		t.Fatalf("mode: %q", got.Mode)
+	}
+	if got.BrokerBaseURL != "https://auth.clockr.app" {
+		t.Fatalf("broker url: %q", got.BrokerBaseURL)
+	}
+	if got.ClientSecret != "" {
+		t.Fatalf("broker mode must not copy client_secret, got %q", got.ClientSecret)
+	}
+}
+
+func TestAuthSettingsFromConfig_localKeepsCredentials(t *testing.T) {
+	var cfg config.Config
+	cfg.Google.AuthMode = config.AuthModeLocal
+	cfg.Google.ClientID = "desktop-id"
+	cfg.Google.ClientSecret = "desktop-secret"
+
+	got := google.AuthSettingsFromConfig(cfg)
+	if got.Mode != config.AuthModeLocal {
+		t.Fatalf("mode: %q", got.Mode)
+	}
+	if got.ClientID != "desktop-id" || got.ClientSecret != "desktop-secret" {
+		t.Fatalf("local credentials: %+v", got)
+	}
+}
+
+func TestConnect_brokerModeReportsUnavailable(t *testing.T) {
+	p, _, _ := newProviderEnv(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.NotFound(w, r)
+	}))
+	p.AuthMode = config.AuthModeBroker
+	p.BrokerBaseURL = "https://auth.clockr.app"
+	p.Config.ClientSecret = "must-not-be-required"
+
+	_, err := p.Connect(context.Background(), "user@example.com", "Work")
+	if err == nil {
+		t.Fatal("expected broker unavailable error")
+	}
+	if !errors.Is(err, google.ErrBrokerUnavailable) {
+		t.Fatalf("want ErrBrokerUnavailable, got %v", err)
+	}
+	if strings.Contains(err.Error(), "client_secret") || strings.Contains(err.Error(), "client_id") {
+		t.Fatalf("broker error must not look like local credential gap: %v", err)
+	}
+}
+
+func TestConnect_localModeMissingClientID(t *testing.T) {
+	p, _, _ := newProviderEnv(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.NotFound(w, r)
+	}))
+	p.AuthMode = config.AuthModeLocal
+	p.Config.ClientID = ""
+
+	_, err := p.Connect(context.Background(), "user@example.com", "Work")
+	if err == nil {
+		t.Fatal("expected local credentials error")
+	}
+	if !errors.Is(err, config.ErrLocalCredentials) {
+		t.Fatalf("want ErrLocalCredentials, got %v", err)
 	}
 }
 
@@ -79,6 +151,7 @@ func newProviderEnv(t *testing.T, handler http.Handler) (*google.Provider, *conn
 
 	return &google.Provider{
 		Config:   cfg,
+		AuthMode: config.AuthModeLocal,
 		Store:    store,
 		Registry: reg,
 		Queries:  q,

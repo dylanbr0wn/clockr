@@ -5,16 +5,27 @@
 #   - ./clockr.yaml  (local dev, cwd)
 #
 # Environment variables override file values (highest precedence):
-#   CLOCKR_DB                  -> db.path
-#   CLOCKR_GOOGLE_CLIENT_ID    -> google.client_id
-#   CLOCKR_GOOGLE_CLIENT_SECRET -> google.client_secret
+#   CLOCKR_DB                       -> db.path
+#   CLOCKR_GOOGLE_AUTH_MODE         -> google.auth_mode
+#   CLOCKR_GOOGLE_BROKER_BASE_URL   -> google.broker_base_url
+#   CLOCKR_GOOGLE_CLIENT_ID         -> google.client_id
+#   CLOCKR_GOOGLE_CLIENT_SECRET     -> google.client_secret
 #
-# Google Desktop OAuth clients may require client_secret at the token endpoint,
+# google.auth_mode:
+#   - broker (public default when no local client_id is set): secret-only OAuth broker;
+#     no desktop client_secret required or retained
+#   - local: BYO/desktop OAuth with google.client_id (+ client_secret when Google requires it)
+#   - omit auth_mode with a client_id set to keep existing BYO configs on local mode
+#
+# Public builds default to broker mode and must not embed a shared Google client_secret.
+# Google Desktop OAuth clients may require client_secret at the token endpoint in local mode,
 # but desktop apps cannot keep it confidential once shipped.
 
 db:
   path: ~/.config/clockr/clockr.db
 
 google:
+  auth_mode: broker
+  broker_base_url: https://auth.clockr.app
   client_id: ""
   client_secret: ""

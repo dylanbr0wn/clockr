@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dylanbr0wn/clockr/internal/config"
 	"github.com/dylanbr0wn/clockr/internal/db/sqlc"
 	"github.com/dylanbr0wn/clockr/internal/integration/connection"
 	"github.com/dylanbr0wn/clockr/internal/integration/httpclient"
@@ -18,7 +19,15 @@ import (
 	"github.com/dylanbr0wn/clockr/internal/service"
 )
 
-var errCancelled = errors.New("cancelled event")
+var (
+	errCancelled = errors.New("cancelled event")
+
+	// ErrBrokerUnavailable is returned when broker-mode Google auth cannot proceed
+	// (broker down, unreachable, or connect flow not ready). Distinct from
+	// config.ErrBrokerConfig (bad/missing broker settings) and
+	// config.ErrLocalCredentials (missing BYO desktop credentials).
+	ErrBrokerUnavailable = errors.New("Google OAuth broker is unavailable")
+)
 
 // Authorizer runs desktop OAuth and persists tokens.
 type Authorizer interface {
@@ -27,12 +36,14 @@ type Authorizer interface {
 
 // Provider implements Google Calendar list + pull against the shared integration platform.
 type Provider struct {
-	Config     oauth.ProviderConfig
-	Store      secrets.TokenStore
-	Registry   *connection.Registry
-	Queries    *sqlc.Queries
-	Authorizer Authorizer
-	BaseURL    string // override for tests
+	Config        oauth.ProviderConfig
+	AuthMode      string
+	BrokerBaseURL string
+	Store         secrets.TokenStore
+	Registry      *connection.Registry
+	Queries       *sqlc.Queries
+	Authorizer    Authorizer
+	BaseURL       string // override for tests
 }
 
 // Connect runs OAuth, stores the token in the keychain, and upserts connection metadata.
@@ -46,6 +57,18 @@ func (p *Provider) Connect(ctx context.Context, accountID, accountLabel string) 
 	}
 	if p.Registry == nil {
 		return connection.Connection{}, errors.New("connection registry is required")
+	}
+
+	if p.usesBrokerAuth() {
+		base := strings.TrimSpace(p.BrokerBaseURL)
+		if base == "" {
+			return connection.Connection{}, fmt.Errorf("%w: set google.broker_base_url or CLOCKR_GOOGLE_BROKER_BASE_URL", config.ErrBrokerConfig)
+		}
+		return connection.Connection{}, fmt.Errorf("%w: cannot complete Google connect via broker at %s; retry later or use google.auth_mode=local with BYO credentials for development", ErrBrokerUnavailable, base)
+	}
+
+	if strings.TrimSpace(p.Config.ClientID) == "" {
+		return connection.Connection{}, fmt.Errorf("%w: set google.client_id or CLOCKR_GOOGLE_CLIENT_ID for local/BYO Google OAuth", config.ErrLocalCredentials)
 	}
 
 	auth := p.Authorizer
@@ -249,6 +272,16 @@ func (p *Provider) baseURL() string {
 		return strings.TrimRight(p.BaseURL, "/")
 	}
 	return apiBaseURL
+}
+
+func (p *Provider) usesBrokerAuth() bool {
+	mode := strings.TrimSpace(p.AuthMode)
+	// Empty mode matches public-build default (broker). WireIntegrations always
+	// sets AuthMode from config; this guard keeps tests/callers safe.
+	if mode == "" {
+		return true
+	}
+	return strings.EqualFold(mode, config.AuthModeBroker)
 }
 
 func periodBounds(startDate, endDate string) (timeMin, timeMax string, err error) {
