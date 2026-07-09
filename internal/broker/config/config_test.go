@@ -94,3 +94,33 @@ func TestLoadFromEnvUsesRailwayPortWhenListenAddrUnset(t *testing.T) {
 		t.Fatalf("listen addr: got %q want %q", cfg.ListenAddr, ":7654")
 	}
 }
+
+func TestLoadFromEnvKillSwitches(t *testing.T) {
+	t.Setenv("SHIET_BROKER_PUBLIC_ORIGIN", "https://auth.shiet.app")
+	t.Setenv("SHIET_BROKER_GOOGLE_CLIENT_ID", "client-id")
+	t.Setenv("SHIET_BROKER_GOOGLE_CLIENT_SECRET", "client-secret")
+	t.Setenv("SHIET_BROKER_DATASTORE_DSN", "file:broker.db")
+	t.Setenv("SHIET_BROKER_AUTH_DISABLED", "true")
+	t.Setenv("SHIET_BROKER_REFRESH_DISABLED", "1")
+	t.Setenv("SHIET_BROKER_DISABLED_APP_VERSIONS", "0.1.0, bad-build ")
+
+	cfg, err := LoadFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.AuthDisabled {
+		t.Fatal("expected AuthDisabled")
+	}
+	if !cfg.RefreshDisabled {
+		t.Fatal("expected RefreshDisabled")
+	}
+	if got := strings.Join(cfg.DisabledAppVersions, ","); got != "0.1.0,bad-build" {
+		t.Fatalf("disabled versions: got %q", got)
+	}
+	if !cfg.AppVersionDisabled("0.1.0") {
+		t.Fatal("expected 0.1.0 disabled")
+	}
+	if cfg.AppVersionDisabled("0.2.0") {
+		t.Fatal("did not expect 0.2.0 disabled")
+	}
+}

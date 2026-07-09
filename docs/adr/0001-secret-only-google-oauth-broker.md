@@ -325,6 +325,8 @@ Controls:
   refresh failures, Google token errors, and revoke volume.
 - Maintain a kill switch that can disable broker auth, refresh, or specific app
   versions without a desktop release.
+- Operator runbook for rate limits, metrics, kill switches, and quota response:
+  `docs/oauth-broker.md`.
 
 Residual risk: a modified desktop client can still call public broker endpoints.
 The broker reduces shared-secret extraction risk; it does not prove every caller

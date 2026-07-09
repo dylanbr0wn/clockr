@@ -446,6 +446,17 @@ func mapBrokerHTTPError(status int, raw []byte, op string) error {
 		return fmt.Errorf("%w: handoff not found; start a new Google connect", ErrBrokerRejected)
 	case "invalid_refresh_token":
 		return fmt.Errorf("%w: reconnect Google Calendar", ErrInvalidRefreshToken)
+	case "rate_limited":
+		return fmt.Errorf("%w: too many requests; try again later", ErrBrokerRejected)
+	case "auth_disabled":
+		return fmt.Errorf("%w: Google connect is temporarily unavailable", ErrBrokerRejected)
+	case "refresh_disabled":
+		return fmt.Errorf("%w: Google token refresh is temporarily unavailable", ErrBrokerRejected)
+	case "app_version_disabled":
+		return fmt.Errorf("%w: this app version can no longer use broker auth; update shiet", ErrBrokerRejected)
+	}
+	if status == http.StatusTooManyRequests {
+		return fmt.Errorf("%w: too many requests; try again later", ErrBrokerRejected)
 	}
 	if status >= 500 || status == http.StatusNotImplemented || status == http.StatusServiceUnavailable {
 		return fmt.Errorf("%w: broker %s returned %d", ErrBrokerUnavailable, op, status)

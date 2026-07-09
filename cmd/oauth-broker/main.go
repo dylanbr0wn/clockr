@@ -12,6 +12,8 @@ import (
 
 	brokerconfig "github.com/dylanbr0wn/shiet/internal/broker/config"
 	"github.com/dylanbr0wn/shiet/internal/broker/httpapi"
+	"github.com/dylanbr0wn/shiet/internal/broker/observe"
+	"github.com/dylanbr0wn/shiet/internal/broker/ratelimit"
 	"github.com/dylanbr0wn/shiet/internal/broker/store"
 )
 
@@ -28,9 +30,19 @@ func main() {
 	}
 	defer datastore.Close()
 
+	logger := observe.NewLogger(os.Stdout)
+	metrics := observe.NewMetrics()
+	limiter := ratelimit.New(time.Minute, nil)
+
 	srv := &http.Server{
-		Addr:              cfg.ListenAddr,
-		Handler:           httpapi.Server{Config: cfg, Store: datastore}.Handler(),
+		Addr: cfg.ListenAddr,
+		Handler: httpapi.Server{
+			Config:  cfg,
+			Store:   datastore,
+			Limiter: limiter,
+			Metrics: metrics,
+			Logger:  logger,
+		}.Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

@@ -20,30 +20,36 @@ const (
 
 // Config holds the broker's environment-driven runtime configuration.
 type Config struct {
-	ListenAddr         string
-	PublicOrigin       string
-	GoogleClientID     string
-	GoogleClientSecret string
-	DesktopHandoffURL  string
-	DatastoreDSN       string
-	StateTTL           time.Duration
-	HandoffTTL         time.Duration
-	GoogleScopes       []string
+	ListenAddr          string
+	PublicOrigin        string
+	GoogleClientID      string
+	GoogleClientSecret  string
+	DesktopHandoffURL   string
+	DatastoreDSN        string
+	StateTTL            time.Duration
+	HandoffTTL          time.Duration
+	GoogleScopes        []string
+	AuthDisabled        bool
+	RefreshDisabled     bool
+	DisabledAppVersions []string
 }
 
 // LoadFromEnv reads SHIET_BROKER_* environment variables and validates the
 // result. The desktop app's local SHIET_* config is intentionally separate.
 func LoadFromEnv() (Config, error) {
 	cfg := Config{
-		ListenAddr:         listenAddrFromEnv(),
-		PublicOrigin:       os.Getenv("SHIET_BROKER_PUBLIC_ORIGIN"),
-		GoogleClientID:     os.Getenv("SHIET_BROKER_GOOGLE_CLIENT_ID"),
-		GoogleClientSecret: os.Getenv("SHIET_BROKER_GOOGLE_CLIENT_SECRET"),
-		DesktopHandoffURL:  getenv("SHIET_BROKER_DESKTOP_HANDOFF_URL", defaultDesktopHandoffURL),
-		DatastoreDSN:       os.Getenv("SHIET_BROKER_DATASTORE_DSN"),
-		StateTTL:           defaultStateTTL,
-		HandoffTTL:         defaultHandoffTTL,
-		GoogleScopes:       splitScopes(getenv("SHIET_BROKER_GOOGLE_SCOPES", defaultGoogleScope)),
+		ListenAddr:          listenAddrFromEnv(),
+		PublicOrigin:        os.Getenv("SHIET_BROKER_PUBLIC_ORIGIN"),
+		GoogleClientID:      os.Getenv("SHIET_BROKER_GOOGLE_CLIENT_ID"),
+		GoogleClientSecret:  os.Getenv("SHIET_BROKER_GOOGLE_CLIENT_SECRET"),
+		DesktopHandoffURL:   getenv("SHIET_BROKER_DESKTOP_HANDOFF_URL", defaultDesktopHandoffURL),
+		DatastoreDSN:        os.Getenv("SHIET_BROKER_DATASTORE_DSN"),
+		StateTTL:            defaultStateTTL,
+		HandoffTTL:          defaultHandoffTTL,
+		GoogleScopes:        splitScopes(getenv("SHIET_BROKER_GOOGLE_SCOPES", defaultGoogleScope)),
+		AuthDisabled:        envTruthy("SHIET_BROKER_AUTH_DISABLED"),
+		RefreshDisabled:     envTruthy("SHIET_BROKER_REFRESH_DISABLED"),
+		DisabledAppVersions: splitCSV(os.Getenv("SHIET_BROKER_DISABLED_APP_VERSIONS")),
 	}
 
 	var err error
@@ -101,6 +107,21 @@ func (c Config) Validate() error {
 		return errors.New(strings.Join(problems, "; "))
 	}
 	return nil
+}
+
+// AppVersionDisabled reports whether the given desktop app version is blocked
+// by the operator kill list.
+func (c Config) AppVersionDisabled(appVersion string) bool {
+	appVersion = strings.TrimSpace(appVersion)
+	if appVersion == "" || len(c.DisabledAppVersions) == 0 {
+		return false
+	}
+	for _, blocked := range c.DisabledAppVersions {
+		if appVersion == blocked {
+			return true
+		}
+	}
+	return false
 }
 
 // RedirectURI returns the Google Web OAuth redirect URI configured for this
@@ -182,4 +203,29 @@ func splitScopes(raw string) []string {
 		}
 	}
 	return scopes
+}
+
+func splitCSV(raw string) []string {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			out = append(out, part)
+		}
+	}
+	return out
+}
+
+func envTruthy(key string) bool {
+	v := strings.TrimSpace(strings.ToLower(os.Getenv(key)))
+	switch v {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
 }

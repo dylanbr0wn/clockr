@@ -31,6 +31,107 @@ Optional:
 - `SHIET_BROKER_HANDOFF_TTL`: handoff TTL, default `2m`, maximum `5m`.
 - `SHIET_BROKER_GOOGLE_SCOPES`: space- or comma-separated Google scopes,
   default `https://www.googleapis.com/auth/calendar.readonly`.
+- `SHIET_BROKER_AUTH_DISABLED`: when `true`/`1`/`yes`/`on`, reject start,
+  callback, and handoff with `auth_disabled` (HTTP 403). Revoke stays enabled.
+- `SHIET_BROKER_REFRESH_DISABLED`: when truthy, reject refresh with
+  `refresh_disabled` (HTTP 403).
+- `SHIET_BROKER_DISABLED_APP_VERSIONS`: comma-separated desktop `app_version`
+  values that receive `app_version_disabled` on start/refresh.
+
+## Abuse Controls
+
+In-process fixed-window rate limits (per IP `/24` bucket unless noted), reset
+each minute:
+
+| Surface | Limit | Notes |
+|---------|-------|-------|
+| start | 10 / min | before minting OAuth state |
+| callback | 30 / min | HTML responses; 429 page on overage |
+| handoff | 20 / min | all exchange attempts |
+| handoff failures | 5 / min | stricter: IP + desktop session + handoff-code hash |
+| refresh | 60 / min | all refresh attempts (before Google) |
+| refresh failures | 10 / min | additional budget for `invalid_grant` / Google failures |
+| revoke | 20 / min | stays available under auth/refresh kill switches |
+
+Over limit returns JSON `{"error":"rate_limited"}` (HTTP 429), except callback
+which returns an HTML error page.
+
+Kill-switch error codes for the desktop client:
+
+- `auth_disabled`
+- `refresh_disabled`
+- `app_version_disabled`
+
+See ADR-0001 threat model (Broker Abuse / Quota Abuse) for the control intent;
+this document is the operator runbook.
+
+## Observability
+
+Structured JSON logs go to stdout via a redacting `slog` handler. Never log:
+
+- Google authorization codes
+- handoff codes / verifiers
+- Google access or refresh tokens
+- `client_secret` or other secret-bearing fields
+
+Safe fields include event name, surface, outcome/reason codes, IP bucket,
+`app_version`, and `platform`.
+
+`GET /metrics` exposes Prometheus text counters, including:
+
+- `broker_auth_starts_total`
+- `broker_auth_start_failures_total`
+- `broker_callback_outcomes_total{reason=...}`
+- `broker_handoff_success_total` / `broker_handoff_failures_total{reason=...}`
+- `broker_refresh_success_total` / `broker_refresh_failures_total{reason=...}`
+- `broker_revoke_success_total` / `broker_revoke_outcomes_total{reason=...}`
+- `broker_rate_limited_total{surface=...}`
+- `broker_kill_switch_total{surface=...}`
+- `broker_quota_risk_total{signal=...}` (`invalid_grant`, `handoff_replay`,
+  `handoff_mismatch`, `state_replay`)
+
+Handoff failure reasons: `already_used`, `expired`, `not_found`,
+`state_mismatch`, plus internal consume/payload failures.
+
+## Quota Alerting And Abuse Response
+
+### Google Cloud project
+
+1. In Google Cloud Console → APIs & Services → OAuth consent screen / Credentials
+   for the Web client used by the broker, enable alerts (or Cloud Monitoring) for
+   unusual OAuth token error rates and project quota exhaustion.
+2. Watch for spikes in `invalid_grant`, authorization denials, and token endpoint
+   4xx/5xx against the shared Web client.
+3. Keep Calendar API usage local to the desktop in v1; broker quota risk is
+   primarily OAuth start/token/refresh/revoke volume.
+
+### Broker deployment (Railway)
+
+1. Scrape or periodically fetch `GET /metrics` (or ship stdout JSON logs to a
+   log drain) and alert on:
+   - rising `broker_rate_limited_total`
+   - `broker_quota_risk_total` for `invalid_grant` or `handoff_replay`
+   - sustained `broker_handoff_failures_total` / refresh failures
+2. Correlate with Railway request volume and error rates on
+   `/v1/google/oauth/*`.
+
+### Incident response steps
+
+1. **Contain**: set `SHIET_BROKER_AUTH_DISABLED=true` and/or
+   `SHIET_BROKER_REFRESH_DISABLED=true` on the Railway service and redeploy /
+   restart so new auth and/or refresh stops. Prefer leaving revoke enabled so
+   users can disconnect.
+2. **Narrow**: if abuse is version-specific, set
+   `SHIET_BROKER_DISABLED_APP_VERSIONS` instead of a global kill switch.
+3. **Rotate** (if secret exposure is suspected): rotate the Google Web OAuth
+   client secret in Google Cloud, update the sealed Railway variable, restart
+   the broker. Existing desktop refresh tokens may need reconnect after Google
+   invalidates grants.
+4. **Investigate**: inspect `/metrics` and redacted logs for IP buckets,
+   outcomes, and quota-risk signals. Do not dump request bodies that may contain
+   tokens.
+5. **Restore**: clear kill-switch env vars after the spike stops; confirm start
+   and refresh succeed from a known-good desktop build.
 
 ## Deployment Notes
 
@@ -42,12 +143,9 @@ Optional:
   and rotations.
 - Datastore: start with a small SQLite database on durable storage for the first
   deployable broker. The schema contains OAuth state and handoff coordination
-  records with expiry and one-time-use fields only.
-- Logging: keep authorization codes, handoff codes, Google access tokens, and
-  Google refresh tokens out of logs, metrics labels, traces, and error messages.
-- Metrics: track `/healthz`, `/readyz`, start attempts, datastore failures,
-  callback/handoff/refresh/revoke outcomes, expiry counts, and one-time-use
-  replay attempts.
+  records with expiry and one-time-use fields only. Rate-limit counters and
+  kill-switch state are in-process / env-driven for the single-replica deploy.
+- Logging / metrics: see Observability above.
 - Operational ownership: assign an owner for deploys, uptime, datastore backups,
   secret rotation, Google OAuth consent-screen health, quota alerts, and
   emergency disablement.
@@ -104,6 +202,7 @@ schema guarantees.
 
 - `GET /healthz`: process health.
 - `GET /readyz`: validates configuration and checks datastore connectivity.
+- `GET /metrics`: Prometheus text metrics for auth/abuse signals (no secrets).
 - `POST /v1/google/oauth/start`: creates a short-lived broker state and returns
   a Google authorization URL.
 - `GET /v1/google/oauth/callback`: exchanges Google's authorization code with

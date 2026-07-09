@@ -274,6 +274,37 @@ func TestBrokerFlowRefreshTokenInvalid(t *testing.T) {
 	}
 }
 
+func TestBrokerFlowRefreshKillSwitchAndRateLimit(t *testing.T) {
+	cases := []struct {
+		name   string
+		status int
+		code   string
+		want   string
+	}{
+		{name: "refresh disabled", status: http.StatusForbidden, code: "refresh_disabled", want: "temporarily unavailable"},
+		{name: "rate limited", status: http.StatusTooManyRequests, code: "rate_limited", want: "try again later"},
+		{name: "app version disabled", status: http.StatusForbidden, code: "app_version_disabled", want: "update shiet"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			broker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tc.status)
+				_ = json.NewEncoder(w).Encode(map[string]string{"error": tc.code})
+			}))
+			t.Cleanup(broker.Close)
+
+			flow := &google.BrokerFlow{BaseURL: broker.URL, HTTPClient: broker.Client()}
+			_, err := flow.RefreshToken(context.Background(), "refresh-old", nil)
+			if !errors.Is(err, google.ErrBrokerRejected) {
+				t.Fatalf("want ErrBrokerRejected, got %v", err)
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error %q missing %q", err, tc.want)
+			}
+		})
+	}
+}
+
 func TestBrokerFlowRefreshTokenUnavailable(t *testing.T) {
 	broker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)

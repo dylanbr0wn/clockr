@@ -12,6 +12,8 @@ import (
 	"time"
 
 	brokerconfig "github.com/dylanbr0wn/shiet/internal/broker/config"
+	"github.com/dylanbr0wn/shiet/internal/broker/observe"
+	"github.com/dylanbr0wn/shiet/internal/broker/ratelimit"
 	"github.com/dylanbr0wn/shiet/internal/broker/store"
 )
 
@@ -701,6 +703,144 @@ func TestRefreshGoogleOAuthRequiresRefreshToken(t *testing.T) {
 	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/v1/google/oauth/refresh", bytes.NewBufferString(`{}`)))
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("status: got %d body %s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestStartGoogleOAuthAuthDisabled(t *testing.T) {
+	cfg := testConfig()
+	cfg.AuthDisabled = true
+	metrics := observe.NewMetrics()
+	srv := Server{Config: cfg, Store: &memoryStore{}, Metrics: metrics}
+
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/v1/google/oauth/start", bytes.NewBufferString(`{
+		"desktop_session_id":"desktop-1",
+		"handoff_challenge":"challenge-1"
+	}`)))
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("status: got %d body %s", rr.Code, rr.Body.String())
+	}
+	var errResp errorResponse
+	_ = json.NewDecoder(rr.Body).Decode(&errResp)
+	if errResp.Error != "auth_disabled" {
+		t.Fatalf("error: %+v", errResp)
+	}
+	if metrics.KillSwitchCount("start") != 1 {
+		t.Fatalf("kill switch metric: %d", metrics.KillSwitchCount("start"))
+	}
+}
+
+func TestRefreshGoogleOAuthRefreshDisabled(t *testing.T) {
+	cfg := testConfig()
+	cfg.RefreshDisabled = true
+	metrics := observe.NewMetrics()
+	srv := Server{Config: cfg, Store: &memoryStore{}, Metrics: metrics}
+
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/v1/google/oauth/refresh", bytes.NewBufferString(`{
+		"refresh_token":"refresh-old"
+	}`)))
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("status: got %d body %s", rr.Code, rr.Body.String())
+	}
+	var errResp errorResponse
+	_ = json.NewDecoder(rr.Body).Decode(&errResp)
+	if errResp.Error != "refresh_disabled" {
+		t.Fatalf("error: %+v", errResp)
+	}
+	if metrics.KillSwitchCount("refresh") != 1 {
+		t.Fatalf("kill switch metric: %d", metrics.KillSwitchCount("refresh"))
+	}
+}
+
+func TestStartGoogleOAuthAppVersionDisabled(t *testing.T) {
+	cfg := testConfig()
+	cfg.DisabledAppVersions = []string{"0.1.0"}
+	srv := Server{Config: cfg, Store: &memoryStore{}, Metrics: observe.NewMetrics()}
+
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/v1/google/oauth/start", bytes.NewBufferString(`{
+		"desktop_session_id":"desktop-1",
+		"handoff_challenge":"challenge-1",
+		"app_version":"0.1.0"
+	}`)))
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("status: got %d body %s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "app_version_disabled") {
+		t.Fatalf("body: %s", rr.Body.String())
+	}
+}
+
+func TestStartGoogleOAuthRateLimited(t *testing.T) {
+	now := time.Date(2026, 7, 9, 12, 0, 0, 0, time.UTC)
+	metrics := observe.NewMetrics()
+	lim := ratelimit.New(time.Minute, func() time.Time { return now })
+	srv := Server{
+		Config:  testConfig(),
+		Store:   &memoryStore{},
+		Clock:   func() time.Time { return now },
+		Limiter: lim,
+		Metrics: metrics,
+	}
+
+	body := `{"desktop_session_id":"desktop-1","handoff_challenge":"challenge-1"}`
+	for i := 0; i < limitStart; i++ {
+		rr := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/v1/google/oauth/start", bytes.NewBufferString(body))
+		req.RemoteAddr = "203.0.113.42:1234"
+		srv.Handler().ServeHTTP(rr, req)
+		if rr.Code != http.StatusCreated {
+			t.Fatalf("request %d status: got %d body %s", i+1, rr.Code, rr.Body.String())
+		}
+	}
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/google/oauth/start", bytes.NewBufferString(body))
+	req.RemoteAddr = "203.0.113.42:1234"
+	srv.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusTooManyRequests {
+		t.Fatalf("status: got %d body %s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "rate_limited") {
+		t.Fatalf("body: %s", rr.Body.String())
+	}
+	if metrics.RateLimitedCount("start") != 1 {
+		t.Fatalf("rate limited metric: %d", metrics.RateLimitedCount("start"))
+	}
+}
+
+func TestHandoffFailureCountedForMonitoring(t *testing.T) {
+	metrics := observe.NewMetrics()
+	srv := Server{Config: testConfig(), Store: &memoryStore{}, Metrics: metrics}
+
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/v1/google/oauth/handoff", bytes.NewBufferString(`{
+		"desktop_session_id":"desktop-1",
+		"broker_state":"missing",
+		"handoff_code":"code-1",
+		"handoff_verifier":"verifier-1"
+	}`)))
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status: got %d body %s", rr.Code, rr.Body.String())
+	}
+	if metrics.HandoffFailureCount("not_found") != 1 {
+		t.Fatalf("handoff failure metric: %d", metrics.HandoffFailureCount("not_found"))
+	}
+}
+
+func TestMetricsEndpoint(t *testing.T) {
+	metrics := observe.NewMetrics()
+	metrics.IncAuthStart()
+	srv := Server{Config: testConfig(), Store: &memoryStore{}, Metrics: metrics}
+
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status: got %d", rr.Code)
+	}
+	if !strings.Contains(rr.Body.String(), "broker_auth_starts_total 1") {
+		t.Fatalf("body: %s", rr.Body.String())
 	}
 }
 
