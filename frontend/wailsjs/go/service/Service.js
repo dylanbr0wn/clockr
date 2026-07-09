@@ -38,6 +38,10 @@ export function EnsureCurrentPeriod(arg1, arg2, arg3) {
   return window['go']['service']['Service']['EnsureCurrentPeriod'](arg1, arg2, arg3);
 }
 
+export function ExcludeEvent(arg1, arg2) {
+  return window['go']['service']['Service']['ExcludeEvent'](arg1, arg2);
+}
+
 export function GetCategory(arg1, arg2) {
   return window['go']['service']['Service']['GetCategory'](arg1, arg2);
 }

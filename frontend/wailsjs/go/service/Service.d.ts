@@ -22,6 +22,8 @@ export function DiscoverLocalAIEndpoints(arg1:context.Context):Promise<Array<ai.
 
 export function EnsureCurrentPeriod(arg1:context.Context,arg2:string,arg3:string):Promise<service.Period>;
 
+export function ExcludeEvent(arg1:context.Context,arg2:service.ExcludeEventInput):Promise<service.ExcludeEventResult>;
+
 export function GetCategory(arg1:context.Context,arg2:number):Promise<service.Category>;
 
 export function GetEvent(arg1:context.Context,arg2:number):Promise<service.Event>;
