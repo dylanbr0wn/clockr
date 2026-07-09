@@ -112,4 +112,7 @@ schema guarantees.
 - `POST /v1/google/oauth/handoff`: exchanges a one-time handoff for Google token
   material bound to the initiating desktop session and handoff verifier.
 - `POST /v1/google/oauth/refresh`: reserved for broker refresh work.
-- `POST /v1/google/oauth/revoke`: reserved for broker disconnect/revoke work.
+- `POST /v1/google/oauth/revoke`: accepts a desktop-supplied Google refresh
+  token, calls Google's revoke endpoint, and returns `{ "revoked": true }`.
+  Already-revoked / `invalid_token` responses are treated as success. The
+  broker does not persist the token or any disconnected-account record.

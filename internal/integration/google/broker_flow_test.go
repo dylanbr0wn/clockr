@@ -194,3 +194,49 @@ func TestBrokerFlowAuthorizeStartUnavailable(t *testing.T) {
 		t.Fatalf("want ErrBrokerUnavailable, got %v", err)
 	}
 }
+
+func TestBrokerFlowRevokeSuccess(t *testing.T) {
+	var got map[string]any
+	broker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/v1/google/oauth/revoke" {
+			http.NotFound(w, r)
+			return
+		}
+		if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
+			t.Fatal(err)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"revoked": true})
+	}))
+	t.Cleanup(broker.Close)
+
+	flow := &google.BrokerFlow{
+		BaseURL:    broker.URL,
+		HTTPClient: broker.Client(),
+	}
+	if err := flow.Revoke(context.Background(), "refresh-token"); err != nil {
+		t.Fatal(err)
+	}
+	if got["refresh_token"] != "refresh-token" {
+		t.Fatalf("payload: %#v", got)
+	}
+	if got["reason"] != "user_disconnect" {
+		t.Fatalf("reason: %#v", got["reason"])
+	}
+}
+
+func TestBrokerFlowRevokeUnavailable(t *testing.T) {
+	broker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "google_revoke_failed"})
+	}))
+	t.Cleanup(broker.Close)
+
+	flow := &google.BrokerFlow{
+		BaseURL:    broker.URL,
+		HTTPClient: broker.Client(),
+	}
+	err := flow.Revoke(context.Background(), "refresh-token")
+	if !errors.Is(err, google.ErrBrokerUnavailable) {
+		t.Fatalf("want ErrBrokerUnavailable, got %v", err)
+	}
+}
