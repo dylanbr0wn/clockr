@@ -15,7 +15,7 @@ import { CREATE_PREVIEW_ITEM_ID } from "@/lib/scheduler";
 import {
   durationLabel,
   formatTimeRange,
-  kindClasses,
+  scheduleItemPresentation,
   type ScheduleItem,
 } from "@/lib/schedule";
 import type { ScheduleTimelineActions } from "../ScheduleTimeline.types";
@@ -48,9 +48,9 @@ export function ScheduleTimedItem({
   }
 
   const metadata = item.metadata;
-  const itemClass = metadata
-    ? kindClasses(metadata.kind)
-    : "border-border bg-muted text-foreground";
+  const presentation = metadata
+    ? scheduleItemPresentation(metadata.kind, metadata.categoryColor)
+    : { className: "border-border bg-muted text-foreground" };
   const canMutateItem = item.id.startsWith("gap-fill-");
 
   return (
@@ -78,8 +78,9 @@ export function ScheduleTimedItem({
               layoutItem.isPreview
                 ? "opacity-70 ring-2 ring-background/20"
                 : "hover:shadow-md",
-              itemClass,
+              presentation.className,
             ].join(" "),
+            style: presentation.style,
           })}
         >
           {canMutateItem ? (

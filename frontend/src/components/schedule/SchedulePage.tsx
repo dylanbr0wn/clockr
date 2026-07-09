@@ -46,6 +46,7 @@ export function SchedulePage({ titlebarPaddingClass }: SchedulePageProps) {
         />
         <ScheduleSidebar
           activePeriod={schedule.activePeriod}
+          categories={schedule.categories}
           items={schedule.items}
           events={schedule.events}
           reviewItems={schedule.reviewItems}

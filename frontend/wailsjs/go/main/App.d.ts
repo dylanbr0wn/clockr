@@ -37,6 +37,8 @@ export function ListCalendars():Promise<Array<service.Calendar>>;
 
 export function ListCategories():Promise<Array<service.Category>>;
 
+export function ListEventCategoryOverlays(arg1:number):Promise<Array<service.EventCategoryOverlay>>;
+
 export function ListEvents(arg1:number):Promise<Array<service.Event>>;
 
 export function ListGapFills(arg1:number):Promise<Array<service.GapFill>>;

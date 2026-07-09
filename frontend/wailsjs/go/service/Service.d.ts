@@ -38,6 +38,8 @@ export function ListCalendars(arg1:context.Context):Promise<Array<service.Calend
 
 export function ListCategories(arg1:context.Context):Promise<Array<service.Category>>;
 
+export function ListEventCategoryOverlays(arg1:context.Context,arg2:number):Promise<Array<service.EventCategoryOverlay>>;
+
 export function ListEvents(arg1:context.Context,arg2:number):Promise<Array<service.Event>>;
 
 export function ListGapFills(arg1:context.Context,arg2:number):Promise<Array<service.GapFill>>;

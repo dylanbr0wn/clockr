@@ -11,6 +11,8 @@ export type AllDaySpanPosition = "single" | "start" | "middle" | "end";
 export interface ScheduleMetadata {
   title: string;
   category: string;
+  categoryId?: number;
+  categoryColor?: string;
   kind: ScheduleKind;
   reviewItemId?: number;
   reviewKind?: string;
@@ -24,6 +26,8 @@ export interface AllDayChip {
   day: string;
   title: string;
   category: string;
+  categoryId?: number;
+  categoryColor?: string;
   kind: ScheduleKind;
   reviewItemId?: number;
   reviewKind?: string;

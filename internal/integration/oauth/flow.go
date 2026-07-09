@@ -199,7 +199,7 @@ func sendCallbackResult(ch chan<- callbackResult, result callbackResult) {
 func describeExchangeError(err error) error {
 	var retrieveErr *oauth2.RetrieveError
 	if errors.As(err, &retrieveErr) && isDesktopClientTypeError(retrieveErr) {
-		return fmt.Errorf("%w. Google rejected the OAuth token exchange because the configured client requires a client secret. Set google.client_secret or SHIET_GOOGLE_CLIENT_SECRET from the Google Desktop OAuth credential bundle; desktop apps cannot keep this value confidential, so treat it as a provider-required public credential rather than a security boundary", err)
+		return fmt.Errorf("%w. Google rejected the OAuth token exchange because the configured local/BYO client requires a client secret. Set google.client_secret or SHIET_GOOGLE_CLIENT_SECRET from the Google Desktop OAuth credential bundle (google.auth_mode=local); desktop apps cannot keep this value confidential, so treat it as a provider-required public credential rather than a security boundary. Public builds should use google.auth_mode=broker instead of shipping a shared secret", err)
 	}
 	return err
 }

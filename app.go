@@ -91,6 +91,11 @@ func (a *App) DeleteCategory(id int64) error {
 	return a.Svc.DeleteCategory(a.callContext(), id)
 }
 
+// ListEventCategoryOverlays returns category decisions for imported events.
+func (a *App) ListEventCategoryOverlays(periodID int64) ([]service.EventCategoryOverlay, error) {
+	return a.Svc.ListEventCategoryOverlays(a.callContext(), periodID)
+}
+
 // ListCalendars returns all known calendars.
 func (a *App) ListCalendars() ([]service.Calendar, error) {
 	return a.Svc.ListCalendars(a.callContext())

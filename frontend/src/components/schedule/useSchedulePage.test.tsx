@@ -17,7 +17,14 @@ const mockState = vi.hoisted(() => {
       { id: 2, startDate: "2026-07-15", endDate: "2026-07-28" },
     ],
     currentPeriod: { id: 1, startDate: "2026-07-01", endDate: "2026-07-14" },
-    categories: [{ id: 10, name: "Work", color: "#000000" }],
+    categories: [{
+      id: 10,
+      name: "Work",
+      description: "",
+      key: "Work",
+      color: "#0EA5E9",
+      isDefaultGap: false,
+    }],
     events: [],
     gapFills: [
       {
@@ -76,6 +83,11 @@ vi.mock("@/lib/api", () => ({
   }),
   useCategories: () => ({ data: mockState.categories, isLoading: false, error: null }),
   useEvents: () => ({ data: mockState.events, isLoading: false, error: null }),
+  useEventCategoryOverlays: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  }),
   useGapFills: () => ({ data: mockState.gapFills, isLoading: false, error: null }),
   useGapTimeline: () => ({ data: mockState.gapTimeline, isLoading: false, error: null }),
   useOpenReviewItems: () => ({

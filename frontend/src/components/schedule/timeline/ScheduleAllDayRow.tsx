@@ -1,7 +1,7 @@
 import { AlertTriangleIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  kindClasses,
+  scheduleItemPresentation,
   type AllDayChip,
   type AllDaySpanPosition,
 } from "@/lib/schedule";
@@ -59,7 +59,10 @@ export function ScheduleAllDayRow({
             style={{ height: `${allDayRowHeight}px` }}
           >
             {chips.map((chip) => {
-              const chipClass = kindClasses(chip.kind);
+              const presentation = scheduleItemPresentation(
+                chip.kind,
+                chip.categoryColor,
+              );
               const isReview = chip.kind === "review";
 
               return (
@@ -75,11 +78,12 @@ export function ScheduleAllDayRow({
                   className={cn([
                     "flex min-h-6 w-full flex-col justify-center border px-2 py-0.5 text-left text-[11px] shadow-sm",
                     allDaySpanClasses(chip.allDaySpan),
-                    chipClass,
+                    presentation.className,
                     isReview
                       ? "cursor-pointer hover:brightness-95"
                       : "cursor-default",
                   ])}
+                  style={presentation.style}
                 >
                   {isReview ? (
                     <div className="mb-0.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide opacity-80">

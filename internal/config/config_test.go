@@ -1,8 +1,10 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -16,6 +18,8 @@ func TestLoad_precedenceDefaultFileEnv(t *testing.T) {
 	t.Setenv("SHIET_DB", "")
 	t.Setenv("SHIET_GOOGLE_CLIENT_ID", "")
 	t.Setenv("SHIET_GOOGLE_CLIENT_SECRET", "")
+	t.Setenv("SHIET_GOOGLE_AUTH_MODE", "")
+	t.Setenv("SHIET_GOOGLE_BROKER_BASE_URL", "")
 
 	// Defaults only (no config files passed).
 	cfg, err := load(nil)
@@ -92,4 +96,197 @@ func TestExpandHome(t *testing.T) {
 	if got != want {
 		t.Fatalf("got %q want %q", got, want)
 	}
+}
+
+func TestLoad_googleAuthModeDefaultsToBroker(t *testing.T) {
+	clearGoogleEnv(t)
+
+	cfg, err := load(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Google.AuthMode != AuthModeBroker {
+		t.Fatalf("auth_mode: got %q want %q", cfg.Google.AuthMode, AuthModeBroker)
+	}
+	if cfg.Google.BrokerBaseURL != defaultBrokerBaseURL {
+		t.Fatalf("broker_base_url: got %q want %q", cfg.Google.BrokerBaseURL, defaultBrokerBaseURL)
+	}
+	if cfg.Google.ClientSecret != "" {
+		t.Fatalf("public default must not embed client_secret, got %q", cfg.Google.ClientSecret)
+	}
+}
+
+func TestLoad_implicitLocalWhenClientIDPresent(t *testing.T) {
+	dir := t.TempDir()
+	cfgFile := filepath.Join(dir, "shiet.yaml")
+	content := "google:\n  client_id: byo-id\n  client_secret: byo-secret\n"
+	if err := os.WriteFile(cfgFile, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	clearGoogleEnv(t)
+
+	cfg, err := load([]string{cfgFile})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Google.AuthMode != AuthModeLocal {
+		t.Fatalf("auth_mode: got %q want %q (BYO credentials without explicit mode)", cfg.Google.AuthMode, AuthModeLocal)
+	}
+	if cfg.Google.ClientSecret != "byo-secret" {
+		t.Fatalf("local mode should keep client_secret, got %q", cfg.Google.ClientSecret)
+	}
+}
+
+func TestLoad_brokerModeClearsClientSecret(t *testing.T) {
+	dir := t.TempDir()
+	cfgFile := filepath.Join(dir, "shiet.yaml")
+	content := "" +
+		"google:\n" +
+		"  auth_mode: broker\n" +
+		"  broker_base_url: https://auth.shiet.app\n" +
+		"  client_secret: should-be-cleared\n"
+	if err := os.WriteFile(cfgFile, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	clearGoogleEnv(t)
+
+	cfg, err := load([]string{cfgFile})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Google.ClientSecret != "" {
+		t.Fatalf("broker mode must clear client_secret, got %q", cfg.Google.ClientSecret)
+	}
+}
+
+func TestLoad_googleAuthModeFileAndEnvPrecedence(t *testing.T) {
+	dir := t.TempDir()
+	cfgFile := filepath.Join(dir, "shiet.yaml")
+	content := "" +
+		"google:\n" +
+		"  auth_mode: local\n" +
+		"  broker_base_url: https://file.example\n" +
+		"  client_id: file-id\n" +
+		"  client_secret: file-secret\n"
+	if err := os.WriteFile(cfgFile, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	clearGoogleEnv(t)
+
+	cfg, err := load([]string{cfgFile})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Google.AuthMode != AuthModeLocal {
+		t.Fatalf("file auth_mode: got %q want %q", cfg.Google.AuthMode, AuthModeLocal)
+	}
+	if cfg.Google.BrokerBaseURL != "https://file.example" {
+		t.Fatalf("file broker_base_url: got %q", cfg.Google.BrokerBaseURL)
+	}
+
+	t.Setenv("SHIET_GOOGLE_AUTH_MODE", "broker")
+	t.Setenv("SHIET_GOOGLE_BROKER_BASE_URL", "https://env.example")
+	cfg, err = load([]string{cfgFile})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Google.AuthMode != AuthModeBroker {
+		t.Fatalf("env auth_mode: got %q want %q", cfg.Google.AuthMode, AuthModeBroker)
+	}
+	if cfg.Google.BrokerBaseURL != "https://env.example" {
+		t.Fatalf("env broker_base_url: got %q", cfg.Google.BrokerBaseURL)
+	}
+}
+
+func TestValidate_brokerModeRequiresHTTPSBrokerURLNotClientSecret(t *testing.T) {
+	cfg := Config{}
+	cfg.Google.AuthMode = AuthModeBroker
+	cfg.Google.BrokerBaseURL = "https://auth.shiet.app"
+	cfg.Google.ClientSecret = ""
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("broker mode with HTTPS URL and empty secret should pass: %v", err)
+	}
+
+	cfg.Google.BrokerBaseURL = ""
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected error for missing broker_base_url")
+	}
+	if !errors.Is(err, ErrBrokerConfig) {
+		t.Fatalf("want ErrBrokerConfig, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "broker_base_url") && !strings.Contains(err.Error(), "SHIET_GOOGLE_BROKER_BASE_URL") {
+		t.Fatalf("broker config error should mention broker URL: %v", err)
+	}
+
+	cfg.Google.BrokerBaseURL = "http://insecure.example"
+	err = cfg.Validate()
+	if err == nil {
+		t.Fatal("expected error for non-HTTPS broker URL")
+	}
+	if !errors.Is(err, ErrBrokerConfig) {
+		t.Fatalf("want ErrBrokerConfig, got %v", err)
+	}
+}
+
+func TestValidate_localModeRequiresClientIDNotBrokerURL(t *testing.T) {
+	cfg := Config{}
+	cfg.Google.AuthMode = AuthModeLocal
+	cfg.Google.ClientID = "desktop-client-id"
+	cfg.Google.BrokerBaseURL = ""
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("local mode with client_id should pass: %v", err)
+	}
+
+	cfg.Google.ClientID = ""
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected error for missing local client_id")
+	}
+	if !errors.Is(err, ErrLocalCredentials) {
+		t.Fatalf("want ErrLocalCredentials, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "client_id") && !strings.Contains(err.Error(), "SHIET_GOOGLE_CLIENT_ID") {
+		t.Fatalf("local credential error should mention client_id: %v", err)
+	}
+}
+
+func TestValidate_rejectsUnknownAuthMode(t *testing.T) {
+	cfg := Config{}
+	cfg.Google.AuthMode = "weird"
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected error for unknown auth_mode")
+	}
+	if !strings.Contains(err.Error(), "auth_mode") {
+		t.Fatalf("error should mention auth_mode: %v", err)
+	}
+}
+
+func TestLoad_validatesGoogleAuth(t *testing.T) {
+	dir := t.TempDir()
+	cfgFile := filepath.Join(dir, "shiet.yaml")
+	content := "google:\n  auth_mode: local\n  client_id: \"\"\n"
+	if err := os.WriteFile(cfgFile, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	clearGoogleEnv(t)
+
+	_, err := load([]string{cfgFile})
+	if err == nil {
+		t.Fatal("expected load to fail validation for local mode without client_id")
+	}
+	if !errors.Is(err, ErrLocalCredentials) {
+		t.Fatalf("want ErrLocalCredentials, got %v", err)
+	}
+}
+
+func clearGoogleEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("SHIET_DB", "")
+	t.Setenv("SHIET_GOOGLE_CLIENT_ID", "")
+	t.Setenv("SHIET_GOOGLE_CLIENT_SECRET", "")
+	t.Setenv("SHIET_GOOGLE_AUTH_MODE", "")
+	t.Setenv("SHIET_GOOGLE_BROKER_BASE_URL", "")
 }

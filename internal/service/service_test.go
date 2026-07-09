@@ -42,6 +42,9 @@ func TestListCategories(t *testing.T) {
 	}
 	var gaps int
 	for _, c := range cats {
+		if c.Color == "" {
+			t.Fatalf("category %q missing color", c.Name)
+		}
 		if c.IsDefaultGap {
 			gaps++
 		}

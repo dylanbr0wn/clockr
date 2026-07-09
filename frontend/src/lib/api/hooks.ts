@@ -15,6 +15,7 @@ import {
   listAIModels,
   listCalendars,
   listCategories,
+  listEventCategoryOverlays,
   listEvents,
   listGapFills,
   listIntegrationConnections,
@@ -62,6 +63,8 @@ export const shietQueryKeys = {
   periods: () => [...shietQueryKeys.all, "periods"] as const,
   periodEvents: (periodId: number) =>
     [...shietQueryKeys.period(periodId), "events"] as const,
+  periodEventCategoryOverlays: (periodId: number) =>
+    [...shietQueryKeys.period(periodId), "eventCategoryOverlays"] as const,
   periodGapFills: (periodId: number) =>
     [...shietQueryKeys.period(periodId), "gapFills"] as const,
   periodReviewItems: (periodId: number) =>
@@ -144,6 +147,14 @@ export function useDeleteCategory() {
     onSuccess: () => {
       invalidateCategoryQueries(queryClient);
     },
+  });
+}
+
+export function useEventCategoryOverlays(periodId: number | null | undefined) {
+  return useQuery({
+    enabled: typeof periodId === "number",
+    queryKey: shietQueryKeys.periodEventCategoryOverlays(periodId ?? 0),
+    queryFn: () => listEventCategoryOverlays(periodId as number),
   });
 }
 
@@ -617,6 +628,9 @@ export function useSyncPeriod() {
       });
       void queryClient.invalidateQueries({
         queryKey: shietQueryKeys.periodEvents(periodID),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.periodEventCategoryOverlays(periodID),
       });
       void queryClient.invalidateQueries({
         queryKey: shietQueryKeys.periodReviewItems(periodID),

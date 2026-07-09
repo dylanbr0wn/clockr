@@ -8,6 +8,7 @@ import type {
   CreateCategoryInput,
   DayTimeline,
   Event,
+  EventCategoryOverlay,
   GapFill,
   GapSuggestion,
   IntegrationConnection,
@@ -41,6 +42,7 @@ interface ShietApp {
   ListAIModels(baseURL: string, apiKey: string): Promise<string[]>;
   ListCalendars(): Promise<Calendar[]>;
   ListCategories(): Promise<Category[]>;
+  ListEventCategoryOverlays(periodId: number): Promise<EventCategoryOverlay[]>;
   ListEvents(periodId: number): Promise<Event[]>;
   ListGapFills(periodId: number): Promise<GapFill[]>;
   ListIntegrationConnections(): Promise<IntegrationConnection[]>;
@@ -130,6 +132,12 @@ export function updateCategory(input: UpdateCategoryInput) {
 
 export function deleteCategory(id: number) {
   return writeToBackend(() => appBackend.DeleteCategory(id));
+}
+
+export function listEventCategoryOverlays(periodId: number) {
+  return readFromBackend<EventCategoryOverlay[]>([], () =>
+    appBackend.ListEventCategoryOverlays(periodId),
+  );
 }
 
 export function listCalendars() {

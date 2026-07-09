@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { formatDecimalHours } from "@/lib/export/formatters";
 import { sortCategoriesByMinutes } from "@/lib/export/summary";
-import { categoryColor } from "@/lib/schedule/categoryColors";
+import { categoryStatColor } from "@/lib/category/colors";
 import { workingDaysRemaining } from "@/lib/schedule/date";
 
 describe("formatDecimalHours", () => {
@@ -42,15 +42,15 @@ describe("sortCategoriesByMinutes", () => {
   });
 });
 
-describe("categoryColor", () => {
-  it("returns stable colors for the same category", () => {
-    expect(categoryColor("Engineering")).toEqual(categoryColor("Engineering"));
+describe("categoryStatColor", () => {
+  it("returns the configured palette color for a category", () => {
+    expect(
+      categoryStatColor("Meetings", { Meetings: "#0EA5E9" }),
+    ).toBe("#0EA5E9");
   });
 
-  it("returns palette entries with dot and bar classes", () => {
-    const colors = categoryColor("Product");
-
-    expect(colors.dot).toMatch(/^bg-/);
-    expect(colors.bar).toMatch(/^bg-/);
+  it("falls back to the default color when missing or invalid", () => {
+    expect(categoryStatColor("Unknown", {})).toBe("#64748B");
+    expect(categoryStatColor("Unknown", { Unknown: "nope" })).toBe("#64748B");
   });
 });

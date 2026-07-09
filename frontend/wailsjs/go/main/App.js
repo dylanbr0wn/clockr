@@ -66,6 +66,10 @@ export function ListCategories() {
   return window['go']['main']['App']['ListCategories']();
 }
 
+export function ListEventCategoryOverlays(arg1) {
+  return window['go']['main']['App']['ListEventCategoryOverlays'](arg1);
+}
+
 export function ListEvents(arg1) {
   return window['go']['main']['App']['ListEvents'](arg1);
 }

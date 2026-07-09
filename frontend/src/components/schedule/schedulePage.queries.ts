@@ -6,6 +6,7 @@ import {
   useCreateManualEvent,
   useCurrentPeriod,
   useDeleteManualEvent,
+  useEventCategoryOverlays,
   useEvents,
   useGapFills,
   useGapTimeline,
@@ -46,6 +47,7 @@ export function useSchedulePageBaseQueries(today: string, currentTimeZone: strin
 
 export function useSchedulePagePeriodQueries(activePeriodId: number | undefined) {
   const eventsQuery = useEvents(activePeriodId);
+  const eventCategoryOverlaysQuery = useEventCategoryOverlays(activePeriodId);
   const gapFillsQuery = useGapFills(activePeriodId);
   const gapTimelineQuery = useGapTimeline(activePeriodId);
   const reviewItemsQuery = useOpenReviewItems(activePeriodId);
@@ -53,6 +55,7 @@ export function useSchedulePagePeriodQueries(activePeriodId: number | undefined)
 
   return {
     eventsQuery,
+    eventCategoryOverlaysQuery,
     gapFillsQuery,
     gapTimelineQuery,
     reviewItemsQuery,

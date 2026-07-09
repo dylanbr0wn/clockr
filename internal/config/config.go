@@ -3,7 +3,9 @@
 package config
 
 import (
+	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,6 +16,21 @@ import (
 	"github.com/knadh/koanf/v2"
 )
 
+// Google Calendar auth modes for the desktop app.
+const (
+	AuthModeBroker = "broker"
+	AuthModeLocal  = "local"
+
+	defaultBrokerBaseURL = "https://auth.shiet.app"
+)
+
+// Sentinel errors so callers can distinguish local credential gaps from broker
+// configuration problems without parsing message text.
+var (
+	ErrLocalCredentials = errors.New("local Google OAuth credentials are not configured")
+	ErrBrokerConfig     = errors.New("Google OAuth broker is not configured")
+)
+
 // Config holds typed app/runtime settings. User preferences (window start, AI
 // toggles, etc.) live in SQLite — not here.
 type Config struct {
@@ -21,26 +38,33 @@ type Config struct {
 		Path string `koanf:"path"`
 	} `koanf:"db"`
 	Google struct {
-		ClientID     string `koanf:"client_id"`
-		ClientSecret string `koanf:"client_secret"`
+		AuthMode      string `koanf:"auth_mode"`
+		BrokerBaseURL string `koanf:"broker_base_url"`
+		ClientID      string `koanf:"client_id"`
+		ClientSecret  string `koanf:"client_secret"`
 	} `koanf:"google"`
 }
 
 // envKeyMap maps legacy SHIET_* env vars to koanf dotted keys.
 var envKeyMap = map[string]string{
-	"SHIET_DB":                  "db.path",
-	"SHIET_GOOGLE_CLIENT_ID":     "google.client_id",
-	"SHIET_GOOGLE_CLIENT_SECRET": "google.client_secret",
+	"SHIET_DB":                     "db.path",
+	"SHIET_GOOGLE_AUTH_MODE":       "google.auth_mode",
+	"SHIET_GOOGLE_BROKER_BASE_URL": "google.broker_base_url",
+	"SHIET_GOOGLE_CLIENT_ID":       "google.client_id",
+	"SHIET_GOOGLE_CLIENT_SECRET":   "google.client_secret",
 }
 
 // Load reads configuration using the standard discovery order:
 //
-//  1. Defaults (OS user config dir for db.path)
+//  1. Defaults (OS user config dir for db.path; broker base URL for Google)
 //  2. Config files, when present (first match wins per path; later paths override):
 //     - $XDG_CONFIG_HOME/shiet/config.yaml, or ~/.config/shiet/config.yaml
 //     - <UserConfigDir>/shiet/config.yaml (e.g. ~/Library/Application Support/shiet on macOS)
 //     - ./shiet.yaml in the process working directory
 //  3. Environment variables (highest precedence)
+//  4. Google auth_mode resolution: explicit mode wins; otherwise local when a
+//     client_id is present, else broker (public-build default). Broker mode
+//     clears any desktop client_secret from the loaded config.
 //
 // A missing config file is fine — defaults and env are enough.
 func Load() (Config, error) {
@@ -58,6 +82,9 @@ func load(configFiles []string) (Config, error) {
 	if err := k.Load(confmap.Provider(map[string]any{
 		"db": map[string]any{
 			"path": defaultDB,
+		},
+		"google": map[string]any{
+			"broker_base_url": defaultBrokerBaseURL,
 		},
 	}, "."), nil); err != nil {
 		return Config{}, fmt.Errorf("load defaults: %w", err)
@@ -82,7 +109,88 @@ func load(configFiles []string) (Config, error) {
 	}
 	cfg.DB.Path = expanded
 
+	cfg.Google.AuthMode = strings.ToLower(strings.TrimSpace(cfg.Google.AuthMode))
+	cfg.Google.BrokerBaseURL = strings.TrimSpace(cfg.Google.BrokerBaseURL)
+	cfg.Google.ClientID = strings.TrimSpace(cfg.Google.ClientID)
+	cfg.Google.ClientSecret = strings.TrimSpace(cfg.Google.ClientSecret)
+
+	cfg.resolveGoogleAuthMode()
+
+	// Broker mode must not carry a desktop Google client_secret into runtime.
+	if cfg.UsesBrokerAuth() {
+		cfg.Google.ClientSecret = ""
+	}
+
+	if err := cfg.Validate(); err != nil {
+		return Config{}, err
+	}
+
 	return cfg, nil
+}
+
+// resolveGoogleAuthMode applies public-build defaults: broker when unset, unless
+// local/BYO credentials are already present (dev/advanced-user escape hatch).
+func (c *Config) resolveGoogleAuthMode() {
+	if c.Google.AuthMode != "" {
+		return
+	}
+	if c.Google.ClientID != "" {
+		c.Google.AuthMode = AuthModeLocal
+		return
+	}
+	c.Google.AuthMode = AuthModeBroker
+}
+
+// Validate checks Google auth mode settings. Broker mode requires an HTTPS
+// broker base URL and must not depend on a desktop Google client_secret.
+// Local/BYO mode requires a desktop client_id and preserves existing OAuth
+// credential fields for development and advanced users.
+func (c Config) Validate() error {
+	mode := strings.ToLower(strings.TrimSpace(c.Google.AuthMode))
+	switch mode {
+	case AuthModeBroker:
+		return c.validateBrokerMode()
+	case AuthModeLocal:
+		return c.validateLocalMode()
+	case "":
+		return fmt.Errorf("google.auth_mode is required (use %q or %q)", AuthModeBroker, AuthModeLocal)
+	default:
+		return fmt.Errorf("google.auth_mode %q is invalid (use %q or %q)", c.Google.AuthMode, AuthModeBroker, AuthModeLocal)
+	}
+}
+
+// UsesBrokerAuth reports whether Google Calendar auth should go through the
+// secret-only OAuth broker (ADR-0001).
+func (c Config) UsesBrokerAuth() bool {
+	return strings.EqualFold(strings.TrimSpace(c.Google.AuthMode), AuthModeBroker)
+}
+
+func (c Config) validateBrokerMode() error {
+	raw := strings.TrimSpace(c.Google.BrokerBaseURL)
+	if raw == "" {
+		return fmt.Errorf("%w: set google.broker_base_url or SHIET_GOOGLE_BROKER_BASE_URL", ErrBrokerConfig)
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("%w: google.broker_base_url is invalid: %v", ErrBrokerConfig, err)
+	}
+	if u.Scheme != "https" {
+		return fmt.Errorf("%w: google.broker_base_url must use https", ErrBrokerConfig)
+	}
+	if u.Host == "" {
+		return fmt.Errorf("%w: google.broker_base_url must include a host", ErrBrokerConfig)
+	}
+	if u.RawQuery != "" || u.Fragment != "" {
+		return fmt.Errorf("%w: google.broker_base_url must not include query or fragment", ErrBrokerConfig)
+	}
+	return nil
+}
+
+func (c Config) validateLocalMode() error {
+	if strings.TrimSpace(c.Google.ClientID) == "" {
+		return fmt.Errorf("%w: set google.client_id or SHIET_GOOGLE_CLIENT_ID for local/BYO Google OAuth", ErrLocalCredentials)
+	}
+	return nil
 }
 
 func discoverConfigFiles() []string {

@@ -20,6 +20,7 @@ import {
   type PeriodExportSummary,
 } from "@/lib/export";
 import { formatVariance } from "@/lib/export/formatters";
+import { categoryStatColor } from "@/lib/category/colors";
 import { formatDateKey, formatDuration } from "@/lib/schedule";
 import { cn } from "@/lib/utils";
 import { varianceToneClass } from "./statsShared";
@@ -96,9 +97,19 @@ export function DailyBreakdownCard({
                       <ItemGroup className="mt-2 gap-1 border-t border-border/70 pt-2">
                         {dayCategories.map((category) => (
                           <Item key={category} size="xs">
-                            <ItemContent>
-                              <ItemDescription className="truncate text-xs">
-                                {category}
+                            <ItemContent className="min-w-0">
+                              <ItemDescription className="flex items-center gap-2 text-xs">
+                                <span
+                                  className="size-2 shrink-0 rounded-sm"
+                                  style={{
+                                    backgroundColor: categoryStatColor(
+                                      category,
+                                      summary.categoryColors,
+                                    ),
+                                  }}
+                                  aria-hidden
+                                />
+                                <span className="truncate">{category}</span>
                               </ItemDescription>
                             </ItemContent>
                             <ItemContent className="flex-none">

@@ -19,7 +19,16 @@ type Category struct {
 	Name         string `json:"name"`
 	Description  string `json:"description"`
 	Key          string `json:"key"`
+	Color        string `json:"color"`
 	IsDefaultGap bool   `json:"isDefaultGap"`
+}
+
+// EventCategoryOverlay is a category decision attached to an imported event.
+type EventCategoryOverlay struct {
+	Provider   string `json:"provider"`
+	ExternalID string `json:"externalId"`
+	InstanceID string `json:"instanceId,omitempty"`
+	CategoryID int64  `json:"categoryId"`
 }
 
 // Period is a live, editable pay-period working record.
@@ -120,6 +129,7 @@ func toCategory(r sqlc.Category) Category {
 		Name:         r.Name,
 		Description:  r.Description,
 		Key:          r.Key,
+		Color:        r.Color,
 		IsDefaultGap: r.IsDefaultGap != 0,
 	}
 }

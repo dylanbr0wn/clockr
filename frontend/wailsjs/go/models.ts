@@ -170,6 +170,7 @@ export namespace service {
 	    name: string;
 	    description: string;
 	    key: string;
+	    color: string;
 	    isDefaultGap: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -182,6 +183,7 @@ export namespace service {
 	        this.name = source["name"];
 	        this.description = source["description"];
 	        this.key = source["key"];
+	        this.color = source["color"];
 	        this.isDefaultGap = source["isDefaultGap"];
 	    }
 	}
@@ -189,6 +191,7 @@ export namespace service {
 	    name: string;
 	    description: string;
 	    key: string;
+	    color: string;
 	    isDefaultGap: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -200,6 +203,7 @@ export namespace service {
 	        this.name = source["name"];
 	        this.description = source["description"];
 	        this.key = source["key"];
+	        this.color = source["color"];
 	        this.isDefaultGap = source["isDefaultGap"];
 	    }
 	}
@@ -356,6 +360,24 @@ export namespace service {
 		    }
 		    return a;
 		}
+	}
+	export class EventCategoryOverlay {
+	    provider: string;
+	    externalId: string;
+	    instanceId?: string;
+	    categoryId: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new EventCategoryOverlay(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.provider = source["provider"];
+	        this.externalId = source["externalId"];
+	        this.instanceId = source["instanceId"];
+	        this.categoryId = source["categoryId"];
+	    }
 	}
 	export class EvidenceConfig {
 	    Providers: any[];
@@ -712,6 +734,7 @@ export namespace service {
 	    name: string;
 	    description: string;
 	    key: string;
+	    color: string;
 	    isDefaultGap: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -724,6 +747,7 @@ export namespace service {
 	        this.name = source["name"];
 	        this.description = source["description"];
 	        this.key = source["key"];
+	        this.color = source["color"];
 	        this.isDefaultGap = source["isDefaultGap"];
 	    }
 	}

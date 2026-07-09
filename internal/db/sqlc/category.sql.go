@@ -64,9 +64,9 @@ func (q *Queries) CountOverlayReferencesToCategory(ctx context.Context, category
 }
 
 const createCategory = `-- name: CreateCategory :one
-INSERT INTO category (name, description, key, is_default_gap)
-VALUES (?, ?, ?, ?)
-RETURNING id, name, is_default_gap, created_at, description, "key"
+INSERT INTO category (name, description, key, is_default_gap, color)
+VALUES (?, ?, ?, ?, ?)
+RETURNING id, name, is_default_gap, created_at, description, "key", color
 `
 
 type CreateCategoryParams struct {
@@ -74,6 +74,7 @@ type CreateCategoryParams struct {
 	Description  string `json:"description"`
 	Key          string `json:"key"`
 	IsDefaultGap int64  `json:"is_default_gap"`
+	Color        string `json:"color"`
 }
 
 func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error) {
@@ -82,6 +83,7 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 		arg.Description,
 		arg.Key,
 		arg.IsDefaultGap,
+		arg.Color,
 	)
 	var i Category
 	err := row.Scan(
@@ -91,6 +93,7 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 		&i.CreatedAt,
 		&i.Description,
 		&i.Key,
+		&i.Color,
 	)
 	return i, err
 }
@@ -105,7 +108,7 @@ func (q *Queries) DeleteCategory(ctx context.Context, id int64) error {
 }
 
 const getCategory = `-- name: GetCategory :one
-SELECT id, name, is_default_gap, created_at, description, "key" FROM category WHERE id = ?
+SELECT id, name, is_default_gap, created_at, description, "key", color FROM category WHERE id = ?
 `
 
 func (q *Queries) GetCategory(ctx context.Context, id int64) (Category, error) {
@@ -118,12 +121,13 @@ func (q *Queries) GetCategory(ctx context.Context, id int64) (Category, error) {
 		&i.CreatedAt,
 		&i.Description,
 		&i.Key,
+		&i.Color,
 	)
 	return i, err
 }
 
 const getCategoryByKey = `-- name: GetCategoryByKey :one
-SELECT id, name, is_default_gap, created_at, description, "key" FROM category WHERE key = ?
+SELECT id, name, is_default_gap, created_at, description, "key", color FROM category WHERE key = ?
 `
 
 func (q *Queries) GetCategoryByKey(ctx context.Context, key string) (Category, error) {
@@ -136,12 +140,13 @@ func (q *Queries) GetCategoryByKey(ctx context.Context, key string) (Category, e
 		&i.CreatedAt,
 		&i.Description,
 		&i.Key,
+		&i.Color,
 	)
 	return i, err
 }
 
 const getDefaultGapCategory = `-- name: GetDefaultGapCategory :one
-SELECT id, name, is_default_gap, created_at, description, "key" FROM category WHERE is_default_gap = 1
+SELECT id, name, is_default_gap, created_at, description, "key", color FROM category WHERE is_default_gap = 1
 `
 
 func (q *Queries) GetDefaultGapCategory(ctx context.Context) (Category, error) {
@@ -154,12 +159,13 @@ func (q *Queries) GetDefaultGapCategory(ctx context.Context) (Category, error) {
 		&i.CreatedAt,
 		&i.Description,
 		&i.Key,
+		&i.Color,
 	)
 	return i, err
 }
 
 const listCategories = `-- name: ListCategories :many
-SELECT id, name, is_default_gap, created_at, description, "key" FROM category ORDER BY name
+SELECT id, name, is_default_gap, created_at, description, "key", color FROM category ORDER BY name
 `
 
 func (q *Queries) ListCategories(ctx context.Context) ([]Category, error) {
@@ -178,6 +184,7 @@ func (q *Queries) ListCategories(ctx context.Context) ([]Category, error) {
 			&i.CreatedAt,
 			&i.Description,
 			&i.Key,
+			&i.Color,
 		); err != nil {
 			return nil, err
 		}
@@ -203,7 +210,7 @@ func (q *Queries) SetDefaultGap(ctx context.Context, id int64) error {
 
 const updateCategory = `-- name: UpdateCategory :exec
 UPDATE category
-SET name = ?, description = ?, key = ?
+SET name = ?, description = ?, key = ?, color = ?
 WHERE id = ?
 `
 
@@ -211,6 +218,7 @@ type UpdateCategoryParams struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Key         string `json:"key"`
+	Color       string `json:"color"`
 	ID          int64  `json:"id"`
 }
 
@@ -219,6 +227,7 @@ func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) 
 		arg.Name,
 		arg.Description,
 		arg.Key,
+		arg.Color,
 		arg.ID,
 	)
 	return err

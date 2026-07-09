@@ -70,6 +70,10 @@ export function ListCategories(arg1) {
   return window['go']['service']['Service']['ListCategories'](arg1);
 }
 
+export function ListEventCategoryOverlays(arg1, arg2) {
+  return window['go']['service']['Service']['ListEventCategoryOverlays'](arg1, arg2);
+}
+
 export function ListEvents(arg1, arg2) {
   return window['go']['service']['Service']['ListEvents'](arg1, arg2);
 }
