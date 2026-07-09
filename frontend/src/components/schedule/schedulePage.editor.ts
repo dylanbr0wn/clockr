@@ -191,7 +191,10 @@ export function useSchedulePageEditor({
   };
 
   const handleExcludeAllDayChip = (chip: AllDayChip) => {
-    if (chip.kind !== "calendar" || !activePeriodId) {
+    if (
+      (chip.kind !== "calendar" && chip.kind !== "review") ||
+      !activePeriodId
+    ) {
       return;
     }
     excludeEventMutation.mutate({

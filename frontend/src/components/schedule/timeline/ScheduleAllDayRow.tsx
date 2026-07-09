@@ -35,6 +35,10 @@ function allDaySpanClasses(span: AllDaySpanPosition) {
   }
 }
 
+function canExcludeAllDayChip(chip: AllDayChip) {
+  return chip.kind === "calendar" || chip.kind === "review";
+}
+
 function AllDayChipButton({
   chip,
   onOpenReviewQueue,
@@ -48,7 +52,6 @@ function AllDayChipButton({
   return (
     <button
       type="button"
-      disabled={!isReview}
       onClick={() => {
         if (isReview) {
           onOpenReviewQueue();
@@ -105,7 +108,6 @@ export function ScheduleAllDayRow({
             style={{ height: `${allDayRowHeight}px` }}
           >
             {chips.map((chip) => {
-              const canExclude = chip.kind === "calendar";
               const chipButton = (
                 <AllDayChipButton
                   chip={chip}
@@ -113,7 +115,7 @@ export function ScheduleAllDayRow({
                 />
               );
 
-              if (!canExclude) {
+              if (!canExcludeAllDayChip(chip)) {
                 return <div key={chip.id}>{chipButton}</div>;
               }
 

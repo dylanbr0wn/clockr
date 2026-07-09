@@ -256,5 +256,22 @@ describe("useSchedulePage", () => {
       eventId: 7,
       periodId: 1,
     });
+
+    mockState.excludeMutate.mockClear();
+    act(() => {
+      result.current.handleExcludeAllDayChip({
+        id: "event-8-2026-07-04",
+        eventId: 8,
+        day: "2026-07-04",
+        title: "PTO",
+        category: "Needs review",
+        kind: "review",
+        allDaySpan: "single",
+      });
+    });
+    expect(mockState.excludeMutate).toHaveBeenCalledWith({
+      eventId: 8,
+      periodId: 1,
+    });
   });
 });
