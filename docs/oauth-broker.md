@@ -114,4 +114,7 @@ schema guarantees.
 - `POST /v1/google/oauth/refresh`: exchanges a desktop-held Google refresh token
   for new access-token material using the server-side client secret. Does not
   persist submitted or returned token material.
-- `POST /v1/google/oauth/revoke`: reserved for broker disconnect/revoke work.
+- `POST /v1/google/oauth/revoke`: accepts a desktop-supplied Google refresh
+  token, calls Google's revoke endpoint, and returns `{ "revoked": true }`.
+  Already-revoked / `invalid_token` responses are treated as success. The
+  broker does not persist the token or any disconnected-account record.

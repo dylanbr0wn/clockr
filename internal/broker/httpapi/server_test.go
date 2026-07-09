@@ -383,6 +383,126 @@ func TestHandoffExchangeRejectsMismatchExpiryAndBadVerifier(t *testing.T) {
 	}
 }
 
+func TestRevokeGoogleOAuthSuccess(t *testing.T) {
+	mem := &memoryStore{}
+	var gotToken string
+	revokeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Fatalf("method: %s", r.Method)
+		}
+		if err := r.ParseForm(); err != nil {
+			t.Fatal(err)
+		}
+		gotToken = r.Form.Get("token")
+		if r.Form.Get("client_secret") != "" {
+			t.Fatal("revoke must not send client_secret")
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(revokeSrv.Close)
+
+	srv := Server{
+		Config:          testConfig(),
+		Store:           mem,
+		HTTPClient:      revokeSrv.Client(),
+		GoogleRevokeURL: revokeSrv.URL,
+	}
+
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/v1/google/oauth/revoke", bytes.NewBufferString(`{
+		"refresh_token":"refresh-to-revoke",
+		"reason":"user_disconnect"
+	}`)))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status: got %d body %s", rr.Code, rr.Body.String())
+	}
+	var resp revokeResponse
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatal(err)
+	}
+	if !resp.Revoked {
+		t.Fatal("expected revoked=true")
+	}
+	if gotToken != "refresh-to-revoke" {
+		t.Fatalf("google token: got %q", gotToken)
+	}
+	if len(mem.states) != 0 || len(mem.handoffs) != 0 {
+		t.Fatalf("revoke must not write store; states=%d handoffs=%d", len(mem.states), len(mem.handoffs))
+	}
+}
+
+func TestRevokeGoogleOAuthAlreadyRevoked(t *testing.T) {
+	revokeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"invalid_token"}`))
+	}))
+	t.Cleanup(revokeSrv.Close)
+
+	srv := Server{
+		Config:          testConfig(),
+		Store:           &memoryStore{},
+		HTTPClient:      revokeSrv.Client(),
+		GoogleRevokeURL: revokeSrv.URL,
+	}
+
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/v1/google/oauth/revoke", bytes.NewBufferString(`{
+		"refresh_token":"already-gone"
+	}`)))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status: got %d body %s", rr.Code, rr.Body.String())
+	}
+	var resp revokeResponse
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatal(err)
+	}
+	if !resp.Revoked {
+		t.Fatal("expected revoked=true for invalid_token")
+	}
+}
+
+func TestRevokeGoogleOAuthMissingRefreshToken(t *testing.T) {
+	srv := Server{Config: testConfig(), Store: &memoryStore{}}
+
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/v1/google/oauth/revoke", bytes.NewBufferString(`{
+		"reason":"user_disconnect"
+	}`)))
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status: got %d body %s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "refresh_token_required") {
+		t.Fatalf("body: %s", rr.Body.String())
+	}
+}
+
+func TestRevokeGoogleOAuthGoogleFailure(t *testing.T) {
+	revokeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`oops`))
+	}))
+	t.Cleanup(revokeSrv.Close)
+
+	srv := Server{
+		Config:          testConfig(),
+		Store:           &memoryStore{},
+		HTTPClient:      revokeSrv.Client(),
+		GoogleRevokeURL: revokeSrv.URL,
+	}
+
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/v1/google/oauth/revoke", bytes.NewBufferString(`{
+		"refresh_token":"refresh-1"
+	}`)))
+	if rr.Code != http.StatusBadGateway {
+		t.Fatalf("status: got %d body %s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "google_revoke_failed") {
+		t.Fatalf("body: %s", rr.Body.String())
+	}
+}
+
 func testConfig() brokerconfig.Config {
 	return brokerconfig.Config{
 		ListenAddr:         ":8080",

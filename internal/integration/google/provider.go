@@ -34,6 +34,11 @@ type Authorizer interface {
 	Authorize(ctx context.Context, accountID string) (oauth.Result, error)
 }
 
+// TokenRevoker asks the OAuth broker to revoke a Google refresh token.
+type TokenRevoker interface {
+	Revoke(ctx context.Context, refreshToken string) error
+}
+
 // Provider implements Google Calendar list + pull against the shared integration platform.
 type Provider struct {
 	Config        oauth.ProviderConfig
@@ -43,7 +48,8 @@ type Provider struct {
 	Registry      *connection.Registry
 	Queries       *sqlc.Queries
 	Authorizer    Authorizer
-	BaseURL       string // override for tests
+	Revoker       TokenRevoker // optional; defaults to BrokerFlow in broker mode
+	BaseURL       string       // override for tests
 }
 
 // Connect runs OAuth, stores the token in the keychain, and upserts connection metadata.
@@ -108,19 +114,48 @@ func (p *Provider) Connect(ctx context.Context, accountID, accountLabel string) 
 	return conn, nil
 }
 
-// Disconnect removes tokens and the connection row.
+// Disconnect removes tokens and the connection row. In broker mode, best-effort
+// revoke runs first when a refresh token is present; local cleanup always
+// proceeds so already-revoked or broker failures still disconnect cleanly.
 func (p *Provider) Disconnect(ctx context.Context, accountID string) error {
 	accountID = strings.TrimSpace(accountID)
 	if accountID == "" {
 		return errors.New("account_id is required")
 	}
-	if p.Store != nil {
-		_ = p.Store.Delete(p.Config.Provider, accountID)
-	}
 	if p.Registry == nil {
 		return errors.New("connection registry is required")
 	}
+
+	var refreshToken string
+	if p.Store != nil {
+		if tok, err := p.Store.Get(p.Config.Provider, accountID); err == nil {
+			refreshToken = strings.TrimSpace(tok.RefreshToken)
+		}
+	}
+
+	if p.usesBrokerAuth() && refreshToken != "" {
+		if revoker := p.tokenRevoker(); revoker != nil {
+			_ = revoker.Revoke(ctx, refreshToken)
+		}
+	}
+
+	if p.Store != nil {
+		if err := p.Store.Delete(p.Config.Provider, accountID); err != nil && !errors.Is(err, secrets.ErrNotFound) {
+			return fmt.Errorf("delete token: %w", err)
+		}
+	}
 	return p.Registry.Disconnect(ctx, p.Config.Provider, accountID)
+}
+
+func (p *Provider) tokenRevoker() TokenRevoker {
+	if p.Revoker != nil {
+		return p.Revoker
+	}
+	base := strings.TrimSpace(p.BrokerBaseURL)
+	if base == "" {
+		return nil
+	}
+	return &BrokerFlow{BaseURL: base}
 }
 
 // SyncCalendars pulls calendarList.list and upserts calendar rows for provider=google.
