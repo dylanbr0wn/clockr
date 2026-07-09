@@ -79,7 +79,6 @@ export function ScheduleTimelineGrid({
           days={scheduler.days}
           allDayChipsByDay={allDayChipsByDay}
           allDayRowHeight={allDayRowHeight}
-          visibleDayCount={visibleDayCount}
           onOpenReviewQueue={actions.onOpenReviewQueue}
         />
       ) : null}
