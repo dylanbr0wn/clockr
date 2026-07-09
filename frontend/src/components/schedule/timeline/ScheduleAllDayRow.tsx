@@ -35,10 +35,6 @@ function allDaySpanClasses(span: AllDaySpanPosition) {
   }
 }
 
-function canExcludeAllDayChip(chip: AllDayChip) {
-  return chip.kind === "calendar" || chip.kind === "review";
-}
-
 export function ScheduleAllDayRow({
   days,
   allDayChipsByDay,
@@ -76,44 +72,35 @@ export function ScheduleAllDayRow({
                 chip.categoryColor,
               );
               const isReview = chip.kind === "review";
-              const canExclude = canExcludeAllDayChip(chip);
-
-              const chipButton = (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (isReview) {
-                      onOpenReviewQueue();
-                    }
-                  }}
-                  className={cn([
-                    "flex min-h-6 w-full flex-col justify-center border px-2 py-0.5 text-left text-[11px] shadow-sm",
-                    allDaySpanClasses(chip.allDaySpan),
-                    presentation.className,
-                    isReview
-                      ? "cursor-pointer hover:brightness-95"
-                      : "cursor-default",
-                  ])}
-                  style={presentation.style}
-                >
-                  {isReview ? (
-                    <div className="mb-0.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide opacity-80">
-                      <AlertTriangleIcon className="size-2.5" />
-                      <span>Needs review</span>
-                    </div>
-                  ) : null}
-                  <span className="truncate font-medium">{chip.title}</span>
-                </button>
-              );
-
-              if (!canExclude) {
-                return <div key={chip.id}>{chipButton}</div>;
-              }
 
               return (
                 <ContextMenu key={chip.id}>
                   <ContextMenuTrigger className="block w-full">
-                    {chipButton}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isReview) {
+                          onOpenReviewQueue();
+                        }
+                      }}
+                      className={cn([
+                        "flex min-h-6 w-full flex-col justify-center border px-2 py-0.5 text-left text-[11px] shadow-sm",
+                        allDaySpanClasses(chip.allDaySpan),
+                        presentation.className,
+                        isReview
+                          ? "cursor-pointer hover:brightness-95"
+                          : "cursor-default",
+                      ])}
+                      style={presentation.style}
+                    >
+                      {isReview ? (
+                        <div className="mb-0.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide opacity-80">
+                          <AlertTriangleIcon className="size-2.5" />
+                          <span>Needs review</span>
+                        </div>
+                      ) : null}
+                      <span className="truncate font-medium">{chip.title}</span>
+                    </button>
                   </ContextMenuTrigger>
                   <ContextMenuContent>
                     <ContextMenuItem onSelect={() => onExcludeAllDayChip(chip)}>
