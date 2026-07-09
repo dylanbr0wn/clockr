@@ -22,8 +22,9 @@ import (
 )
 
 const (
-	googleAuthURL      = "https://accounts.google.com/o/oauth2/v2/auth"
-	defaultGoogleToken = "https://oauth2.googleapis.com/token"
+	googleAuthURL       = "https://accounts.google.com/o/oauth2/v2/auth"
+	defaultGoogleToken  = "https://oauth2.googleapis.com/token"
+	defaultGoogleRevoke = "https://oauth2.googleapis.com/revoke"
 )
 
 type Store interface {
@@ -35,11 +36,12 @@ type Store interface {
 }
 
 type Server struct {
-	Config         brokerconfig.Config
-	Store          Store
-	Clock          func() time.Time
-	HTTPClient     *http.Client
-	GoogleTokenURL string // override for tests
+	Config          brokerconfig.Config
+	Store           Store
+	Clock           func() time.Time
+	HTTPClient      *http.Client
+	GoogleTokenURL  string // override for tests
+	GoogleRevokeURL string // override for tests
 }
 
 type startRequest struct {
@@ -79,6 +81,15 @@ type statusResponse struct {
 	Status string `json:"status"`
 }
 
+type revokeRequest struct {
+	RefreshToken string `json:"refresh_token"`
+	Reason       string `json:"reason,omitempty"`
+}
+
+type revokeResponse struct {
+	Revoked bool `json:"revoked"`
+}
+
 type errorResponse struct {
 	Error string `json:"error"`
 }
@@ -101,7 +112,7 @@ func (s Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/google/oauth/callback", s.googleCallback)
 	mux.HandleFunc("POST /v1/google/oauth/handoff", s.exchangeHandoff)
 	mux.HandleFunc("POST /v1/google/oauth/refresh", notImplemented("google_refresh"))
-	mux.HandleFunc("POST /v1/google/oauth/revoke", notImplemented("google_revoke"))
+	mux.HandleFunc("POST /v1/google/oauth/revoke", s.revokeGoogleOAuth)
 	return mux
 }
 
@@ -358,6 +369,86 @@ func (s Server) exchangeHandoff(w http.ResponseWriter, r *http.Request) {
 	}
 	resp.Token.Expiry = payload.Expiry
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// revokeGoogleOAuth asks Google to revoke a refresh token supplied by the
+// desktop. The broker does not persist the token or any account record.
+func (s Server) revokeGoogleOAuth(w http.ResponseWriter, r *http.Request) {
+	var req revokeRequest
+	if err := decodeJSON(r.Body, &req); err != nil {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid_json"})
+		return
+	}
+	req.RefreshToken = strings.TrimSpace(req.RefreshToken)
+	if req.RefreshToken == "" {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "refresh_token_required"})
+		return
+	}
+	// reason is accepted for forward-compat / ops logs; intentionally unused.
+
+	if err := s.revokeGoogleToken(r.Context(), req.RefreshToken); err != nil {
+		if errors.Is(err, errGoogleTokenAlreadyRevoked) {
+			writeJSON(w, http.StatusOK, revokeResponse{Revoked: true})
+			return
+		}
+		writeJSON(w, http.StatusBadGateway, errorResponse{Error: "google_revoke_failed"})
+		return
+	}
+	writeJSON(w, http.StatusOK, revokeResponse{Revoked: true})
+}
+
+var errGoogleTokenAlreadyRevoked = errors.New("google token already revoked")
+
+func (s Server) revokeGoogleToken(ctx context.Context, refreshToken string) error {
+	form := url.Values{}
+	form.Set("token", refreshToken)
+
+	revokeURL := s.GoogleRevokeURL
+	if revokeURL == "" {
+		revokeURL = defaultGoogleRevoke
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, revokeURL, strings.NewReader(form.Encode()))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	client := s.HTTPClient
+	if client == nil {
+		client = http.DefaultClient
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return nil
+	}
+	if isGoogleInvalidToken(resp.StatusCode, body) {
+		return errGoogleTokenAlreadyRevoked
+	}
+	return fmt.Errorf("google revoke failed: status %d", resp.StatusCode)
+}
+
+func isGoogleInvalidToken(status int, body []byte) bool {
+	if status != http.StatusBadRequest {
+		return false
+	}
+	var er struct {
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal(body, &er); err == nil {
+		if strings.EqualFold(strings.TrimSpace(er.Error), "invalid_token") {
+			return true
+		}
+	}
+	// Google sometimes returns plain text or form-ish bodies.
+	return strings.Contains(strings.ToLower(string(body)), "invalid_token")
 }
 
 func (s Server) exchangeGoogleCode(ctx context.Context, code, pkceVerifier string) (googleTokenResponse, error) {

@@ -288,6 +288,55 @@ func (f *BrokerFlow) exchangeHandoff(ctx context.Context, base, sessionID, broke
 	return out, nil
 }
 
+type brokerRevokeResponse struct {
+	Revoked bool `json:"revoked"`
+}
+
+// Revoke asks the broker to revoke a Google refresh token. The broker does not
+// retain the token; callers still delete local keychain material.
+func (f *BrokerFlow) Revoke(ctx context.Context, refreshToken string) error {
+	refreshToken = strings.TrimSpace(refreshToken)
+	if refreshToken == "" {
+		return errors.New("refresh_token is required")
+	}
+	base := strings.TrimRight(strings.TrimSpace(f.BaseURL), "/")
+	if base == "" {
+		return fmt.Errorf("%w: set google.broker_base_url or SHIET_GOOGLE_BROKER_BASE_URL", config.ErrBrokerConfig)
+	}
+
+	payload := map[string]string{
+		"refresh_token": refreshToken,
+		"reason":        "user_disconnect",
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/google/oauth/revoke", strings.NewReader(string(body)))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := f.httpClient().Do(req)
+	if err != nil {
+		return fmt.Errorf("%w: contact broker revoke: %v", ErrBrokerUnavailable, err)
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return mapBrokerHTTPError(resp.StatusCode, raw, "revoke")
+	}
+	var out brokerRevokeResponse
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return fmt.Errorf("%w: decode revoke response", ErrBrokerUnavailable)
+	}
+	if !out.Revoked {
+		return fmt.Errorf("%w: revoke response missing revoked=true", ErrBrokerRejected)
+	}
+	return nil
+}
+
 func (f *BrokerFlow) httpClient() *http.Client {
 	if f.HTTPClient != nil {
 		return f.HTTPClient

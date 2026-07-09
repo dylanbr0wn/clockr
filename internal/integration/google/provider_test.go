@@ -191,6 +191,18 @@ func (s stubAuthorizer) Authorize(ctx context.Context, accountID string) (oauth.
 	return s.result, nil
 }
 
+type stubRevoker struct {
+	calls     int
+	lastToken string
+	err       error
+}
+
+func (s *stubRevoker) Revoke(ctx context.Context, refreshToken string) error {
+	s.calls++
+	s.lastToken = refreshToken
+	return s.err
+}
+
 func newProviderEnv(t *testing.T, handler http.Handler) (*google.Provider, *connection.Registry, *sqlc.Queries) {
 	t.Helper()
 	path := t.TempDir() + "/test.db"
@@ -467,17 +479,138 @@ func TestDisconnectRemovesTokenAndConnection(t *testing.T) {
 			Scopes:    []string{"calendar.readonly"},
 		},
 	}
+	revoker := &stubRevoker{}
+	p.Revoker = revoker
 	if _, err := p.Connect(ctx, "user@example.com", "Work"); err != nil {
 		t.Fatal(err)
 	}
 	if err := p.Disconnect(ctx, "user@example.com"); err != nil {
 		t.Fatal(err)
 	}
+	if revoker.calls != 0 {
+		t.Fatalf("local mode must not revoke via broker, calls=%d", revoker.calls)
+	}
 	if _, err := reg.Get(ctx, service.ProviderGoogle, "user@example.com"); err == nil {
 		t.Fatal("expected connection removed")
 	}
 	if _, err := p.Store.Get(service.ProviderGoogle, "user@example.com"); err == nil {
 		t.Fatal("expected token removed")
+	}
+}
+
+func TestDisconnect_brokerModeRevokesThenClearsLocal(t *testing.T) {
+	p, reg, _ := newProviderEnv(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/users/me/calendarList" {
+			_ = json.NewEncoder(w).Encode(map[string]any{"items": []any{}})
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	ctx := context.Background()
+	p.AuthMode = config.AuthModeBroker
+	p.BrokerBaseURL = "https://auth.shiet.app"
+	p.Authorizer = stubAuthorizer{
+		result: oauth.Result{
+			Provider:  service.ProviderGoogle,
+			AccountID: "user@example.com",
+			Token: secrets.Token{
+				AccessToken:  "access",
+				RefreshToken: "refresh-1",
+			},
+			Scopes: []string{"calendar.readonly"},
+		},
+	}
+	revoker := &stubRevoker{}
+	p.Revoker = revoker
+
+	if _, err := p.Connect(ctx, "user@example.com", "Work"); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Disconnect(ctx, "user@example.com"); err != nil {
+		t.Fatal(err)
+	}
+	if revoker.calls != 1 || revoker.lastToken != "refresh-1" {
+		t.Fatalf("revoke calls=%d token=%q", revoker.calls, revoker.lastToken)
+	}
+	if _, err := reg.Get(ctx, service.ProviderGoogle, "user@example.com"); err == nil {
+		t.Fatal("expected connection removed")
+	}
+	if _, err := p.Store.Get(service.ProviderGoogle, "user@example.com"); err == nil {
+		t.Fatal("expected token removed")
+	}
+}
+
+func TestDisconnect_brokerModeClearsLocalWhenRevokeFails(t *testing.T) {
+	p, reg, _ := newProviderEnv(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/users/me/calendarList" {
+			_ = json.NewEncoder(w).Encode(map[string]any{"items": []any{}})
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	ctx := context.Background()
+	p.AuthMode = config.AuthModeBroker
+	p.BrokerBaseURL = "https://auth.shiet.app"
+	p.Authorizer = stubAuthorizer{
+		result: oauth.Result{
+			Provider:  service.ProviderGoogle,
+			AccountID: "user@example.com",
+			Token: secrets.Token{
+				AccessToken:  "access",
+				RefreshToken: "refresh-1",
+			},
+			Scopes: []string{"calendar.readonly"},
+		},
+	}
+	p.Revoker = &stubRevoker{err: google.ErrBrokerUnavailable}
+
+	if _, err := p.Connect(ctx, "user@example.com", "Work"); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Disconnect(ctx, "user@example.com"); err != nil {
+		t.Fatalf("disconnect must succeed after best-effort revoke failure: %v", err)
+	}
+	if _, err := reg.Get(ctx, service.ProviderGoogle, "user@example.com"); err == nil {
+		t.Fatal("expected connection removed")
+	}
+	if _, err := p.Store.Get(service.ProviderGoogle, "user@example.com"); err == nil {
+		t.Fatal("expected token removed")
+	}
+}
+
+func TestDisconnect_brokerModeSkipsRevokeWithoutRefreshToken(t *testing.T) {
+	p, reg, _ := newProviderEnv(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/users/me/calendarList" {
+			_ = json.NewEncoder(w).Encode(map[string]any{"items": []any{}})
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	ctx := context.Background()
+	p.AuthMode = config.AuthModeBroker
+	p.BrokerBaseURL = "https://auth.shiet.app"
+	p.Authorizer = stubAuthorizer{
+		result: oauth.Result{
+			Provider:  service.ProviderGoogle,
+			AccountID: "user@example.com",
+			Token:     secrets.Token{AccessToken: "access-only"},
+			Scopes:    []string{"calendar.readonly"},
+		},
+	}
+	revoker := &stubRevoker{}
+	p.Revoker = revoker
+
+	if _, err := p.Connect(ctx, "user@example.com", "Work"); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Disconnect(ctx, "user@example.com"); err != nil {
+		t.Fatal(err)
+	}
+	if revoker.calls != 0 {
+		t.Fatalf("expected no revoke without refresh token, calls=%d", revoker.calls)
+	}
+	if _, err := reg.Get(ctx, service.ProviderGoogle, "user@example.com"); err == nil {
+		t.Fatal("expected connection removed")
 	}
 }
 

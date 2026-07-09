@@ -9,37 +9,22 @@ import { cn } from "@/lib/utils";
 import {
   scheduleItemPresentation,
   type AllDayChip,
-  type AllDaySpanPosition,
 } from "@/lib/schedule";
+import { allDaySpanClasses, resolveVisibleAllDaySpan } from "./allDaySpan";
 import type { TimelineDay } from "./types";
 
 interface ScheduleAllDayRowProps {
   days: TimelineDay[];
   allDayChipsByDay: Map<string, AllDayChip[]>;
   allDayRowHeight: number;
-  visibleDayCount: number;
   onOpenReviewQueue: () => void;
   onExcludeAllDayChip: (chip: AllDayChip) => void;
-}
-
-function allDaySpanClasses(span: AllDaySpanPosition) {
-  switch (span) {
-    case "single":
-      return "rounded-md";
-    case "start":
-      return "rounded-l-md rounded-r-sm";
-    case "middle":
-      return "rounded-none";
-    case "end":
-      return "rounded-r-md rounded-l-sm";
-  }
 }
 
 export function ScheduleAllDayRow({
   days,
   allDayChipsByDay,
   allDayRowHeight,
-  visibleDayCount,
   onOpenReviewQueue,
   onExcludeAllDayChip,
 }: ScheduleAllDayRowProps) {
@@ -58,11 +43,9 @@ export function ScheduleAllDayRow({
           <div
             key={`all-day-${day.date}`}
             className={cn([
-              "sticky top-[52px] z-20 flex flex-col gap-1 border-b border-border px-1 py-1",
+              // Omit column borders so multi-day chips abut as one strip.
+              "sticky top-[52px] z-20 flex flex-col gap-1 border-b border-border py-1",
               isWeekend ? "bg-muted" : "bg-background",
-              index % visibleDayCount !== visibleDayCount - 1
-                ? "border-r"
-                : "",
             ])}
             style={{ height: `${allDayRowHeight}px` }}
           >
@@ -72,10 +55,16 @@ export function ScheduleAllDayRow({
                 chip.categoryColor,
               );
               const isReview = chip.kind === "review";
+              const visibleSpan = resolveVisibleAllDaySpan(
+                chip,
+                index,
+                days,
+                allDayChipsByDay,
+              );
 
               return (
                 <ContextMenu key={chip.id}>
-                  <ContextMenuTrigger className="block w-full">
+                  <ContextMenuTrigger className="relative z-10 block w-full">
                     <button
                       type="button"
                       onClick={() => {
@@ -84,8 +73,8 @@ export function ScheduleAllDayRow({
                         }
                       }}
                       className={cn([
-                        "flex min-h-6 w-full flex-col justify-center border px-2 py-0.5 text-left text-[11px] shadow-sm",
-                        allDaySpanClasses(chip.allDaySpan),
+                        "flex min-h-6 w-full flex-col justify-center border px-2 py-0.5 text-left text-[11px]",
+                        allDaySpanClasses(visibleSpan),
                         presentation.className,
                         isReview
                           ? "cursor-pointer hover:brightness-95"
