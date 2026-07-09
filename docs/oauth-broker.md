@@ -74,6 +74,11 @@ Recommended Railway service variables:
 Mark the Google client secret as a sealed Railway variable. Attach a Railway
 Volume at `/data` before using the SQLite DSN above.
 
+If startup fails with `unable to open database file (14)`, check that the
+Railway Volume is attached to this service and mounted at `/data`. The broker
+Docker image runs with the default root user so it can write to Railway's volume
+mount path.
+
 To smoke-test the Docker image locally:
 
 ```bash

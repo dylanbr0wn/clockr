@@ -10,9 +10,8 @@ COPY internal ./internal
 
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/oauth-broker ./cmd/oauth-broker
 
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM gcr.io/distroless/static-debian12
 
 COPY --from=build /out/oauth-broker /oauth-broker
 
-USER nonroot:nonroot
 ENTRYPOINT ["/oauth-broker"]
