@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-image_name="${1:-clockr-oauth-broker:railway-smoke}"
-container_name="clockr-oauth-broker-smoke-$$"
-host_port="${CLOCKR_BROKER_SMOKE_PORT:-18080}"
+image_name="${1:-shiet-oauth-broker:railway-smoke}"
+container_name="shiet-oauth-broker-smoke-$$"
+host_port="${SHIET_BROKER_SMOKE_PORT:-18080}"
 
 cleanup() {
   docker rm -f "$container_name" >/dev/null 2>&1 || true
@@ -19,10 +19,10 @@ docker run -d \
   --name "$container_name" \
   -p "127.0.0.1:${host_port}:8080" \
   -e PORT=8080 \
-  -e CLOCKR_BROKER_PUBLIC_ORIGIN=https://auth.clockr.app \
-  -e CLOCKR_BROKER_GOOGLE_CLIENT_ID=smoke-client-id \
-  -e CLOCKR_BROKER_GOOGLE_CLIENT_SECRET=smoke-client-secret \
-  -e CLOCKR_BROKER_DATASTORE_DSN=file:/tmp/oauth-broker-smoke.sqlite \
+  -e SHIET_BROKER_PUBLIC_ORIGIN=https://auth.shiet.app \
+  -e SHIET_BROKER_GOOGLE_CLIENT_ID=smoke-client-id \
+  -e SHIET_BROKER_GOOGLE_CLIENT_SECRET=smoke-client-secret \
+  -e SHIET_BROKER_DATASTORE_DSN=file:/tmp/oauth-broker-smoke.sqlite \
   "$image_name" >/dev/null
 
 for _ in $(seq 1 30); do

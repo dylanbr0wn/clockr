@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dylanbr0wn/clockr/internal/db"
-	"github.com/dylanbr0wn/clockr/internal/db/sqlc"
-	"github.com/dylanbr0wn/clockr/internal/seed"
-	"github.com/dylanbr0wn/clockr/internal/service"
+	"github.com/dylanbr0wn/shiet/internal/db"
+	"github.com/dylanbr0wn/shiet/internal/db/sqlc"
+	"github.com/dylanbr0wn/shiet/internal/seed"
+	"github.com/dylanbr0wn/shiet/internal/service"
 )
 
 // gapEnv builds a db with a custom period + tz segment for precise gap tests.

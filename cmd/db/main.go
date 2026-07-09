@@ -1,9 +1,9 @@
-// Command db is Clockr's dev tooling for the local SQLite store: spin the
+// Command db is shiet's dev tooling for the local SQLite store: spin the
 // schema up/down, inspect status, reset, and seed.
 //
 //	go run ./cmd/db <command> [flags]
 //
-// Target database: --db flag, else $CLOCKR_DB, else ./clockr.dev.db
+// Target database: --db flag, else $SHIET_DB, else ./shiet.dev.db
 // (NOT the app's real db).
 package main
 
@@ -16,16 +16,16 @@ import (
 
 	"github.com/alecthomas/kong"
 
-	"github.com/dylanbr0wn/clockr/internal/db"
-	"github.com/dylanbr0wn/clockr/internal/seed"
+	"github.com/dylanbr0wn/shiet/internal/db"
+	"github.com/dylanbr0wn/shiet/internal/seed"
 )
 
-const devDBDefault = "clockr.dev.db"
+const devDBDefault = "shiet.dev.db"
 const migrationsSrcDir = "internal/db/migrations"
 
 // CLI is the kong grammar for the db tool.
 type CLI struct {
-	DB string `help:"Path to the SQLite database." env:"CLOCKR_DB" default:"${devdb}" type:"path"`
+	DB string `help:"Path to the SQLite database." env:"SHIET_DB" default:"${devdb}" type:"path"`
 
 	Up      UpCmd      `cmd:"" help:"Apply all pending migrations."`
 	Down    DownCmd    `cmd:"" help:"Roll back the most recent migration."`
@@ -42,7 +42,7 @@ func main() {
 	cli := &CLI{}
 	kctx := kong.Parse(cli,
 		kong.Name("db"),
-		kong.Description("Clockr local SQLite dev tooling."),
+		kong.Description("shiet local SQLite dev tooling."),
 		kong.Vars{"devdb": devDBDefault},
 		kong.UsageOnError(),
 	)

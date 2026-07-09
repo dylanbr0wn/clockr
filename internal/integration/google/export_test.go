@@ -1,6 +1,6 @@
 package google
 
-import "github.com/dylanbr0wn/clockr/internal/service"
+import "github.com/dylanbr0wn/shiet/internal/service"
 
 type EventForTest = event
 type EventTimeForTest = eventTime

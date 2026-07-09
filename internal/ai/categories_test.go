@@ -3,7 +3,7 @@ package ai_test
 import (
 	"testing"
 
-	"github.com/dylanbr0wn/clockr/internal/ai"
+	"github.com/dylanbr0wn/shiet/internal/ai"
 )
 
 func TestMatchCategoryKeyPrefersKey(t *testing.T) {

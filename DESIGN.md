@@ -1,6 +1,6 @@
-# Clockr — Design
+# shiet — Design
 
-Clockr summarizes time spent per pay period: import calendar → categorize events →
+shiet summarizes time spent per pay period: import calendar → categorize events →
 fill gaps → export a timesheet report.
 
 ## Shape

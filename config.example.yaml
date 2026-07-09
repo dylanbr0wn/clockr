@@ -1,15 +1,15 @@
-# Clockr app/runtime configuration (optional).
+# shiet app/runtime configuration (optional).
 # Copy to one of:
-#   - ~/.config/clockr/config.yaml
-#   - <UserConfigDir>/clockr/config.yaml  (e.g. ~/Library/Application Support/clockr on macOS)
-#   - ./clockr.yaml  (local dev, cwd)
+#   - ~/.config/shiet/config.yaml
+#   - <UserConfigDir>/shiet/config.yaml  (e.g. ~/Library/Application Support/shiet on macOS)
+#   - ./shiet.yaml  (local dev, cwd)
 #
 # Environment variables override file values (highest precedence):
-#   CLOCKR_DB                       -> db.path
-#   CLOCKR_GOOGLE_AUTH_MODE         -> google.auth_mode
-#   CLOCKR_GOOGLE_BROKER_BASE_URL   -> google.broker_base_url
-#   CLOCKR_GOOGLE_CLIENT_ID         -> google.client_id
-#   CLOCKR_GOOGLE_CLIENT_SECRET     -> google.client_secret
+#   SHIET_DB                       -> db.path
+#   SHIET_GOOGLE_AUTH_MODE         -> google.auth_mode
+#   SHIET_GOOGLE_BROKER_BASE_URL   -> google.broker_base_url
+#   SHIET_GOOGLE_CLIENT_ID         -> google.client_id
+#   SHIET_GOOGLE_CLIENT_SECRET     -> google.client_secret
 #
 # google.auth_mode:
 #   - broker (public default when no local client_id is set): secret-only OAuth broker;
@@ -22,10 +22,10 @@
 # but desktop apps cannot keep it confidential once shipped.
 
 db:
-  path: ~/.config/clockr/clockr.db
+  path: ~/.config/shiet/shiet.db
 
 google:
   auth_mode: broker
-  broker_base_url: https://auth.clockr.app
+  broker_base_url: https://auth.shiet.app
   client_id: ""
   client_secret: ""

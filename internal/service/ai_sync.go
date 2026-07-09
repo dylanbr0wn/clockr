@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dylanbr0wn/clockr/internal/ai"
-	"github.com/dylanbr0wn/clockr/internal/db/sqlc"
+	"github.com/dylanbr0wn/shiet/internal/ai"
+	"github.com/dylanbr0wn/shiet/internal/db/sqlc"
 )
 
 // applyAISuggestion auto-categorizes a new event when memory did not match and

@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dylanbr0wn/clockr/internal/db"
-	"github.com/dylanbr0wn/clockr/internal/integration/connection"
+	"github.com/dylanbr0wn/shiet/internal/db"
+	"github.com/dylanbr0wn/shiet/internal/integration/connection"
 )
 
 func newRegistry(t *testing.T) *connection.Registry {

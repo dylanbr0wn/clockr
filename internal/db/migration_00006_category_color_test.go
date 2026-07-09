@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dylanbr0wn/clockr/internal/db"
+	"github.com/dylanbr0wn/shiet/internal/db"
 )
 
 func TestMigrateCategoryColor_BackfillsSeededPalette(t *testing.T) {

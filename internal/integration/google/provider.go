@@ -10,13 +10,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dylanbr0wn/clockr/internal/config"
-	"github.com/dylanbr0wn/clockr/internal/db/sqlc"
-	"github.com/dylanbr0wn/clockr/internal/integration/connection"
-	"github.com/dylanbr0wn/clockr/internal/integration/httpclient"
-	"github.com/dylanbr0wn/clockr/internal/integration/oauth"
-	"github.com/dylanbr0wn/clockr/internal/integration/secrets"
-	"github.com/dylanbr0wn/clockr/internal/service"
+	"github.com/dylanbr0wn/shiet/internal/config"
+	"github.com/dylanbr0wn/shiet/internal/db/sqlc"
+	"github.com/dylanbr0wn/shiet/internal/integration/connection"
+	"github.com/dylanbr0wn/shiet/internal/integration/httpclient"
+	"github.com/dylanbr0wn/shiet/internal/integration/oauth"
+	"github.com/dylanbr0wn/shiet/internal/integration/secrets"
+	"github.com/dylanbr0wn/shiet/internal/service"
 )
 
 var (
@@ -62,13 +62,13 @@ func (p *Provider) Connect(ctx context.Context, accountID, accountLabel string) 
 	if p.usesBrokerAuth() {
 		base := strings.TrimSpace(p.BrokerBaseURL)
 		if base == "" {
-			return connection.Connection{}, fmt.Errorf("%w: set google.broker_base_url or CLOCKR_GOOGLE_BROKER_BASE_URL", config.ErrBrokerConfig)
+			return connection.Connection{}, fmt.Errorf("%w: set google.broker_base_url or SHIET_GOOGLE_BROKER_BASE_URL", config.ErrBrokerConfig)
 		}
 		return connection.Connection{}, fmt.Errorf("%w: cannot complete Google connect via broker at %s; retry later or use google.auth_mode=local with BYO credentials for development", ErrBrokerUnavailable, base)
 	}
 
 	if strings.TrimSpace(p.Config.ClientID) == "" {
-		return connection.Connection{}, fmt.Errorf("%w: set google.client_id or CLOCKR_GOOGLE_CLIENT_ID for local/BYO Google OAuth", config.ErrLocalCredentials)
+		return connection.Connection{}, fmt.Errorf("%w: set google.client_id or SHIET_GOOGLE_CLIENT_ID for local/BYO Google OAuth", config.ErrLocalCredentials)
 	}
 
 	auth := p.Authorizer

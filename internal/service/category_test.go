@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/dylanbr0wn/clockr/internal/service"
+	"github.com/dylanbr0wn/shiet/internal/service"
 )
 
 func TestCreateAndUpdateCategory(t *testing.T) {

@@ -1,4 +1,4 @@
-// Package seed populates a Clockr database with sensible starter data:
+// Package seed populates a shiet database with sensible starter data:
 // default categories, the default-gap category, app-setting defaults, and (in
 // dev mode) a sample period + calendar. Idempotent — safe to run repeatedly.
 package seed
@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dylanbr0wn/clockr/internal/db/sqlc"
+	"github.com/dylanbr0wn/shiet/internal/db/sqlc"
 )
 
 // defaultCategories is the starter bucket set. The bool marks the default gap
@@ -187,7 +187,7 @@ func seedDevEvents(ctx context.Context, q *sqlc.Queries, periodID, calendarID in
 			CalendarID: calendarID,
 			Provider:   "google",
 			ExternalID: event.externalID,
-			IcalUid:    event.externalID + "@clockr.dev",
+			IcalUid:    event.externalID + "@shiet.dev",
 			Title:         event.title,
 			Attendees:     "[]",
 			Status:        "accepted",

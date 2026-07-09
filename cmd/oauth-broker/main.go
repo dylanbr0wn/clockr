@@ -10,9 +10,9 @@ import (
 	"syscall"
 	"time"
 
-	brokerconfig "github.com/dylanbr0wn/clockr/internal/broker/config"
-	"github.com/dylanbr0wn/clockr/internal/broker/httpapi"
-	"github.com/dylanbr0wn/clockr/internal/broker/store"
+	brokerconfig "github.com/dylanbr0wn/shiet/internal/broker/config"
+	"github.com/dylanbr0wn/shiet/internal/broker/httpapi"
+	"github.com/dylanbr0wn/shiet/internal/broker/store"
 )
 
 func main() {
@@ -36,7 +36,7 @@ func main() {
 
 	errCh := make(chan error, 1)
 	go func() {
-		log.Printf("clockr oauth broker listening on %s", cfg.ListenAddr)
+		log.Printf("shiet oauth broker listening on %s", cfg.ListenAddr)
 		errCh <- srv.ListenAndServe()
 	}()
 

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dylanbr0wn/clockr/internal/db/sqlc"
+	"github.com/dylanbr0wn/shiet/internal/db/sqlc"
 )
 
 // EnsureCurrentPeriod returns the period containing today, creating it and its

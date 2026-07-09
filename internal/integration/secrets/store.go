@@ -10,7 +10,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-const keyringService = "clockr"
+const keyringService = "shiet"
 
 // ErrNotFound is returned when no token exists for a provider/account pair.
 var ErrNotFound = errors.New("token not found")

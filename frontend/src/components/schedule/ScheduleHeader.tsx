@@ -57,7 +57,7 @@ export function ScheduleHeader({
         <Clock className="size-4" />
       </div>
       <div>
-        <h1 className="text-base font-medium">Clockr</h1>
+        <h1 className="text-base font-medium">shiet</h1>
       </div>
       <Separator orientation="vertical" className="my-2" />
       <div className="grow" />

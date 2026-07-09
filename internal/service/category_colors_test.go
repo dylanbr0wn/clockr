@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/dylanbr0wn/clockr/internal/service"
+	"github.com/dylanbr0wn/shiet/internal/service"
 )
 
 func TestValidateCategoryColor(t *testing.T) {

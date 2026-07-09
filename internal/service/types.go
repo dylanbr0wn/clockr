@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/dylanbr0wn/clockr/internal/db/sqlc"
+	"github.com/dylanbr0wn/shiet/internal/db/sqlc"
 )
 
 // Domain types are the clean, frontend-facing shapes the service returns.
@@ -61,7 +61,7 @@ type Calendar struct {
 	DefaultCategoryID *int64 `json:"defaultCategoryId,omitempty"`
 }
 
-// Attendee mirrors the fields Clockr keeps from a Google Calendar attendee.
+// Attendee mirrors the fields shiet keeps from a Google Calendar attendee.
 type Attendee struct {
 	Email          string `json:"email"`
 	DisplayName    string `json:"displayName,omitempty"`

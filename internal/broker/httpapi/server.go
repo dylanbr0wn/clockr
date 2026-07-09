@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	brokerconfig "github.com/dylanbr0wn/clockr/internal/broker/config"
-	"github.com/dylanbr0wn/clockr/internal/broker/store"
+	brokerconfig "github.com/dylanbr0wn/shiet/internal/broker/config"
+	"github.com/dylanbr0wn/shiet/internal/broker/store"
 )
 
 const googleAuthURL = "https://accounts.google.com/o/oauth2/v2/auth"
