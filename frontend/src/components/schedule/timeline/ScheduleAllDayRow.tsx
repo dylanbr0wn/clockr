@@ -1,4 +1,10 @@
-import { AlertTriangleIcon } from "lucide-react";
+import { AlertTriangleIcon, EyeOffIcon } from "lucide-react";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import { cn } from "@/lib/utils";
 import {
   scheduleItemPresentation,
@@ -13,6 +19,7 @@ interface ScheduleAllDayRowProps {
   allDayRowHeight: number;
   visibleDayCount: number;
   onOpenReviewQueue: () => void;
+  onExcludeAllDayChip: (chip: AllDayChip) => void;
 }
 
 function allDaySpanClasses(span: AllDaySpanPosition) {
@@ -28,12 +35,51 @@ function allDaySpanClasses(span: AllDaySpanPosition) {
   }
 }
 
+function AllDayChipButton({
+  chip,
+  onOpenReviewQueue,
+}: {
+  chip: AllDayChip;
+  onOpenReviewQueue: () => void;
+}) {
+  const presentation = scheduleItemPresentation(chip.kind, chip.categoryColor);
+  const isReview = chip.kind === "review";
+
+  return (
+    <button
+      type="button"
+      disabled={!isReview}
+      onClick={() => {
+        if (isReview) {
+          onOpenReviewQueue();
+        }
+      }}
+      className={cn([
+        "flex min-h-6 w-full flex-col justify-center border px-2 py-0.5 text-left text-[11px] shadow-sm",
+        allDaySpanClasses(chip.allDaySpan),
+        presentation.className,
+        isReview ? "cursor-pointer hover:brightness-95" : "cursor-default",
+      ])}
+      style={presentation.style}
+    >
+      {isReview ? (
+        <div className="mb-0.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide opacity-80">
+          <AlertTriangleIcon className="size-2.5" />
+          <span>Needs review</span>
+        </div>
+      ) : null}
+      <span className="truncate font-medium">{chip.title}</span>
+    </button>
+  );
+}
+
 export function ScheduleAllDayRow({
   days,
   allDayChipsByDay,
   allDayRowHeight,
   visibleDayCount,
   onOpenReviewQueue,
+  onExcludeAllDayChip,
 }: ScheduleAllDayRowProps) {
   return (
     <>
@@ -59,40 +105,28 @@ export function ScheduleAllDayRow({
             style={{ height: `${allDayRowHeight}px` }}
           >
             {chips.map((chip) => {
-              const presentation = scheduleItemPresentation(
-                chip.kind,
-                chip.categoryColor,
+              const canExclude = chip.kind === "calendar";
+              const chipButton = (
+                <AllDayChipButton
+                  chip={chip}
+                  onOpenReviewQueue={onOpenReviewQueue}
+                />
               );
-              const isReview = chip.kind === "review";
+
+              if (!canExclude) {
+                return <div key={chip.id}>{chipButton}</div>;
+              }
 
               return (
-                <button
-                  key={chip.id}
-                  type="button"
-                  disabled={!isReview}
-                  onClick={() => {
-                    if (isReview) {
-                      onOpenReviewQueue();
-                    }
-                  }}
-                  className={cn([
-                    "flex min-h-6 w-full flex-col justify-center border px-2 py-0.5 text-left text-[11px] shadow-sm",
-                    allDaySpanClasses(chip.allDaySpan),
-                    presentation.className,
-                    isReview
-                      ? "cursor-pointer hover:brightness-95"
-                      : "cursor-default",
-                  ])}
-                  style={presentation.style}
-                >
-                  {isReview ? (
-                    <div className="mb-0.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide opacity-80">
-                      <AlertTriangleIcon className="size-2.5" />
-                      <span>Needs review</span>
-                    </div>
-                  ) : null}
-                  <span className="truncate font-medium">{chip.title}</span>
-                </button>
+                <ContextMenu key={chip.id}>
+                  <ContextMenuTrigger asChild>{chipButton}</ContextMenuTrigger>
+                  <ContextMenuContent>
+                    <ContextMenuItem onSelect={() => onExcludeAllDayChip(chip)}>
+                      <EyeOffIcon />
+                      Exclude
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
               );
             })}
           </div>

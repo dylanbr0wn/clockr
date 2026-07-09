@@ -6,6 +6,7 @@ import {
   useCreateManualEvent,
   useCurrentPeriod,
   useDeleteManualEvent,
+  useExcludeEvent,
   useEventCategoryOverlays,
   useEvents,
   useGapFills,
@@ -27,6 +28,7 @@ export function useSchedulePageBaseQueries(today: string, currentTimeZone: strin
   const suggestGapFillMutation = useSuggestGapFill();
   const updateManualEventMutation = useUpdateManualEvent();
   const deleteManualEventMutation = useDeleteManualEvent();
+  const excludeEventMutation = useExcludeEvent();
 
   const aiConfig = useAIConfigured();
   const aiClassification = useClassifyAIEndpoint(aiConfig.baseURL);
@@ -40,6 +42,7 @@ export function useSchedulePageBaseQueries(today: string, currentTimeZone: strin
     suggestGapFillMutation,
     updateManualEventMutation,
     deleteManualEventMutation,
+    excludeEventMutation,
     aiConfig,
     aiClassification,
   };

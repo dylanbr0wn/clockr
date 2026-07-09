@@ -24,6 +24,8 @@ export interface ScheduleTimelineActions {
   onEditItem: (item: ScheduleItem) => void;
   onDuplicateItem: (item: ScheduleItem) => void;
   onRemoveItem: (item: ScheduleItem) => void;
+  onExcludeItem: (item: ScheduleItem) => void;
+  onExcludeAllDayChip: (chip: AllDayChip) => void;
   onResetDay: (day: string) => void;
   onSelectGap: (gap: ScheduleGapOverlay) => void;
   onOpenReviewQueue: () => void;

@@ -10,6 +10,7 @@ const mockState = vi.hoisted(() => {
   const suggestMutate = vi.fn();
   const updateMutate = vi.fn();
   const deleteMutate = vi.fn();
+  const excludeMutate = vi.fn();
 
   return {
     periods: [
@@ -62,6 +63,7 @@ const mockState = vi.hoisted(() => {
     suggestMutate,
     updateMutate,
     deleteMutate,
+    excludeMutate,
   };
 });
 
@@ -122,6 +124,11 @@ vi.mock("@/lib/api", () => ({
     isPending: false,
     error: null,
   }),
+  useExcludeEvent: () => ({
+    mutate: mockState.excludeMutate,
+    isPending: false,
+    error: null,
+  }),
   useAIConfigured: () => ({ isConfigured: mockState.aiConfigured, baseURL: "http://local" }),
   useClassifyAIEndpoint: () => ({ data: { local: mockState.aiLocal } }),
 }));
@@ -133,6 +140,7 @@ describe("useSchedulePage", () => {
     mockState.suggestMutate.mockReset();
     mockState.updateMutate.mockReset();
     mockState.deleteMutate.mockReset();
+    mockState.excludeMutate.mockReset();
     mockState.currentPeriod = { id: 1, startDate: "2026-07-01", endDate: "2026-07-14" };
   });
 
@@ -208,5 +216,45 @@ describe("useSchedulePage", () => {
         onSettled: expect.any(Function),
       }),
     );
+  });
+
+  it("excludes calendar timed items and all-day chips", async () => {
+    const { result } = renderHook(() => useSchedulePage());
+    await waitFor(() => expect(result.current.activePeriodId).toBe(1));
+
+    act(() => {
+      result.current.handleExcludeEvent({
+        id: "event-42",
+        day: "2026-07-02",
+        startMinutes: 540,
+        endMinutes: 600,
+        metadata: {
+          title: "Standup",
+          category: "Work",
+          kind: "calendar",
+        },
+      });
+    });
+    expect(mockState.excludeMutate).toHaveBeenCalledWith({
+      eventId: 42,
+      periodId: 1,
+    });
+
+    mockState.excludeMutate.mockClear();
+    act(() => {
+      result.current.handleExcludeAllDayChip({
+        id: "event-7-2026-07-03",
+        eventId: 7,
+        day: "2026-07-03",
+        title: "Holiday",
+        category: "Work",
+        kind: "calendar",
+        allDaySpan: "single",
+      });
+    });
+    expect(mockState.excludeMutate).toHaveBeenCalledWith({
+      eventId: 7,
+      periodId: 1,
+    });
   });
 });

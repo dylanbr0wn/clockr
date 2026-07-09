@@ -500,6 +500,34 @@ export namespace service {
 		}
 	}
 	
+	export class ExcludeEventInput {
+	    eventId: number;
+	    periodId: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExcludeEventInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.eventId = source["eventId"];
+	        this.periodId = source["periodId"];
+	    }
+	}
+	export class ExcludeEventResult {
+	    periodId: number;
+	    eventId: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExcludeEventResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.periodId = source["periodId"];
+	        this.eventId = source["eventId"];
+	    }
+	}
 	export class ManualEventDeleteInput {
 	    id: number;
 	    periodId: number;

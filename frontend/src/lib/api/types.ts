@@ -147,6 +147,16 @@ export interface ResolveReviewItemResult {
   periodId: number;
 }
 
+export interface ExcludeEventInput {
+  eventId: number;
+  periodId: number;
+}
+
+export interface ExcludeEventResult {
+  periodId: number;
+  eventId: number;
+}
+
 export interface TzSegment {
   id: number;
   periodId: number;

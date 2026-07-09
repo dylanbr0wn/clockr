@@ -39,6 +39,8 @@ export function SchedulePage({ titlebarPaddingClass }: SchedulePageProps) {
             onEditItem: schedule.handleOpenEventEditor,
             onDuplicateItem: schedule.handleDuplicateEvent,
             onRemoveItem: schedule.handleRemoveEvent,
+            onExcludeItem: schedule.handleExcludeEvent,
+            onExcludeAllDayChip: schedule.handleExcludeAllDayChip,
             onResetDay: schedule.handleResetDay,
             onSelectGap: schedule.handleSelectGap,
             onOpenReviewQueue: () => schedule.setReviewQueueOpen(true),

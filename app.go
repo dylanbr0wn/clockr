@@ -156,6 +156,11 @@ func (a *App) ResolveReviewItem(input service.ResolveReviewItemInput) (service.R
 	return a.Svc.ResolveReviewItem(a.callContext(), input)
 }
 
+// ExcludeEvent hides a synced calendar event from the schedule for a period.
+func (a *App) ExcludeEvent(input service.ExcludeEventInput) (service.ExcludeEventResult, error) {
+	return a.Svc.ExcludeEvent(a.callContext(), input)
+}
+
 // ListTzSegments returns timezone segments for a period.
 func (a *App) ListTzSegments(periodID int64) ([]service.TzSegment, error) {
 	return a.Svc.ListTzSegments(a.callContext(), periodID)

@@ -11,6 +11,7 @@ import {
   disconnectGoogle,
   discoverLocalAIEndpoints,
   ensureCurrentPeriod,
+  excludeEvent,
   getSetting,
   listAIModels,
   listCalendars,
@@ -303,6 +304,29 @@ export function useResolveReviewItem() {
       });
       void queryClient.invalidateQueries({
         queryKey: shietQueryKeys.periodGapFills(periodId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.gapTimeline(periodId),
+      });
+    },
+  });
+}
+
+export function useExcludeEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: excludeEvent,
+    onSuccess: (result) => {
+      const periodId = result.periodId;
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.periodEvents(periodId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.periodReviewItems(periodId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.periodEventCategoryOverlays(periodId),
       });
       void queryClient.invalidateQueries({
         queryKey: shietQueryKeys.gapTimeline(periodId),

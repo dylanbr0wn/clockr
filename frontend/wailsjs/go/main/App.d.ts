@@ -27,6 +27,8 @@ export function DiscoverLocalAIEndpoints():Promise<Array<ai.Endpoint>>;
 
 export function EnsureCurrentPeriod(arg1:string,arg2:string):Promise<service.Period>;
 
+export function ExcludeEvent(arg1:service.ExcludeEventInput):Promise<service.ExcludeEventResult>;
+
 export function GetSetting(arg1:string):Promise<string>;
 
 export function Greet(arg1:string):Promise<string>;

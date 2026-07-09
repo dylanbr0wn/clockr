@@ -1,6 +1,7 @@
 import {
   AlertTriangleIcon,
   CopyIcon,
+  EyeOffIcon,
   PencilIcon,
   Trash2Icon,
 } from "lucide-react";
@@ -52,6 +53,7 @@ export function ScheduleTimedItem({
     ? scheduleItemPresentation(metadata.kind, metadata.categoryColor)
     : { className: "border-border bg-muted text-foreground" };
   const canMutateItem = item.id.startsWith("gap-fill-");
+  const canExcludeItem = metadata?.kind === "calendar";
 
   return (
     <ContextMenu>
@@ -120,29 +122,40 @@ export function ScheduleTimedItem({
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent data-scheduler-ignore-create="">
-        <ContextMenuItem
-          disabled={!canMutateItem}
-          onSelect={() => actions.onEditItem(item as ScheduleItem)}
-        >
-          <PencilIcon />
-          Edit
-        </ContextMenuItem>
-        <ContextMenuItem
-          disabled={!canMutateItem}
-          onSelect={() => actions.onDuplicateItem(item as ScheduleItem)}
-        >
-          <CopyIcon />
-          Duplicate
-        </ContextMenuItem>
-        <ContextMenuSeparator />
-        <ContextMenuItem
-          disabled={!canMutateItem}
-          variant="destructive"
-          onSelect={() => actions.onRemoveItem(item as ScheduleItem)}
-        >
-          <Trash2Icon />
-          Remove
-        </ContextMenuItem>
+        {canExcludeItem ? (
+          <ContextMenuItem
+            onSelect={() => actions.onExcludeItem(item as ScheduleItem)}
+          >
+            <EyeOffIcon />
+            Exclude
+          </ContextMenuItem>
+        ) : (
+          <>
+            <ContextMenuItem
+              disabled={!canMutateItem}
+              onSelect={() => actions.onEditItem(item as ScheduleItem)}
+            >
+              <PencilIcon />
+              Edit
+            </ContextMenuItem>
+            <ContextMenuItem
+              disabled={!canMutateItem}
+              onSelect={() => actions.onDuplicateItem(item as ScheduleItem)}
+            >
+              <CopyIcon />
+              Duplicate
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              disabled={!canMutateItem}
+              variant="destructive"
+              onSelect={() => actions.onRemoveItem(item as ScheduleItem)}
+            >
+              <Trash2Icon />
+              Remove
+            </ContextMenuItem>
+          </>
+        )}
       </ContextMenuContent>
     </ContextMenu>
   );

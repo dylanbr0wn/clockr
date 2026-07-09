@@ -53,6 +53,7 @@ export function useSchedulePage(): SchedulePageViewModel {
     createManualEventMutation: base.createManualEventMutation,
     updateManualEventMutation: base.updateManualEventMutation,
     deleteManualEventMutation: base.deleteManualEventMutation,
+    excludeEventMutation: base.excludeEventMutation,
   });
 
   const derived = useMemo(
@@ -144,6 +145,7 @@ export function useSchedulePage(): SchedulePageViewModel {
       gapSuggest.gapSuggestPending,
       base.updateManualEventMutation.isPending,
       base.deleteManualEventMutation.isPending,
+      base.excludeEventMutation.isPending,
     ],
     errors: [
       base.periodsQuery.error,
@@ -159,6 +161,7 @@ export function useSchedulePage(): SchedulePageViewModel {
       gapSuggest.gapSuggestError,
       base.updateManualEventMutation.error,
       base.deleteManualEventMutation.error,
+      base.excludeEventMutation.error,
     ],
     eventsCount: period.eventsQuery.data?.length ?? 0,
     gapFillsCount: period.gapFillsQuery.data?.length ?? 0,
@@ -197,6 +200,8 @@ export function useSchedulePage(): SchedulePageViewModel {
     handleOpenEventEditor: editor.handleOpenEventEditor,
     handleDuplicateEvent: editor.handleDuplicateEvent,
     handleRemoveEvent: editor.handleRemoveEvent,
+    handleExcludeEvent: editor.handleExcludeEvent,
+    handleExcludeAllDayChip: editor.handleExcludeAllDayChip,
     handleResetDay: editor.handleResetDay,
     handleCloseEventEditor: editor.handleCloseEventEditor,
     handleSaveEventEdit: editor.handleSaveEventEdit as (

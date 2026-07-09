@@ -1,7 +1,12 @@
 import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import type { GapFill } from "@/lib/api";
 import type { SchedulerCreateRequest } from "@/lib/scheduler";
-import type { ScheduleChange, ScheduleItem, SchedulePlacement } from "@/lib/schedule";
+import type {
+  AllDayChip,
+  ScheduleChange,
+  ScheduleItem,
+  SchedulePlacement,
+} from "@/lib/schedule";
 import type { ScheduleEventEditValues } from "./schedulePage.types";
 
 interface Mutations {
@@ -38,11 +43,26 @@ interface Mutations {
       options?: { onSuccess?: () => void },
     ) => void;
   };
+  excludeEventMutation: {
+    mutate: (
+      payload: { eventId: number; periodId: number },
+      options?: { onSuccess?: () => void },
+    ) => void;
+  };
 }
 
 interface UseSchedulePageEditorParams extends Mutations {
   activePeriodId: number | undefined;
   gapFills: GapFill[];
+}
+
+function eventIdFromScheduleItemId(itemId: string): number | null {
+  const match = /^event-(\d+)$/.exec(itemId);
+  if (!match) {
+    return null;
+  }
+  const eventId = Number(match[1]);
+  return Number.isFinite(eventId) ? eventId : null;
 }
 
 export function useSchedulePageEditor({
@@ -51,6 +71,7 @@ export function useSchedulePageEditor({
   createManualEventMutation,
   updateManualEventMutation,
   deleteManualEventMutation,
+  excludeEventMutation,
 }: UseSchedulePageEditorParams) {
   const [draftPlacements, setDraftPlacements] = useState<Record<string, SchedulePlacement>>({});
   const [preview, setPreview] = useState<ScheduleChange | null>(null);
@@ -158,6 +179,27 @@ export function useSchedulePageEditor({
     );
   };
 
+  const handleExcludeEvent = (item: ScheduleItem) => {
+    if (item.metadata?.kind !== "calendar" || !activePeriodId) {
+      return;
+    }
+    const eventId = eventIdFromScheduleItemId(item.id);
+    if (eventId == null) {
+      return;
+    }
+    excludeEventMutation.mutate({ eventId, periodId: activePeriodId });
+  };
+
+  const handleExcludeAllDayChip = (chip: AllDayChip) => {
+    if (chip.kind !== "calendar" || !activePeriodId) {
+      return;
+    }
+    excludeEventMutation.mutate({
+      eventId: chip.eventId,
+      periodId: activePeriodId,
+    });
+  };
+
   const handleResetDay = (day: string) => {
     const manualGapFills = gapFills.filter(
       (gapFill) => gapFill.day === day && gapFill.source === "manual",
@@ -258,6 +300,8 @@ export function useSchedulePageEditor({
     handleOpenEventEditor,
     handleDuplicateEvent,
     handleRemoveEvent,
+    handleExcludeEvent,
+    handleExcludeAllDayChip,
     handleResetDay,
     handleCloseEventEditor,
     handleSaveEventEdit,

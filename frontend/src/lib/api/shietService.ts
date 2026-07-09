@@ -9,6 +9,8 @@ import type {
   DayTimeline,
   Event,
   EventCategoryOverlay,
+  ExcludeEventInput,
+  ExcludeEventResult,
   GapFill,
   GapSuggestion,
   IntegrationConnection,
@@ -38,6 +40,7 @@ interface ShietApp {
   DisconnectGoogle(accountID: string): Promise<void>;
   DiscoverLocalAIEndpoints(): Promise<AIEndpoint[]>;
   EnsureCurrentPeriod(today: string, ianaTz: string): Promise<Period>;
+  ExcludeEvent(input: ExcludeEventInput): Promise<ExcludeEventResult>;
   GetSetting(key: string): Promise<string>;
   ListAIModels(baseURL: string, apiKey: string): Promise<string[]>;
   ListCalendars(): Promise<Calendar[]>;
@@ -194,6 +197,10 @@ export function listOpenReviewItems(periodId: number) {
 
 export function resolveReviewItem(input: ResolveReviewItemInput) {
   return writeToBackend(() => appBackend.ResolveReviewItem(input));
+}
+
+export function excludeEvent(input: ExcludeEventInput) {
+  return writeToBackend(() => appBackend.ExcludeEvent(input));
 }
 
 export function listTzSegments(periodId: number) {

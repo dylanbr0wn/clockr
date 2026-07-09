@@ -46,6 +46,10 @@ export function EnsureCurrentPeriod(arg1, arg2) {
   return window['go']['main']['App']['EnsureCurrentPeriod'](arg1, arg2);
 }
 
+export function ExcludeEvent(arg1) {
+  return window['go']['main']['App']['ExcludeEvent'](arg1);
+}
+
 export function GetSetting(arg1) {
   return window['go']['main']['App']['GetSetting'](arg1);
 }

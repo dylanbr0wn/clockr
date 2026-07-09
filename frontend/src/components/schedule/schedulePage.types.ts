@@ -81,6 +81,8 @@ export interface SchedulePageViewModel {
   handleOpenEventEditor: (item: ScheduleItem) => void;
   handleDuplicateEvent: (item: ScheduleItem) => void;
   handleRemoveEvent: (item: ScheduleItem) => void;
+  handleExcludeEvent: (item: ScheduleItem) => void;
+  handleExcludeAllDayChip: (chip: AllDayChip) => void;
   handleResetDay: (day: string) => void;
   handleCloseEventEditor: () => void;
   handleSaveEventEdit: (values: ScheduleEventEditValues) => void;
