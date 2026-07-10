@@ -63,17 +63,24 @@ func TestSuggestGapFill(t *testing.T) {
 }
 
 func TestSuggestGapFillCloudOmitsDetailAndURL(t *testing.T) {
+	var capturedSystemPrompt string
 	var capturedUserPrompt string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Messages []struct {
+				Role    string `json:"role"`
 				Content string `json:"content"`
 			} `json:"messages"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&body)
 		for _, msg := range body.Messages {
-			if strings.Contains(msg.Content, "Activity evidence:") {
-				capturedUserPrompt = msg.Content
+			switch msg.Role {
+			case "system":
+				capturedSystemPrompt = msg.Content
+			case "user":
+				if strings.Contains(msg.Content, "Activity evidence:") {
+					capturedUserPrompt = msg.Content
+				}
 			}
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
@@ -91,6 +98,7 @@ func TestSuggestGapFillCloudOmitsDetailAndURL(t *testing.T) {
 		Provider: "slack",
 		Kind:     "message",
 		Summary:  "Discussed deployment",
+		Source:   "acme/clockr",
 		Detail:   "Sensitive channel transcript",
 		URL:      "https://slack.com/archives/C123/p456",
 		Start:    "2026-06-02T13:00:00Z",
@@ -110,6 +118,12 @@ func TestSuggestGapFillCloudOmitsDetailAndURL(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SuggestGapFill: %v", err)
 	}
+	if !strings.Contains(capturedSystemPrompt, "tied to a project or repository") {
+		t.Fatalf("system prompt missing project-matching guidance: %q", capturedSystemPrompt)
+	}
+	if !strings.Contains(capturedSystemPrompt, "prefer that category") {
+		t.Fatalf("system prompt missing category preference guidance: %q", capturedSystemPrompt)
+	}
 	if strings.Contains(capturedUserPrompt, "Sensitive channel transcript") {
 		t.Fatal("cloud prompt leaked evidence detail")
 	}
@@ -118,5 +132,8 @@ func TestSuggestGapFillCloudOmitsDetailAndURL(t *testing.T) {
 	}
 	if !strings.Contains(capturedUserPrompt, "Discussed deployment") {
 		t.Fatal("cloud prompt should include evidence summary")
+	}
+	if !strings.Contains(capturedUserPrompt, `"source":"acme/clockr"`) {
+		t.Fatalf("cloud prompt should include evidence source, got: %q", capturedUserPrompt)
 	}
 }

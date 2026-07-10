@@ -86,6 +86,7 @@ func buildEvidencePayload(evidence []ActivityEvidence, local bool) []ai.Evidence
 			Provider: item.Provider,
 			Kind:     item.Kind,
 			Summary:  item.Summary,
+			Source:   item.Source,
 		}
 		if local {
 			payload.Detail = item.Detail

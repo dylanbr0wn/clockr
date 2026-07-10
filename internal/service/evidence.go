@@ -27,6 +27,7 @@ type ActivityEvidence struct {
 	Start    time.Time `json:"start"`
 	End      time.Time `json:"end"`
 	Summary  string    `json:"summary"`
+	Source   string    `json:"source,omitempty"`
 	Detail   string    `json:"detail,omitempty"`
 	URL      string    `json:"url,omitempty"`
 }
