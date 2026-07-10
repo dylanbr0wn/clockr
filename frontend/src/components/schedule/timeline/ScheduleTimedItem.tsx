@@ -52,8 +52,8 @@ export function ScheduleTimedItem({
   const presentation = metadata
     ? scheduleItemPresentation(metadata.kind, metadata.categoryColor)
     : { className: "border-border bg-muted text-foreground" };
-  const canMutateItem = item.id.startsWith("gap-fill-");
-  const canExcludeItem = metadata?.kind === "calendar";
+  const canMutateItem = metadata?.mutable ?? false;
+  const canExcludeItem = metadata?.excludable ?? false;
 
   return (
     <ContextMenu>

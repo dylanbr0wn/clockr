@@ -10,15 +10,10 @@ import type {
 } from "@/lib/api";
 import {
   START_DATE,
-  buildAllDayChipsByDay,
   buildDays,
-  buildEventCategoryOverlayMap,
-  eventToSchedulerItem,
-  gapFillToSchedulerItem,
-  gapTimelineToOverlays,
   periodContainsDate,
   periodDayCount,
-  resolveEventCategoryId,
+  projectSchedulePeriod,
   type AllDayChip,
   type ScheduleDay,
   type ScheduleGapOverlay,
@@ -97,77 +92,39 @@ export function buildSchedulePageDerived({
   const days = buildDays(activePeriod?.startDate ?? START_DATE, visibleDayCount);
   const visibleDaySet = new Set(days.map((day) => day.date));
 
-  const categoriesById = new Map(categories.map((category) => [category.id, category]));
-  const overlaysByKey = buildEventCategoryOverlayMap(eventCategoryOverlays);
-  const gapFillsByItemId = new Map(
-    gapFills.map((gapFill) => [`gap-fill-${gapFill.id}`, gapFill]),
-  );
-  const reviewDecisionsByEventId = new Map(
-    reviewDecisions
-      .filter((decision) => typeof decision.eventId === "number")
-      .map((decision) => [decision.eventId as number, { reviewItemId: decision.id, kind: decision.kind }]),
-  );
-
-  const allDayChipsByDay = buildAllDayChipsByDay(
+  const projected = projectSchedulePeriod({
     events,
-    visibleDaySet,
-    categoriesById,
-    overlaysByKey,
-    reviewDecisionsByEventId,
-  );
-  const items = [
-    ...events
-      .map((event) =>
-        eventToSchedulerItem(
-          event,
-          tzSegments,
-          categoriesById,
-          resolveEventCategoryId(event, overlaysByKey),
-          draftPlacements[`event-${event.id}`],
-          reviewDecisionsByEventId.get(event.id),
-        ),
-      )
-      .filter((item): item is ScheduleItem => item !== null),
-    ...gapFills
-      .map((gapFill) =>
-        gapFillToSchedulerItem(
-          gapFill,
-          categoriesById,
-          tzSegments,
-          draftPlacements[`gap-fill-${gapFill.id}`],
-        ),
-      )
-      .filter((item): item is ScheduleItem => item !== null),
-  ];
-
-  const visibleGaps = gapTimelineToOverlays(gapTimeline, visibleDaySet, tzSegments);
-  const resettableDays = new Set(
-    gapFills
-      .filter((gapFill) => gapFill.source === "manual")
-      .map((gapFill) => gapFill.day),
-  );
+    eventCategoryOverlays,
+    gapFills,
+    gapTimeline,
+    reviewDecisions,
+    tzSegments,
+    categories,
+    visibleDays: visibleDaySet,
+    draftPlacements,
+  });
 
   const editingEvent = resolveEditingEvent({
     pendingCreate,
     activePeriodId,
     editingItemId,
-    gapFillsByItemId,
-    items,
+    gapFillsByItemId: projected.gapFillsByItemId,
+    items: projected.items,
   });
 
   return {
     periods,
     activePeriod,
     activePeriodId,
-    categoriesById,
+    categoriesById: projected.categoriesById,
     days,
     visibleDayCount,
-    allDayChipsByDay,
-    items,
-    visibleGaps,
-    resettableDays,
-    gapFillsByItemId,
-    totals: calculateTotals(items),
+    allDayChipsByDay: projected.allDayChipsByDay,
+    items: projected.items,
+    visibleGaps: projected.visibleGaps,
+    resettableDays: projected.resettableDays,
+    gapFillsByItemId: projected.gapFillsByItemId,
+    totals: calculateTotals(projected.items),
     editingEvent,
   };
 }

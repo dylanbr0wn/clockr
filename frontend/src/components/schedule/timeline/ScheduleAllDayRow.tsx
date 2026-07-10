@@ -54,7 +54,7 @@ export function ScheduleAllDayRow({
                 chip.kind,
                 chip.categoryColor,
               );
-              const isReview = chip.kind === "review";
+              const opensReviewQueue = chip.opensReviewQueue ?? false;
               const visibleSpan = resolveVisibleAllDaySpan(
                 chip,
                 index,
@@ -68,7 +68,7 @@ export function ScheduleAllDayRow({
                     <button
                       type="button"
                       onClick={() => {
-                        if (isReview) {
+                        if (opensReviewQueue) {
                           onOpenReviewQueue();
                         }
                       }}
@@ -76,13 +76,13 @@ export function ScheduleAllDayRow({
                         "flex min-h-6 w-full flex-col justify-center border px-2 py-0.5 text-left text-[11px]",
                         allDaySpanClasses(visibleSpan),
                         presentation.className,
-                        isReview
+                        opensReviewQueue
                           ? "cursor-pointer hover:brightness-95"
                           : "cursor-default",
                       ])}
                       style={presentation.style}
                     >
-                      {isReview ? (
+                      {opensReviewQueue ? (
                         <div className="mb-0.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide opacity-80">
                           <AlertTriangleIcon className="size-2.5" />
                           <span>Needs review</span>
@@ -92,10 +92,12 @@ export function ScheduleAllDayRow({
                     </button>
                   </ContextMenuTrigger>
                   <ContextMenuContent>
-                    <ContextMenuItem onSelect={() => onExcludeAllDayChip(chip)}>
-                      <EyeOffIcon />
-                      Exclude
-                    </ContextMenuItem>
+                    {chip.excludable ? (
+                      <ContextMenuItem onSelect={() => onExcludeAllDayChip(chip)}>
+                        <EyeOffIcon />
+                        Exclude
+                      </ContextMenuItem>
+                    ) : null}
                   </ContextMenuContent>
                 </ContextMenu>
               );

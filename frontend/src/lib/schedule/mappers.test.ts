@@ -281,6 +281,9 @@ describe("schedule mappers", () => {
         kind: "review",
         reviewItemId: 12,
         reviewKind: "new_in_gap",
+        mutable: false,
+        excludable: false,
+        opensReviewQueue: true,
       },
     });
   });
@@ -309,6 +312,9 @@ describe("schedule mappers", () => {
         category: "Deep Work",
         categoryColor: "#8B5CF6",
         kind: "manual",
+        mutable: true,
+        excludable: false,
+        opensReviewQueue: false,
       },
     });
   });
