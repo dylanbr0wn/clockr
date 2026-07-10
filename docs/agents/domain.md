@@ -23,9 +23,9 @@ Single-context repo:
 ```text
 /
 |-- CONTEXT.md
+|-- DESIGN.md
 |-- docs/adr/
-|   |-- 0001-example-decision.md
-|   `-- 0002-another-decision.md
+|   `-- 0001-secret-only-google-oauth-broker.md
 `-- frontend/
 ```
 

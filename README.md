@@ -1,86 +1,106 @@
 # shiet
 
-shiet is what I use to summarize my time spent on various activities each pay period. I use it to import my calendar, categorize events, fill in any gaps, and then export a report that I can use for my timesheet.
+Local desktop app for summarizing time spent each pay period: import Google
+Calendar, categorize events, fill schedule gaps, export a timesheet report.
 
-## 🛠️ Development
+Built with [Wails v2](https://wails.io/) (Go + React/TypeScript) and SQLite.
+Calendar data and tokens stay on the machine. Public Google OAuth uses a
+secret-only broker so the shared `client_secret` never ships in the binary —
+see [ADR-0001](docs/adr/0001-secret-only-google-oauth-broker.md) and
+[docs/oauth-broker.md](docs/oauth-broker.md).
 
-Run the app in development mode with hot reload:
+## Development
+
+Prerequisites: Go 1.26+, [pnpm](https://pnpm.io/), [Wails CLI](https://wails.io/docs/gettingstarted/installation).
 
 ```bash
+pnpm -C frontend install
 wails dev
 ```
 
-The frontend dev server runs on http://localhost:5173 with Vite's fast HMR.
+Frontend HMR: http://localhost:5173.
 
-## 🏗️ Building
+On Ubuntu 24.04 (webkit2gtk-4.1), pass the build tag:
 
-### Current Platform
+```bash
+wails dev -tags webkit2_41
+```
+
+Frontend only (no Go / Wails):
+
+```bash
+pnpm --dir frontend dev
+```
+
+## Building
+
 ```bash
 wails build
 # or
 ./scripts/build.sh
 ```
 
-### Cross-Platform Builds
-```bash
-# Build for all platforms
-./scripts/build-all.sh
+Cross-platform helpers live under `scripts/` (`build-all.sh`,
+`build-macos-arm.sh`, etc.). Output: `build/bin/`.
 
-# Individual platforms
-./scripts/build-windows.sh      # Windows AMD64
-./scripts/build-linux.sh         # Linux AMD64
-./scripts/build-macos-arm.sh     # macOS Apple Silicon
-./scripts/build-macos-intel.sh   # macOS Intel
-./scripts/build-macos-universal.sh  # macOS Universal Binary
+Linux/Ubuntu 24.04: `wails build -tags webkit2_41`.
+
+## Tests
+
+```bash
+go test ./internal/...
+pnpm -C frontend typecheck
+pnpm -C frontend test
 ```
 
-Built applications will be in `build/bin/`
+## Configuration
 
-## 🎨 shadcn/ui Components
+Layered: defaults → optional YAML → `SHIET_*` env. Search paths:
 
-This template includes pre-configured shadcn/ui components:
-- Button
-- Input
-- Label
-- Card
+- `~/.config/shiet/config.yaml`
+- `<UserConfigDir>/shiet/config.yaml`
+- `./shiet.yaml` (cwd)
 
-Add more components:
-```bash
-npx shadcn@latest add [component-name]
-```
+See [`config.example.yaml`](config.example.yaml). Dev DB override: `SHIET_DB`
+(or `db.path`). Default DB: `<UserConfigDir>/shiet/shiet.db`.
 
-Browse components at [ui.shadcn.com](https://ui.shadcn.com/)
+Google auth: `google.auth_mode` = `broker` (public default) or `local` (BYO
+credentials). Broker base URL: `google.broker_base_url`.
 
-## 📁 Project Structure
+## Project structure
 
 ```
 .
-├── app.tmpl.go              # Main application logic
-├── main.tmpl.go             # Entry point
-├── frontend/
-│   ├── src/
-│   │   ├── App.tsx          # Main React component
-│   │   ├── components/ui/   # shadcn/ui components
-│   │   └── lib/utils.ts     # Utility functions
-│   ├── vite.config.ts       # Vite configuration
-│   └── package.json         # Frontend dependencies
-└── scripts/                 # Build scripts
+├── app.go / main.go / integrations.go   # Wails app bindings
+├── cmd/
+│   ├── db/                              # DB migrate/seed CLI
+│   └── oauth-broker/                    # Deployable OAuth broker
+├── internal/                            # Go services, DB, AI, broker, config
+├── frontend/                            # React + Vite + shadcn/ui (pnpm)
+├── docs/
+│   ├── adr/                             # Architecture decisions
+│   └── oauth-broker.md                  # Broker operator runbook
+├── design-mockups/                      # HTML UI mockups
+├── scripts/                             # Build, DB, sqlc, broker smoke
+├── CONTEXT.md                           # Domain glossary
+├── DESIGN.md                            # Product / design intent
+└── AGENTS.md                            # Agent / CI / toolchain notes
 ```
 
-## 🔧 Configuration
+## Docs
 
-Project configuration is in `wails.json` (auto-generated on `wails init`). 
+| Doc | Purpose |
+|-----|---------|
+| [DESIGN.md](DESIGN.md) | Product shape, core loop, schema intent, roadmap |
+| [CONTEXT.md](CONTEXT.md) | Domain terms and decisions |
+| [docs/adr/](docs/adr/) | Accepted architecture decisions |
+| [docs/oauth-broker.md](docs/oauth-broker.md) | Broker env, metrics, deploy |
+| [AGENTS.md](AGENTS.md) | Linear tracking, CI, common commands |
+| [design-mockups/](design-mockups/) | UI redesign mockups |
 
-See [Wails documentation](https://wails.io/docs/reference/project-config) for all options.
+## DB tooling
 
-## 📚 Learn More
-
-- [Wails Documentation](https://wails.io/docs/introduction)
-- [React Documentation](https://react.dev/)
-- [Vite Documentation](https://vitejs.dev/)
-- [Tailwind CSS Documentation](https://tailwindcss.com/)
-- [shadcn/ui Documentation](https://ui.shadcn.com/)
-
-## 📝 License
-
-This template is available as open source under the terms of the MIT License.
+```bash
+./scripts/db.sh          # migrate / seed / reset a dev DB
+./scripts/sqlc-gen.sh    # regenerate sqlc (never hand-edit internal/db/sqlc/**)
+```

@@ -454,8 +454,9 @@ compromise.
   Google tokens.
 - The desktop app's local token store remains the long-term holder of user
   Google tokens.
-- Follow-up implementation should add broker-mode config, a desktop broker
-  OAuth flow, broker refresh/revoke clients, and deployment infrastructure.
+- Broker binary (`cmd/oauth-broker`), Railway deploy config, desktop
+  broker/local auth modes, and operator runbook (`docs/oauth-broker.md`) are in
+  tree; ongoing work is ops (domain, secrets, monitoring) and hardening.
 
 ## References
 

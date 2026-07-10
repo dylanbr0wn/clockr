@@ -5,29 +5,36 @@ fill gaps → export a timesheet report.
 
 ## Shape
 
-- **Local desktop app**, distributed as a download. No server, no hosting, no accounts.
-- **Privacy-first**: all data (calendar, activity, reports) stays on the user's machine.
-- **Individual-first**: each install is one independent user. "Any company" = anyone
-  can download and run it; no org/admin/tenant concept.
-- **Bring-your-own-model (BYOM)**: user supplies a cloud key or points at a local model.
+- **Local desktop app**, distributed as a download. No user accounts, no
+  multi-tenant hosting, no org/admin concept. Each install is one independent
+  user ("any company" = anyone can download and run it).
+- **Privacy-first**: calendar events, activity, and reports stay on the user's
+  machine. The only hosted piece is the **secret-only Google OAuth broker**
+  ([ADR-0001](docs/adr/0001-secret-only-google-oauth-broker.md)): it holds the
+  shared Google `client_secret`, never durable Google tokens or Calendar data.
+- **Bring-your-own-model (BYOM)**: user supplies a cloud key or points at a local
+  model (OpenAI-compatible HTTP).
 
 ## Stack
 
 | Layer | Choice |
 |---|---|
-| Shell | **Wails** (Go core + web frontend) |
-| Frontend | **React** (binds to Go methods) |
-| Storage | **SQLite** (local file) |
-| Calendar | **Google Calendar** via official Go client + `x/oauth2` (desktop loopback/PKCE) |
+| Shell | **Wails v2** (Go core + web frontend) |
+| Frontend | **React** + TypeScript (Wails bindings) |
+| Storage | **SQLite** (local file, pure-Go `modernc.org/sqlite`) |
+| Calendar | **Google Calendar** via official Go client + `x/oauth2` |
+| Google auth | **Broker** (public default) or **BYO/local** loopback+PKCE — see ADR-0001 |
 | Token storage | **OS keychain** (`go-keyring`) |
-| AI | **Go backend → HTTP**: OpenAI-compatible base-URL + key (covers OpenAI, proxies, Ollama/LM Studio), plus native Anthropic |
+| AI | **Go backend → HTTP**: OpenAI-compatible base-URL + key (OpenAI, proxies, Ollama/LM Studio) |
 
 Secrets and AI calls live in the Go layer, never the webview.
 
 ## Core loop
 
 ### 1. Import (Google Calendar)
-- Sign in with Google; one consent grants login + calendar read (offline/refresh).
+- Sign in with Google (broker handoff for public builds, or BYO/local OAuth);
+  one consent grants calendar read (offline/refresh). Tokens land in the OS
+  keychain only.
 - Pull events for the current pay period.
 - **Event rules** (defaults, editable in settings):
   - Declined → excluded.
@@ -130,17 +137,21 @@ submission**. Two concepts, separated: mutable `period` + immutable `submission`
   Re-opening is free; each finalize writes a **new version** (v1, v2…), prior versions
   retained → corrections allowed, full audit trail of what was attested and when.
 
-Schema sketch:
+Schema sketch (see `internal/db/migrations/` for the live schema):
 ```
-period(id, start, end, cadence, anchor, target_hours_per_day, last_synced_at)
-event(id, period_id, provider, external_id, instance_id, title, start, end,
-      attendees, status, all_day, source_hash)          -- synced facts
+period(id, start_date, end_date, cadence, anchor_date, target_hours_per_day, last_synced_at)
+tz_segment(id, period_id, effective_from_date, iana_tz)
+calendar(id, provider, external_id, name, is_primary, selected, default_category_id)
+event(id, period_id, calendar_id, provider, external_id, instance_id,
+      recurring_event_id, ical_uid, title, …, active, source_hash)  -- synced facts
 overlay(id, period_id, provider, external_id, instance_id,
-        category_id, resolved_overlap, note, kind)        -- user decisions
-gap_fill(id, period_id, day, start, end, category_id, source)  -- entries in uncovered intervals
-category(id, name, is_default_gap)                         -- user-defined, free-form
-memory(match_key, category_id)                             -- recurringEventId | normalized title
-submission(id, period_id, version, finalized_at, frozen_blob)  -- immutable
+        category_id, resolved_overlap, note, kind)                   -- user decisions
+gap_fill(id, period_id, day, start_utc, end_utc, category_id, note, source)
+category(id, name, key, description, color, is_default_gap)
+memory(match_key, category_id, hits)
+review_item(id, period_id, kind, event_id, payload, status, conflict_key, …)
+submission(id, period_id, version, finalized_at, frozen_blob)        -- immutable
+app_setting(key, value)                                              -- non-secret config
 ```
 
 ## Model configuration (BYOM)

@@ -25,3 +25,9 @@ database.
   `client_secret`. Use the secret-only Google OAuth broker for public Google
   Calendar connections; keep BYO credentials as a development and advanced-user
   escape hatch. See [ADR-0001](docs/adr/0001-secret-only-google-oauth-broker.md).
+
+## Related docs
+
+- [DESIGN.md](DESIGN.md) — product shape, core loop, schema intent, roadmap
+- [docs/oauth-broker.md](docs/oauth-broker.md) — broker operator runbook
+- [README.md](README.md) — setup, build, config
