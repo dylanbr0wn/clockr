@@ -25,7 +25,7 @@
 # log.path defaults to a sibling of shiet.db under <UserConfigDir>/shiet/shiet.log.
 # log.level: trace|debug|info|warn|error|fatal|panic|disabled (default: info).
 # In `wails dev`, logs also mirror to stderr; production writes the file only.
-# Settings will show this path and offer Reveal/Open log folder (DYL-122).
+# Settings → General → Logs shows this path and a Reveal/Open log folder button (DYL-122).
 #
 # google.auth_mode:
 #   - broker (public default when no local client_id is set): secret-only OAuth broker;

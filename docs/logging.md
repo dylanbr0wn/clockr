@@ -52,18 +52,15 @@ SHIET_LOG_PATH=/tmp/shiet-debug.log SHIET_LOG_LEVEL=debug wails dev -tags webkit
 
 ### Reveal from Settings
 
-Settings shows the configured log file path and a control to open the folder
-that contains it in the OS file manager:
+**Settings → General → Logs** shows the configured log file path and a button
+to open the folder that contains it in the OS file manager:
 
 - macOS: **Reveal in Finder**
 - Linux / Windows: **Open log folder**
 
 The displayed path matches `log.path` (or the default above). Opening the folder
 works even if `shiet.log` does not exist yet (directory is created on first
-write / reveal). Implementation: [DYL-122](https://linear.app/dylans-apps/issue/DYL-122/settings-reveal-log-folder).
-
-Until that UI lands, locate the file via the default path table or
-`log.path` / `SHIET_LOG_PATH` above.
+write / reveal). Shipped in [DYL-122](https://linear.app/dylans-apps/issue/DYL-122/settings-reveal-log-folder).
 
 ## OAuth broker
 
