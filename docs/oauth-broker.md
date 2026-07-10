@@ -178,7 +178,8 @@ Handoff failure reasons: `already_used`, `expired`, `not_found`,
 This repo includes Railway config-as-code for the broker service:
 
 - `railway.json`: selects the broker Dockerfile and `/readyz` healthcheck.
-- `deploy/railway/oauth-broker.Dockerfile`: builds only `./cmd/oauth-broker`.
+- `deploy/railway/oauth-broker.Dockerfile`: installs pinned Buf, regenerates
+  gitignored Connect sources under `gen/`, then builds only `./cmd/oauth-broker`.
 - `.railwayignore`: keeps the Wails frontend/build artifacts out of Railway's
   upload context.
 
