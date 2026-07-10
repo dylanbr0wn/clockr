@@ -40,9 +40,10 @@ Optional:
 - `SHIET_BROKER_GITHUB_SCOPES`: space- or comma-separated GitHub OAuth App
   scopes, default `repo`.
 - `SHIET_BROKER_AUTH_DISABLED`: when `true`/`1`/`yes`/`on`, reject start,
-  callback, and handoff with `auth_disabled` (HTTP 403). Revoke stays enabled.
+  callback, and handoff with `auth_disabled`. RPCs use Connect
+  `FailedPrecondition`; callbacks return an HTTP 403 page. Revoke stays enabled.
 - `SHIET_BROKER_REFRESH_DISABLED`: when truthy, reject refresh with
-  `refresh_disabled` (HTTP 403).
+  `refresh_disabled` and Connect `FailedPrecondition`.
 - `SHIET_BROKER_DISABLED_APP_VERSIONS`: comma-separated desktop `app_version`
   values that receive `app_version_disabled` on start/refresh.
 
@@ -61,14 +62,18 @@ each minute:
 | refresh failures | 10 / min | additional budget for `invalid_grant` / Google failures |
 | revoke | 20 / min | stays available under auth/refresh kill switches |
 
-Over limit returns JSON `{"error":"rate_limited"}` (HTTP 429), except callback
-which returns an HTML error page.
+Over-limit RPCs return Connect `ResourceExhausted` with
+`BrokerErrorDetail.code = "rate_limited"`. The callback returns an HTTP 429 HTML
+error page.
 
 Kill-switch error codes for the desktop client:
 
 - `auth_disabled`
 - `refresh_disabled`
 - `app_version_disabled`
+
+RPC errors carry these stable identifiers in `BrokerErrorDetail.code`; clients
+must not parse human-readable Connect error messages.
 
 See ADR-0001 threat model (Broker Abuse / Quota Abuse) for the control intent;
 this document is the operator runbook.
@@ -215,37 +220,31 @@ schema guarantees.
 
 The broker also exposes the generated
 `shiet.broker.v1.OAuthBrokerService` Connect service for start, handoff,
-Google refresh, and provider revoke. Connect, gRPC-Web, and gRPC clients share
-the same operation implementation as the backward-compatible REST routes
-below. Provider callbacks and operational endpoints remain ordinary HTTP.
+Google refresh, and provider revoke. Connect is the only application transport;
+there are no REST aliases for these operations. Provider callbacks and
+operational endpoints remain ordinary HTTP.
 
 - `GET /healthz`: process health.
 - `GET /readyz`: validates configuration and checks datastore connectivity.
 - `GET /metrics`: Prometheus text metrics for auth/abuse signals (no secrets).
-- `POST /v1/google/oauth/start`: creates a short-lived broker state and returns
-  a Google authorization URL.
+- `OAuthBrokerService.StartAuthorization`: creates a provider-bound,
+  short-lived broker state and returns an authorization URL.
 - `GET /v1/google/oauth/callback`: exchanges Google's authorization code with
   the server-side client secret, mints a short-lived one-time handoff, and
   renders a return page with broker_state + handoff_code (no token material).
-- `POST /v1/google/oauth/handoff`: exchanges a one-time handoff for Google token
-  material bound to the initiating desktop session and handoff verifier.
-- `POST /v1/google/oauth/refresh`: exchanges a desktop-held Google refresh token
-  for new access-token material using the server-side client secret. Does not
-  persist submitted or returned token material.
-- `POST /v1/google/oauth/revoke`: accepts a desktop-supplied Google refresh
-  token, calls Google's revoke endpoint, and returns `{ "revoked": true }`.
-  Already-revoked / `invalid_token` responses are treated as success. The
-  broker does not persist the token or any disconnected-account record.
-- `POST /v1/github/oauth/start`: creates provider-bound short-lived state and
-  returns a GitHub authorization URL with PKCE.
 - `GET /v1/github/oauth/callback`: exchanges GitHub's authorization code using
   the server-only OAuth App secret and mints a short-lived handoff.
-- `POST /v1/github/oauth/handoff`: returns the non-persisted GitHub OAuth App
-  user access token once, bound to the initiating desktop session and verifier.
-- `POST /v1/github/oauth/revoke`: accepts the desktop-held GitHub access token
-  and revokes that one app token with the server-side OAuth App credentials.
+- `OAuthBrokerService.ExchangeHandoff`: returns provider token material once,
+  bound to the initiating desktop session and handoff verifier.
+- `OAuthBrokerService.RefreshToken`: exchanges a desktop-held Google refresh
+  token for new access-token material. GitHub returns `Unimplemented`.
+- `OAuthBrokerService.RevokeToken`: revokes a Google refresh token or GitHub
+  access token using server-side provider credentials.
 
-There is deliberately no `/v1/github/oauth/refresh`. This implementation uses
+For Google, already-revoked / `invalid_token` responses are treated as success.
+The broker does not persist the token or any disconnected-account record.
+
+GitHub refresh is deliberately unsupported. This implementation uses
 GitHub OAuth App user access tokens, not GitHub App installation tokens. If a
 token becomes invalid, the desktop marks the connection `needs_reauth` and the
 user reconnects. GitHub documents the web authorization-code exchange and PKCE

@@ -18,9 +18,9 @@ type requestMetadata struct {
 	ipBucket string
 }
 
-// BrokerService owns broker policy independently of the REST and Connect
-// adapters. Server is embedded only as the dependency bundle while the broker
-// is split out of its historical single-file HTTP implementation.
+// BrokerService owns broker policy independently of the Connect adapter and
+// provider callback routes. Server is embedded only as the dependency bundle
+// while the broker is split out of its historical single-file HTTP implementation.
 type BrokerService struct {
 	Server
 }
@@ -346,11 +346,4 @@ func providerName(provider brokerv1.Provider) (string, bool) {
 	default:
 		return "", false
 	}
-}
-
-func providerValue(provider string) brokerv1.Provider {
-	if provider == "github" {
-		return brokerv1.Provider_PROVIDER_GITHUB
-	}
-	return brokerv1.Provider_PROVIDER_GOOGLE
 }

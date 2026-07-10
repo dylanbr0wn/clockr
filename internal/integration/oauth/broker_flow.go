@@ -201,13 +201,6 @@ func (f *BrokerFlow) startAuth(ctx context.Context, base, sessionID, challenge, 
 		Application:            &brokerv1.ApplicationMetadata{AppVersion: f.appVersion(), Platform: f.platform()},
 	}
 	response, err := f.brokerClient(base).StartAuthorization(ctx, connect.NewRequest(request))
-	if ShouldFallbackToLegacy(err) {
-		responseMsg, legacyErr := LegacyStartAuthorization(ctx, f.HTTPClient, base, f.Provider, request)
-		if legacyErr != nil {
-			return nil, mapBrokerRPCError(legacyErr, "start")
-		}
-		return responseMsg, nil
-	}
 	if err != nil {
 		return nil, mapBrokerRPCError(err, "start")
 	}
@@ -227,13 +220,6 @@ func (f *BrokerFlow) exchangeHandoff(ctx context.Context, base, sessionID, state
 		Application:      &brokerv1.ApplicationMetadata{AppVersion: f.appVersion(), Platform: f.platform()},
 	}
 	response, err := f.brokerClient(base).ExchangeHandoff(ctx, connect.NewRequest(request))
-	if ShouldFallbackToLegacy(err) {
-		responseMsg, legacyErr := LegacyExchangeHandoff(ctx, f.HTTPClient, base, f.Provider, request)
-		if legacyErr != nil {
-			return nil, mapBrokerRPCError(legacyErr, "handoff")
-		}
-		return responseMsg, nil
-	}
 	if err != nil {
 		return nil, mapBrokerRPCError(err, "handoff")
 	}
@@ -265,10 +251,6 @@ func mapBrokerRPCError(err error, op string) error {
 	case codes.RateLimited, codes.AuthDisabled, codes.AppVersionDisabled:
 		return fmt.Errorf("%w: %s", ErrBrokerRejected, code)
 	}
-	var legacyErr *LegacyBrokerError
-	if errors.As(err, &legacyErr) && (legacyErr.Status == 0 || legacyErr.Status >= 500) {
-		return fmt.Errorf("%w: broker %s unavailable", ErrBrokerUnavailable, op)
-	}
 	if connect.CodeOf(err) == connect.CodeUnavailable || connect.CodeOf(err) == connect.CodeInternal {
 		return fmt.Errorf("%w: broker %s unavailable", ErrBrokerUnavailable, op)
 	}
@@ -276,10 +258,6 @@ func mapBrokerRPCError(err error, op string) error {
 }
 
 func BrokerErrorCode(err error) string {
-	var legacyErr *LegacyBrokerError
-	if errors.As(err, &legacyErr) {
-		return strings.TrimSpace(legacyErr.Code)
-	}
 	var connectErr *connect.Error
 	if !errors.As(err, &connectErr) {
 		return ""
@@ -294,29 +272,6 @@ func BrokerErrorCode(err error) string {
 		}
 	}
 	return strings.TrimSpace(connectErr.Message())
-}
-
-func ShouldFallbackToLegacy(err error) bool {
-	if err == nil {
-		return false
-	}
-	var connectErr *connect.Error
-	if !errors.As(err, &connectErr) {
-		return false
-	}
-	if connectErr.Code() != connect.CodeUnimplemented {
-		return false
-	}
-	for _, detail := range connectErr.Details() {
-		value, valueErr := detail.Value()
-		if valueErr != nil {
-			continue
-		}
-		if _, ok := value.(*brokerv1.BrokerErrorDetail); ok {
-			return false
-		}
-	}
-	return true
 }
 
 func brokerProvider(provider string) brokerv1.Provider {

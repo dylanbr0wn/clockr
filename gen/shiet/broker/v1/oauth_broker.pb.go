@@ -777,505 +777,6 @@ func (x *BrokerErrorDetail) GetCode() string {
 	return ""
 }
 
-// Legacy REST wire messages preserve the already-released desktop protocol
-// while keeping every broker transport on generated schema types. They are not
-// exposed as RPC methods.
-type LegacyStartAuthorizationRequest struct {
-	state                  protoimpl.MessageState `protogen:"open.v1"`
-	DesktopSessionId       string                 `protobuf:"bytes,1,opt,name=desktop_session_id,json=desktopSessionId,proto3" json:"desktop_session_id,omitempty"`
-	HandoffChallenge       string                 `protobuf:"bytes,2,opt,name=handoff_challenge,json=handoffChallenge,proto3" json:"handoff_challenge,omitempty"`
-	AppVersion             string                 `protobuf:"bytes,3,opt,name=app_version,json=appVersion,proto3" json:"app_version,omitempty"`
-	Platform               string                 `protobuf:"bytes,4,opt,name=platform,proto3" json:"platform,omitempty"`
-	DesktopHandoffRedirect string                 `protobuf:"bytes,5,opt,name=desktop_handoff_redirect,json=desktopHandoffRedirect,proto3" json:"desktop_handoff_redirect,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
-}
-
-func (x *LegacyStartAuthorizationRequest) Reset() {
-	*x = LegacyStartAuthorizationRequest{}
-	mi := &file_shiet_broker_v1_oauth_broker_proto_msgTypes[11]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *LegacyStartAuthorizationRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*LegacyStartAuthorizationRequest) ProtoMessage() {}
-
-func (x *LegacyStartAuthorizationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_shiet_broker_v1_oauth_broker_proto_msgTypes[11]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use LegacyStartAuthorizationRequest.ProtoReflect.Descriptor instead.
-func (*LegacyStartAuthorizationRequest) Descriptor() ([]byte, []int) {
-	return file_shiet_broker_v1_oauth_broker_proto_rawDescGZIP(), []int{11}
-}
-
-func (x *LegacyStartAuthorizationRequest) GetDesktopSessionId() string {
-	if x != nil {
-		return x.DesktopSessionId
-	}
-	return ""
-}
-
-func (x *LegacyStartAuthorizationRequest) GetHandoffChallenge() string {
-	if x != nil {
-		return x.HandoffChallenge
-	}
-	return ""
-}
-
-func (x *LegacyStartAuthorizationRequest) GetAppVersion() string {
-	if x != nil {
-		return x.AppVersion
-	}
-	return ""
-}
-
-func (x *LegacyStartAuthorizationRequest) GetPlatform() string {
-	if x != nil {
-		return x.Platform
-	}
-	return ""
-}
-
-func (x *LegacyStartAuthorizationRequest) GetDesktopHandoffRedirect() string {
-	if x != nil {
-		return x.DesktopHandoffRedirect
-	}
-	return ""
-}
-
-type LegacyHandoffResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Provider      string                 `protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
-	AccountHint   string                 `protobuf:"bytes,2,opt,name=account_hint,json=accountHint,proto3" json:"account_hint,omitempty"`
-	Scope         []string               `protobuf:"bytes,3,rep,name=scope,proto3" json:"scope,omitempty"`
-	Token         *LegacyTokenMaterial   `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *LegacyHandoffResponse) Reset() {
-	*x = LegacyHandoffResponse{}
-	mi := &file_shiet_broker_v1_oauth_broker_proto_msgTypes[12]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *LegacyHandoffResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*LegacyHandoffResponse) ProtoMessage() {}
-
-func (x *LegacyHandoffResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_shiet_broker_v1_oauth_broker_proto_msgTypes[12]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use LegacyHandoffResponse.ProtoReflect.Descriptor instead.
-func (*LegacyHandoffResponse) Descriptor() ([]byte, []int) {
-	return file_shiet_broker_v1_oauth_broker_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *LegacyHandoffResponse) GetProvider() string {
-	if x != nil {
-		return x.Provider
-	}
-	return ""
-}
-
-func (x *LegacyHandoffResponse) GetAccountHint() string {
-	if x != nil {
-		return x.AccountHint
-	}
-	return ""
-}
-
-func (x *LegacyHandoffResponse) GetScope() []string {
-	if x != nil {
-		return x.Scope
-	}
-	return nil
-}
-
-func (x *LegacyHandoffResponse) GetToken() *LegacyTokenMaterial {
-	if x != nil {
-		return x.Token
-	}
-	return nil
-}
-
-type LegacyTokenMaterial struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	RefreshToken  *string                `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3,oneof" json:"refresh_token,omitempty"`
-	TokenType     string                 `protobuf:"bytes,3,opt,name=token_type,json=tokenType,proto3" json:"token_type,omitempty"`
-	Expiry        *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=expiry,proto3" json:"expiry,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *LegacyTokenMaterial) Reset() {
-	*x = LegacyTokenMaterial{}
-	mi := &file_shiet_broker_v1_oauth_broker_proto_msgTypes[13]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *LegacyTokenMaterial) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*LegacyTokenMaterial) ProtoMessage() {}
-
-func (x *LegacyTokenMaterial) ProtoReflect() protoreflect.Message {
-	mi := &file_shiet_broker_v1_oauth_broker_proto_msgTypes[13]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use LegacyTokenMaterial.ProtoReflect.Descriptor instead.
-func (*LegacyTokenMaterial) Descriptor() ([]byte, []int) {
-	return file_shiet_broker_v1_oauth_broker_proto_rawDescGZIP(), []int{13}
-}
-
-func (x *LegacyTokenMaterial) GetAccessToken() string {
-	if x != nil {
-		return x.AccessToken
-	}
-	return ""
-}
-
-func (x *LegacyTokenMaterial) GetRefreshToken() string {
-	if x != nil && x.RefreshToken != nil {
-		return *x.RefreshToken
-	}
-	return ""
-}
-
-func (x *LegacyTokenMaterial) GetTokenType() string {
-	if x != nil {
-		return x.TokenType
-	}
-	return ""
-}
-
-func (x *LegacyTokenMaterial) GetExpiry() *timestamppb.Timestamp {
-	if x != nil {
-		return x.Expiry
-	}
-	return nil
-}
-
-type LegacyRefreshTokenRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	RefreshToken  string                 `protobuf:"bytes,1,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
-	Scope         []string               `protobuf:"bytes,2,rep,name=scope,proto3" json:"scope,omitempty"`
-	AppVersion    string                 `protobuf:"bytes,3,opt,name=app_version,json=appVersion,proto3" json:"app_version,omitempty"`
-	Platform      string                 `protobuf:"bytes,4,opt,name=platform,proto3" json:"platform,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *LegacyRefreshTokenRequest) Reset() {
-	*x = LegacyRefreshTokenRequest{}
-	mi := &file_shiet_broker_v1_oauth_broker_proto_msgTypes[14]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *LegacyRefreshTokenRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*LegacyRefreshTokenRequest) ProtoMessage() {}
-
-func (x *LegacyRefreshTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_shiet_broker_v1_oauth_broker_proto_msgTypes[14]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use LegacyRefreshTokenRequest.ProtoReflect.Descriptor instead.
-func (*LegacyRefreshTokenRequest) Descriptor() ([]byte, []int) {
-	return file_shiet_broker_v1_oauth_broker_proto_rawDescGZIP(), []int{14}
-}
-
-func (x *LegacyRefreshTokenRequest) GetRefreshToken() string {
-	if x != nil {
-		return x.RefreshToken
-	}
-	return ""
-}
-
-func (x *LegacyRefreshTokenRequest) GetScope() []string {
-	if x != nil {
-		return x.Scope
-	}
-	return nil
-}
-
-func (x *LegacyRefreshTokenRequest) GetAppVersion() string {
-	if x != nil {
-		return x.AppVersion
-	}
-	return ""
-}
-
-func (x *LegacyRefreshTokenRequest) GetPlatform() string {
-	if x != nil {
-		return x.Platform
-	}
-	return ""
-}
-
-type LegacyRefreshTokenResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	RefreshToken  *string                `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3,oneof" json:"refresh_token,omitempty"`
-	TokenType     string                 `protobuf:"bytes,3,opt,name=token_type,json=tokenType,proto3" json:"token_type,omitempty"`
-	Expiry        *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=expiry,proto3" json:"expiry,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *LegacyRefreshTokenResponse) Reset() {
-	*x = LegacyRefreshTokenResponse{}
-	mi := &file_shiet_broker_v1_oauth_broker_proto_msgTypes[15]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *LegacyRefreshTokenResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*LegacyRefreshTokenResponse) ProtoMessage() {}
-
-func (x *LegacyRefreshTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_shiet_broker_v1_oauth_broker_proto_msgTypes[15]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use LegacyRefreshTokenResponse.ProtoReflect.Descriptor instead.
-func (*LegacyRefreshTokenResponse) Descriptor() ([]byte, []int) {
-	return file_shiet_broker_v1_oauth_broker_proto_rawDescGZIP(), []int{15}
-}
-
-func (x *LegacyRefreshTokenResponse) GetAccessToken() string {
-	if x != nil {
-		return x.AccessToken
-	}
-	return ""
-}
-
-func (x *LegacyRefreshTokenResponse) GetRefreshToken() string {
-	if x != nil && x.RefreshToken != nil {
-		return *x.RefreshToken
-	}
-	return ""
-}
-
-func (x *LegacyRefreshTokenResponse) GetTokenType() string {
-	if x != nil {
-		return x.TokenType
-	}
-	return ""
-}
-
-func (x *LegacyRefreshTokenResponse) GetExpiry() *timestamppb.Timestamp {
-	if x != nil {
-		return x.Expiry
-	}
-	return nil
-}
-
-type LegacyRevokeTokenRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	RefreshToken  string                 `protobuf:"bytes,1,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
-	AccessToken   string                 `protobuf:"bytes,2,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	Reason        string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *LegacyRevokeTokenRequest) Reset() {
-	*x = LegacyRevokeTokenRequest{}
-	mi := &file_shiet_broker_v1_oauth_broker_proto_msgTypes[16]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *LegacyRevokeTokenRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*LegacyRevokeTokenRequest) ProtoMessage() {}
-
-func (x *LegacyRevokeTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_shiet_broker_v1_oauth_broker_proto_msgTypes[16]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use LegacyRevokeTokenRequest.ProtoReflect.Descriptor instead.
-func (*LegacyRevokeTokenRequest) Descriptor() ([]byte, []int) {
-	return file_shiet_broker_v1_oauth_broker_proto_rawDescGZIP(), []int{16}
-}
-
-func (x *LegacyRevokeTokenRequest) GetRefreshToken() string {
-	if x != nil {
-		return x.RefreshToken
-	}
-	return ""
-}
-
-func (x *LegacyRevokeTokenRequest) GetAccessToken() string {
-	if x != nil {
-		return x.AccessToken
-	}
-	return ""
-}
-
-func (x *LegacyRevokeTokenRequest) GetReason() string {
-	if x != nil {
-		return x.Reason
-	}
-	return ""
-}
-
-type LegacyStatusResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Status        string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *LegacyStatusResponse) Reset() {
-	*x = LegacyStatusResponse{}
-	mi := &file_shiet_broker_v1_oauth_broker_proto_msgTypes[17]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *LegacyStatusResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*LegacyStatusResponse) ProtoMessage() {}
-
-func (x *LegacyStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_shiet_broker_v1_oauth_broker_proto_msgTypes[17]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use LegacyStatusResponse.ProtoReflect.Descriptor instead.
-func (*LegacyStatusResponse) Descriptor() ([]byte, []int) {
-	return file_shiet_broker_v1_oauth_broker_proto_rawDescGZIP(), []int{17}
-}
-
-func (x *LegacyStatusResponse) GetStatus() string {
-	if x != nil {
-		return x.Status
-	}
-	return ""
-}
-
-type LegacyErrorResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Error         string                 `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *LegacyErrorResponse) Reset() {
-	*x = LegacyErrorResponse{}
-	mi := &file_shiet_broker_v1_oauth_broker_proto_msgTypes[18]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *LegacyErrorResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*LegacyErrorResponse) ProtoMessage() {}
-
-func (x *LegacyErrorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_shiet_broker_v1_oauth_broker_proto_msgTypes[18]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use LegacyErrorResponse.ProtoReflect.Descriptor instead.
-func (*LegacyErrorResponse) Descriptor() ([]byte, []int) {
-	return file_shiet_broker_v1_oauth_broker_proto_rawDescGZIP(), []int{18}
-}
-
-func (x *LegacyErrorResponse) GetError() string {
-	if x != nil {
-		return x.Error
-	}
-	return ""
-}
-
 var File_shiet_broker_v1_oauth_broker_proto protoreflect.FileDescriptor
 
 const file_shiet_broker_v1_oauth_broker_proto_rawDesc = "" +
@@ -1331,47 +832,7 @@ const file_shiet_broker_v1_oauth_broker_proto_rawDesc = "" +
 	"\x13RevokeTokenResponse\x12\x18\n" +
 	"\arevoked\x18\x01 \x01(\bR\arevoked\"'\n" +
 	"\x11BrokerErrorDetail\x12\x12\n" +
-	"\x04code\x18\x01 \x01(\tR\x04code\"\xf3\x01\n" +
-	"\x1fLegacyStartAuthorizationRequest\x12,\n" +
-	"\x12desktop_session_id\x18\x01 \x01(\tR\x10desktopSessionId\x12+\n" +
-	"\x11handoff_challenge\x18\x02 \x01(\tR\x10handoffChallenge\x12\x1f\n" +
-	"\vapp_version\x18\x03 \x01(\tR\n" +
-	"appVersion\x12\x1a\n" +
-	"\bplatform\x18\x04 \x01(\tR\bplatform\x128\n" +
-	"\x18desktop_handoff_redirect\x18\x05 \x01(\tR\x16desktopHandoffRedirect\"\xa8\x01\n" +
-	"\x15LegacyHandoffResponse\x12\x1a\n" +
-	"\bprovider\x18\x01 \x01(\tR\bprovider\x12!\n" +
-	"\faccount_hint\x18\x02 \x01(\tR\vaccountHint\x12\x14\n" +
-	"\x05scope\x18\x03 \x03(\tR\x05scope\x12:\n" +
-	"\x05token\x18\x04 \x01(\v2$.shiet.broker.v1.LegacyTokenMaterialR\x05token\"\xc7\x01\n" +
-	"\x13LegacyTokenMaterial\x12!\n" +
-	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12(\n" +
-	"\rrefresh_token\x18\x02 \x01(\tH\x00R\frefreshToken\x88\x01\x01\x12\x1d\n" +
-	"\n" +
-	"token_type\x18\x03 \x01(\tR\ttokenType\x122\n" +
-	"\x06expiry\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x06expiryB\x10\n" +
-	"\x0e_refresh_token\"\x93\x01\n" +
-	"\x19LegacyRefreshTokenRequest\x12#\n" +
-	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\x12\x14\n" +
-	"\x05scope\x18\x02 \x03(\tR\x05scope\x12\x1f\n" +
-	"\vapp_version\x18\x03 \x01(\tR\n" +
-	"appVersion\x12\x1a\n" +
-	"\bplatform\x18\x04 \x01(\tR\bplatform\"\xce\x01\n" +
-	"\x1aLegacyRefreshTokenResponse\x12!\n" +
-	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12(\n" +
-	"\rrefresh_token\x18\x02 \x01(\tH\x00R\frefreshToken\x88\x01\x01\x12\x1d\n" +
-	"\n" +
-	"token_type\x18\x03 \x01(\tR\ttokenType\x122\n" +
-	"\x06expiry\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x06expiryB\x10\n" +
-	"\x0e_refresh_token\"z\n" +
-	"\x18LegacyRevokeTokenRequest\x12#\n" +
-	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\x12!\n" +
-	"\faccess_token\x18\x02 \x01(\tR\vaccessToken\x12\x16\n" +
-	"\x06reason\x18\x03 \x01(\tR\x06reason\".\n" +
-	"\x14LegacyStatusResponse\x12\x16\n" +
-	"\x06status\x18\x01 \x01(\tR\x06status\"+\n" +
-	"\x13LegacyErrorResponse\x12\x14\n" +
-	"\x05error\x18\x01 \x01(\tR\x05error*N\n" +
+	"\x04code\x18\x01 \x01(\tR\x04code*N\n" +
 	"\bProvider\x12\x18\n" +
 	"\x14PROVIDER_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fPROVIDER_GOOGLE\x10\x01\x12\x13\n" +
@@ -1395,35 +856,27 @@ func file_shiet_broker_v1_oauth_broker_proto_rawDescGZIP() []byte {
 }
 
 var file_shiet_broker_v1_oauth_broker_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_shiet_broker_v1_oauth_broker_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_shiet_broker_v1_oauth_broker_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_shiet_broker_v1_oauth_broker_proto_goTypes = []any{
-	(Provider)(0),                           // 0: shiet.broker.v1.Provider
-	(*ApplicationMetadata)(nil),             // 1: shiet.broker.v1.ApplicationMetadata
-	(*TokenMaterial)(nil),                   // 2: shiet.broker.v1.TokenMaterial
-	(*StartAuthorizationRequest)(nil),       // 3: shiet.broker.v1.StartAuthorizationRequest
-	(*StartAuthorizationResponse)(nil),      // 4: shiet.broker.v1.StartAuthorizationResponse
-	(*ExchangeHandoffRequest)(nil),          // 5: shiet.broker.v1.ExchangeHandoffRequest
-	(*ExchangeHandoffResponse)(nil),         // 6: shiet.broker.v1.ExchangeHandoffResponse
-	(*RefreshTokenRequest)(nil),             // 7: shiet.broker.v1.RefreshTokenRequest
-	(*RefreshTokenResponse)(nil),            // 8: shiet.broker.v1.RefreshTokenResponse
-	(*RevokeTokenRequest)(nil),              // 9: shiet.broker.v1.RevokeTokenRequest
-	(*RevokeTokenResponse)(nil),             // 10: shiet.broker.v1.RevokeTokenResponse
-	(*BrokerErrorDetail)(nil),               // 11: shiet.broker.v1.BrokerErrorDetail
-	(*LegacyStartAuthorizationRequest)(nil), // 12: shiet.broker.v1.LegacyStartAuthorizationRequest
-	(*LegacyHandoffResponse)(nil),           // 13: shiet.broker.v1.LegacyHandoffResponse
-	(*LegacyTokenMaterial)(nil),             // 14: shiet.broker.v1.LegacyTokenMaterial
-	(*LegacyRefreshTokenRequest)(nil),       // 15: shiet.broker.v1.LegacyRefreshTokenRequest
-	(*LegacyRefreshTokenResponse)(nil),      // 16: shiet.broker.v1.LegacyRefreshTokenResponse
-	(*LegacyRevokeTokenRequest)(nil),        // 17: shiet.broker.v1.LegacyRevokeTokenRequest
-	(*LegacyStatusResponse)(nil),            // 18: shiet.broker.v1.LegacyStatusResponse
-	(*LegacyErrorResponse)(nil),             // 19: shiet.broker.v1.LegacyErrorResponse
-	(*timestamppb.Timestamp)(nil),           // 20: google.protobuf.Timestamp
+	(Provider)(0),                      // 0: shiet.broker.v1.Provider
+	(*ApplicationMetadata)(nil),        // 1: shiet.broker.v1.ApplicationMetadata
+	(*TokenMaterial)(nil),              // 2: shiet.broker.v1.TokenMaterial
+	(*StartAuthorizationRequest)(nil),  // 3: shiet.broker.v1.StartAuthorizationRequest
+	(*StartAuthorizationResponse)(nil), // 4: shiet.broker.v1.StartAuthorizationResponse
+	(*ExchangeHandoffRequest)(nil),     // 5: shiet.broker.v1.ExchangeHandoffRequest
+	(*ExchangeHandoffResponse)(nil),    // 6: shiet.broker.v1.ExchangeHandoffResponse
+	(*RefreshTokenRequest)(nil),        // 7: shiet.broker.v1.RefreshTokenRequest
+	(*RefreshTokenResponse)(nil),       // 8: shiet.broker.v1.RefreshTokenResponse
+	(*RevokeTokenRequest)(nil),         // 9: shiet.broker.v1.RevokeTokenRequest
+	(*RevokeTokenResponse)(nil),        // 10: shiet.broker.v1.RevokeTokenResponse
+	(*BrokerErrorDetail)(nil),          // 11: shiet.broker.v1.BrokerErrorDetail
+	(*timestamppb.Timestamp)(nil),      // 12: google.protobuf.Timestamp
 }
 var file_shiet_broker_v1_oauth_broker_proto_depIdxs = []int32{
-	20, // 0: shiet.broker.v1.TokenMaterial.expiry:type_name -> google.protobuf.Timestamp
+	12, // 0: shiet.broker.v1.TokenMaterial.expiry:type_name -> google.protobuf.Timestamp
 	0,  // 1: shiet.broker.v1.StartAuthorizationRequest.provider:type_name -> shiet.broker.v1.Provider
 	1,  // 2: shiet.broker.v1.StartAuthorizationRequest.application:type_name -> shiet.broker.v1.ApplicationMetadata
-	20, // 3: shiet.broker.v1.StartAuthorizationResponse.expires_at:type_name -> google.protobuf.Timestamp
+	12, // 3: shiet.broker.v1.StartAuthorizationResponse.expires_at:type_name -> google.protobuf.Timestamp
 	0,  // 4: shiet.broker.v1.ExchangeHandoffRequest.provider:type_name -> shiet.broker.v1.Provider
 	1,  // 5: shiet.broker.v1.ExchangeHandoffRequest.application:type_name -> shiet.broker.v1.ApplicationMetadata
 	0,  // 6: shiet.broker.v1.ExchangeHandoffResponse.provider:type_name -> shiet.broker.v1.Provider
@@ -1432,22 +885,19 @@ var file_shiet_broker_v1_oauth_broker_proto_depIdxs = []int32{
 	1,  // 9: shiet.broker.v1.RefreshTokenRequest.application:type_name -> shiet.broker.v1.ApplicationMetadata
 	2,  // 10: shiet.broker.v1.RefreshTokenResponse.token:type_name -> shiet.broker.v1.TokenMaterial
 	0,  // 11: shiet.broker.v1.RevokeTokenRequest.provider:type_name -> shiet.broker.v1.Provider
-	14, // 12: shiet.broker.v1.LegacyHandoffResponse.token:type_name -> shiet.broker.v1.LegacyTokenMaterial
-	20, // 13: shiet.broker.v1.LegacyTokenMaterial.expiry:type_name -> google.protobuf.Timestamp
-	20, // 14: shiet.broker.v1.LegacyRefreshTokenResponse.expiry:type_name -> google.protobuf.Timestamp
-	3,  // 15: shiet.broker.v1.OAuthBrokerService.StartAuthorization:input_type -> shiet.broker.v1.StartAuthorizationRequest
-	5,  // 16: shiet.broker.v1.OAuthBrokerService.ExchangeHandoff:input_type -> shiet.broker.v1.ExchangeHandoffRequest
-	7,  // 17: shiet.broker.v1.OAuthBrokerService.RefreshToken:input_type -> shiet.broker.v1.RefreshTokenRequest
-	9,  // 18: shiet.broker.v1.OAuthBrokerService.RevokeToken:input_type -> shiet.broker.v1.RevokeTokenRequest
-	4,  // 19: shiet.broker.v1.OAuthBrokerService.StartAuthorization:output_type -> shiet.broker.v1.StartAuthorizationResponse
-	6,  // 20: shiet.broker.v1.OAuthBrokerService.ExchangeHandoff:output_type -> shiet.broker.v1.ExchangeHandoffResponse
-	8,  // 21: shiet.broker.v1.OAuthBrokerService.RefreshToken:output_type -> shiet.broker.v1.RefreshTokenResponse
-	10, // 22: shiet.broker.v1.OAuthBrokerService.RevokeToken:output_type -> shiet.broker.v1.RevokeTokenResponse
-	19, // [19:23] is the sub-list for method output_type
-	15, // [15:19] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	3,  // 12: shiet.broker.v1.OAuthBrokerService.StartAuthorization:input_type -> shiet.broker.v1.StartAuthorizationRequest
+	5,  // 13: shiet.broker.v1.OAuthBrokerService.ExchangeHandoff:input_type -> shiet.broker.v1.ExchangeHandoffRequest
+	7,  // 14: shiet.broker.v1.OAuthBrokerService.RefreshToken:input_type -> shiet.broker.v1.RefreshTokenRequest
+	9,  // 15: shiet.broker.v1.OAuthBrokerService.RevokeToken:input_type -> shiet.broker.v1.RevokeTokenRequest
+	4,  // 16: shiet.broker.v1.OAuthBrokerService.StartAuthorization:output_type -> shiet.broker.v1.StartAuthorizationResponse
+	6,  // 17: shiet.broker.v1.OAuthBrokerService.ExchangeHandoff:output_type -> shiet.broker.v1.ExchangeHandoffResponse
+	8,  // 18: shiet.broker.v1.OAuthBrokerService.RefreshToken:output_type -> shiet.broker.v1.RefreshTokenResponse
+	10, // 19: shiet.broker.v1.OAuthBrokerService.RevokeToken:output_type -> shiet.broker.v1.RevokeTokenResponse
+	16, // [16:20] is the sub-list for method output_type
+	12, // [12:16] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_shiet_broker_v1_oauth_broker_proto_init() }
@@ -1459,15 +909,13 @@ func file_shiet_broker_v1_oauth_broker_proto_init() {
 		(*RevokeTokenRequest_RefreshToken)(nil),
 		(*RevokeTokenRequest_AccessToken)(nil),
 	}
-	file_shiet_broker_v1_oauth_broker_proto_msgTypes[13].OneofWrappers = []any{}
-	file_shiet_broker_v1_oauth_broker_proto_msgTypes[15].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_shiet_broker_v1_oauth_broker_proto_rawDesc), len(file_shiet_broker_v1_oauth_broker_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   19,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

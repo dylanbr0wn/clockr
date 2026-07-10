@@ -33,9 +33,9 @@ database.
   disconnect. Local/BYO OAuth and PAT connect remain available.
 - Portable frontend/backend operations use versioned Protobuf contracts and
   Connect, introduced incrementally behind the frontend API facade. Native-only
-  desktop capabilities remain on Wails bindings. The OAuth broker serves its
-  start, handoff, refresh, and revoke operations through both Connect and the
-  backward-compatible REST API. See
+  desktop capabilities remain on Wails bindings. The OAuth broker serves start,
+  handoff, refresh, and revoke only through Connect; provider callbacks and
+  operational endpoints remain ordinary HTTP. See
   [ADR-0002](docs/adr/0002-connect-protobuf-api-boundary.md).
 
 ## Related docs

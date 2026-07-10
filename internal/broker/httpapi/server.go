@@ -18,15 +18,12 @@ import (
 	"strings"
 	"time"
 
-	brokerv1 "github.com/dylanbr0wn/shiet/gen/shiet/broker/v1"
 	"github.com/dylanbr0wn/shiet/gen/shiet/broker/v1/brokerv1connect"
 	"github.com/dylanbr0wn/shiet/internal/broker/codes"
 	brokerconfig "github.com/dylanbr0wn/shiet/internal/broker/config"
 	"github.com/dylanbr0wn/shiet/internal/broker/observe"
 	"github.com/dylanbr0wn/shiet/internal/broker/ratelimit"
 	"github.com/dylanbr0wn/shiet/internal/broker/store"
-	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -83,6 +80,14 @@ type providerTokenResponse struct {
 	ErrorDesc    string `json:"error_description"`
 }
 
+type statusResponse struct {
+	Status string `json:"status"`
+}
+
+type errorResponse struct {
+	Error string `json:"error"`
+}
+
 func (s Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	connectPath, connectHandler := brokerv1connect.NewOAuthBrokerServiceHandler(connectBrokerService{service: s.service()})
@@ -90,15 +95,8 @@ func (s Server) Handler() http.Handler {
 	mux.HandleFunc("GET /healthz", s.health)
 	mux.HandleFunc("GET /readyz", s.ready)
 	mux.HandleFunc("GET /metrics", s.metrics)
-	mux.HandleFunc("POST /v1/google/oauth/start", s.startGoogleOAuth)
 	mux.HandleFunc("GET /v1/google/oauth/callback", s.googleCallback)
-	mux.HandleFunc("POST /v1/google/oauth/handoff", s.exchangeHandoff)
-	mux.HandleFunc("POST /v1/google/oauth/refresh", s.refreshGoogleOAuth)
-	mux.HandleFunc("POST /v1/google/oauth/revoke", s.revokeGoogleOAuth)
-	mux.HandleFunc("POST /v1/github/oauth/start", s.startGitHubOAuth)
 	mux.HandleFunc("GET /v1/github/oauth/callback", s.githubCallback)
-	mux.HandleFunc("POST /v1/github/oauth/handoff", s.exchangeGitHubHandoff)
-	mux.HandleFunc("POST /v1/github/oauth/revoke", s.revokeGitHubOAuth)
 	return mux
 }
 
@@ -112,57 +110,25 @@ func (s Server) metrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) health(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, &brokerv1.LegacyStatusResponse{Status: "ok"})
+	writeOperationalJSON(w, http.StatusOK, statusResponse{Status: "ok"})
 }
 
 func (s Server) ready(w http.ResponseWriter, r *http.Request) {
 	if err := s.Config.Validate(); err != nil {
-		writeBrokerError(w, http.StatusServiceUnavailable, codes.InvalidConfig)
+		writeOperationalJSON(w, http.StatusServiceUnavailable, errorResponse{Error: codes.InvalidConfig})
 		return
 	}
 	if s.Store == nil {
-		writeBrokerError(w, http.StatusServiceUnavailable, codes.DatastoreUnavailable)
+		writeOperationalJSON(w, http.StatusServiceUnavailable, errorResponse{Error: codes.DatastoreUnavailable})
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), time.Second)
 	defer cancel()
 	if err := s.Store.Ping(ctx); err != nil {
-		writeBrokerError(w, http.StatusServiceUnavailable, codes.DatastoreUnavailable)
+		writeOperationalJSON(w, http.StatusServiceUnavailable, errorResponse{Error: codes.DatastoreUnavailable})
 		return
 	}
-	writeJSON(w, http.StatusOK, &brokerv1.LegacyStatusResponse{Status: "ready"})
-}
-
-func (s Server) startGoogleOAuth(w http.ResponseWriter, r *http.Request) {
-	s.startOAuth(w, r, "google")
-}
-
-func (s Server) startGitHubOAuth(w http.ResponseWriter, r *http.Request) {
-	s.startOAuth(w, r, "github")
-}
-
-func (s Server) startOAuth(w http.ResponseWriter, r *http.Request, provider string) {
-	req := &brokerv1.LegacyStartAuthorizationRequest{}
-	if err := decodeJSON(r.Body, req); err != nil {
-		s.Metrics.IncAuthStartFail()
-		writeBrokerError(w, http.StatusBadRequest, codes.InvalidJSON)
-		return
-	}
-	response, opErr := s.service().startAuthorization(r.Context(), &brokerv1.StartAuthorizationRequest{
-		Provider:               providerValue(provider),
-		DesktopSessionId:       req.DesktopSessionId,
-		HandoffChallenge:       req.HandoffChallenge,
-		DesktopHandoffRedirect: req.DesktopHandoffRedirect,
-		Application: &brokerv1.ApplicationMetadata{
-			AppVersion: req.AppVersion,
-			Platform:   req.Platform,
-		},
-	}, requestMetadata{ipBucket: sourceIPBucket(r.RemoteAddr)})
-	if opErr != nil {
-		writeBrokerError(w, restStatus(opErr.code), opErr.code)
-		return
-	}
-	writeJSON(w, http.StatusCreated, response)
+	writeOperationalJSON(w, http.StatusOK, statusResponse{Status: "ready"})
 }
 
 func (s Server) googleCallback(w http.ResponseWriter, r *http.Request) {
@@ -315,70 +281,6 @@ func (s Server) oauthCallback(w http.ResponseWriter, r *http.Request, provider s
 	_, _ = io.WriteString(w, callbackSuccessPage(providerName, handoffURL))
 }
 
-func (s Server) exchangeHandoff(w http.ResponseWriter, r *http.Request) {
-	s.exchangeProviderHandoff(w, r, "google")
-}
-
-func (s Server) exchangeGitHubHandoff(w http.ResponseWriter, r *http.Request) {
-	s.exchangeProviderHandoff(w, r, "github")
-}
-
-func (s Server) exchangeProviderHandoff(w http.ResponseWriter, r *http.Request, provider string) {
-	req := &brokerv1.ExchangeHandoffRequest{}
-	if err := decodeJSON(r.Body, req); err != nil {
-		writeBrokerError(w, http.StatusBadRequest, codes.InvalidJSON)
-		return
-	}
-	response, opErr := s.service().exchangeHandoff(r.Context(), &brokerv1.ExchangeHandoffRequest{
-		Provider:         providerValue(provider),
-		DesktopSessionId: req.DesktopSessionId,
-		BrokerState:      req.BrokerState,
-		HandoffCode:      req.HandoffCode,
-		HandoffVerifier:  req.HandoffVerifier,
-	}, requestMetadata{ipBucket: sourceIPBucket(r.RemoteAddr)})
-	if opErr != nil {
-		writeBrokerError(w, restStatus(opErr.code), opErr.code)
-		return
-	}
-	resp := &brokerv1.LegacyHandoffResponse{
-		Provider:    provider,
-		AccountHint: response.AccountHint,
-		Scope:       response.Scopes,
-		Token: &brokerv1.LegacyTokenMaterial{
-			AccessToken:  response.Token.AccessToken,
-			RefreshToken: optionalString(response.Token.RefreshToken),
-			TokenType:    response.Token.TokenType,
-			Expiry:       response.Token.Expiry,
-		},
-	}
-	writeJSON(w, http.StatusOK, resp)
-}
-
-func (s Server) refreshGoogleOAuth(w http.ResponseWriter, r *http.Request) {
-	req := &brokerv1.LegacyRefreshTokenRequest{}
-	if err := decodeJSON(r.Body, req); err != nil {
-		writeBrokerError(w, http.StatusBadRequest, codes.InvalidJSON)
-		return
-	}
-	response, opErr := s.service().refreshToken(r.Context(), &brokerv1.RefreshTokenRequest{
-		Provider:     brokerv1.Provider_PROVIDER_GOOGLE,
-		RefreshToken: req.RefreshToken,
-		Scopes:       req.Scope,
-		Application:  &brokerv1.ApplicationMetadata{AppVersion: req.AppVersion, Platform: req.Platform},
-	}, requestMetadata{ipBucket: sourceIPBucket(r.RemoteAddr)})
-	if opErr != nil {
-		writeBrokerError(w, restStatus(opErr.code), opErr.code)
-		return
-	}
-	resp := &brokerv1.LegacyRefreshTokenResponse{
-		AccessToken:  response.Token.AccessToken,
-		RefreshToken: optionalString(response.Token.RefreshToken),
-		TokenType:    response.Token.TokenType,
-		Expiry:       response.Token.Expiry,
-	}
-	writeJSON(w, http.StatusOK, resp)
-}
-
 type googleTokenError struct {
 	Code string
 	Desc string
@@ -389,46 +291,6 @@ func (e *googleTokenError) Error() string {
 		return fmt.Sprintf("google token error %s: %s", e.Code, e.Desc)
 	}
 	return fmt.Sprintf("google token error %s", e.Code)
-}
-
-// revokeGoogleOAuth asks Google to revoke a refresh token supplied by the
-// desktop. The broker does not persist the token or any account record.
-// Revoke stays available when auth/refresh kill switches are on so users can
-// disconnect during an incident.
-func (s Server) revokeGoogleOAuth(w http.ResponseWriter, r *http.Request) {
-	req := &brokerv1.LegacyRevokeTokenRequest{}
-	if err := decodeJSON(r.Body, req); err != nil {
-		writeBrokerError(w, http.StatusBadRequest, codes.InvalidJSON)
-		return
-	}
-	response, opErr := s.service().revokeToken(r.Context(), &brokerv1.RevokeTokenRequest{
-		Provider:   brokerv1.Provider_PROVIDER_GOOGLE,
-		Credential: &brokerv1.RevokeTokenRequest_RefreshToken{RefreshToken: req.RefreshToken},
-		Reason:     req.Reason,
-	}, requestMetadata{ipBucket: sourceIPBucket(r.RemoteAddr)})
-	if opErr != nil {
-		writeBrokerError(w, restStatus(opErr.code), opErr.code)
-		return
-	}
-	writeJSON(w, http.StatusOK, response)
-}
-
-func (s Server) revokeGitHubOAuth(w http.ResponseWriter, r *http.Request) {
-	req := &brokerv1.LegacyRevokeTokenRequest{}
-	if err := decodeJSON(r.Body, req); err != nil {
-		writeBrokerError(w, http.StatusBadRequest, codes.InvalidJSON)
-		return
-	}
-	response, opErr := s.service().revokeToken(r.Context(), &brokerv1.RevokeTokenRequest{
-		Provider:   brokerv1.Provider_PROVIDER_GITHUB,
-		Credential: &brokerv1.RevokeTokenRequest_AccessToken{AccessToken: req.AccessToken},
-		Reason:     req.Reason,
-	}, requestMetadata{ipBucket: sourceIPBucket(r.RemoteAddr)})
-	if opErr != nil {
-		writeBrokerError(w, restStatus(opErr.code), opErr.code)
-		return
-	}
-	writeJSON(w, http.StatusOK, response)
 }
 
 func (s Server) revokeGitHubToken(ctx context.Context, accessToken string) error {
@@ -767,43 +629,10 @@ func writeHTMLError(w http.ResponseWriter, status int, message string) {
 	_, _ = io.WriteString(w, "<!doctype html><html><body><p>"+html.EscapeString(message)+"</p></body></html>")
 }
 
-func notImplemented(endpoint string) http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		writeBrokerError(w, http.StatusNotImplemented, fmt.Sprintf("%s_not_implemented", endpoint))
-	}
-}
-
-func decodeJSON(body io.Reader, out proto.Message) error {
-	payload, err := io.ReadAll(io.LimitReader(body, 1<<20))
-	if err != nil {
-		return err
-	}
-	return (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(payload, out)
-}
-
-func writeJSON(w http.ResponseWriter, status int, payload proto.Message) {
-	data, err := (protojson.MarshalOptions{
-		UseProtoNames:   true,
-		EmitUnpopulated: true,
-	}).Marshal(payload)
-	if err != nil {
-		http.Error(w, "json encoding failed", http.StatusInternalServerError)
-		return
-	}
+func writeOperationalJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_, _ = w.Write(append(data, '\n'))
-}
-
-func writeBrokerError(w http.ResponseWriter, status int, code string) {
-	writeJSON(w, status, &brokerv1.LegacyErrorResponse{Error: code})
-}
-
-func optionalString(value string) *string {
-	if value == "" {
-		return nil
-	}
-	return proto.String(value)
+	_ = json.NewEncoder(w).Encode(payload)
 }
 
 func randomString(bytes int) (string, error) {

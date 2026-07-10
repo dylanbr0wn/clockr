@@ -6,358 +6,35 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"strings"
-	"sync"
 	"testing"
 	"time"
 
-	"github.com/dylanbr0wn/shiet/internal/broker/codes"
+	"connectrpc.com/connect"
+	brokerv1 "github.com/dylanbr0wn/shiet/gen/shiet/broker/v1"
+	"github.com/dylanbr0wn/shiet/gen/shiet/broker/v1/brokerv1connect"
 	brokerconfig "github.com/dylanbr0wn/shiet/internal/broker/config"
 	"github.com/dylanbr0wn/shiet/internal/broker/httpapi"
 	"github.com/dylanbr0wn/shiet/internal/integration/google"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func TestBrokerFlowAuthorizeSuccess(t *testing.T) {
-	var (
-		mu            sync.Mutex
-		gotStart      map[string]any
-		gotHandoff    map[string]any
-		handoffCalled bool
-	)
+func TestBrokerFlowAuthorizeThroughConnect(t *testing.T) {
+	t.Parallel()
 
-	broker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/v1/google/oauth/start":
-			var req map[string]any
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				t.Fatal(err)
-			}
-			mu.Lock()
-			gotStart = req
-			mu.Unlock()
-			redirect, _ := req["desktop_handoff_redirect"].(string)
-			if redirect == "" {
-				t.Fatal("expected desktop_handoff_redirect")
-			}
-			// Simulate broker callback completing by hitting the desktop handoff URL.
-			go func() {
-				time.Sleep(20 * time.Millisecond)
-				resp, err := http.Get(redirect + "?broker_state=state-1&handoff_code=code-1")
-				if err != nil {
-					t.Errorf("desktop handoff hit: %v", err)
-					return
-				}
-				_ = resp.Body.Close()
-			}()
-			w.WriteHeader(http.StatusCreated)
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"auth_url":     "https://accounts.google.com/o/oauth2/v2/auth?state=state-1",
-				"broker_state": "state-1",
-				"expires_at":   time.Now().Add(time.Minute).UTC().Format(time.RFC3339),
-			})
-		case r.Method == http.MethodPost && r.URL.Path == "/v1/google/oauth/handoff":
-			var req map[string]any
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				t.Fatal(err)
-			}
-			mu.Lock()
-			gotHandoff = req
-			handoffCalled = true
-			mu.Unlock()
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"provider":     "google",
-				"account_hint": "user@example.com",
-				"scope":        []string{"https://www.googleapis.com/auth/calendar.readonly"},
-				"token": map[string]any{
-					"access_token":  "access-token",
-					"refresh_token": "refresh-token",
-					"token_type":    "Bearer",
-					"expiry":        time.Date(2026, 7, 8, 13, 0, 0, 0, time.UTC),
-				},
-			})
-		default:
-			http.NotFound(w, r)
-		}
-	}))
-	t.Cleanup(broker.Close)
+	stub := &googleConnectBroker{t: t}
+	_, handler := brokerv1connect.NewOAuthBrokerServiceHandler(stub)
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
 
-	var opened string
 	flow := &google.BrokerFlow{
-		BaseURL:    broker.URL,
-		HTTPClient: broker.Client(),
-		OpenURL: func(u string) error {
-			opened = u
-			return nil
-		},
-		AppVersion: "0.1.0",
-		Platform:   "test",
+		BaseURL: server.URL, HTTPClient: server.Client(), OpenURL: func(string) error { return nil }, AppVersion: "1.2.3", Platform: "test",
 	}
-
 	result, err := flow.Authorize(context.Background(), "user@example.com")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if opened == "" || !strings.Contains(opened, "accounts.google.com") {
-		t.Fatalf("expected Google auth URL opened, got %q", opened)
-	}
-	if result.Token.AccessToken != "access-token" || result.Token.RefreshToken != "refresh-token" {
-		t.Fatalf("token: %+v", result.Token)
-	}
-
-	mu.Lock()
-	defer mu.Unlock()
-	if !handoffCalled {
-		t.Fatal("expected handoff exchange")
-	}
-	if gotStart["desktop_session_id"] == "" || gotStart["handoff_challenge"] == "" {
-		t.Fatalf("start payload: %#v", gotStart)
-	}
-	if gotHandoff["broker_state"] != "state-1" || gotHandoff["handoff_code"] != "code-1" {
-		t.Fatalf("handoff payload: %#v", gotHandoff)
-	}
-	if gotHandoff["handoff_verifier"] == "" {
-		t.Fatal("expected handoff_verifier")
-	}
-	if gotHandoff["desktop_session_id"] != gotStart["desktop_session_id"] {
-		t.Fatalf("session mismatch start=%v handoff=%v", gotStart["desktop_session_id"], gotHandoff["desktop_session_id"])
-	}
-}
-
-func TestBrokerFlowAuthorizeHandoffFailures(t *testing.T) {
-	cases := []struct {
-		name    string
-		code    string
-		wantErr error
-	}{
-		{name: "replay", code: codes.HandoffAlreadyUsed, wantErr: google.ErrHandoffReplay},
-		{name: "expired", code: codes.HandoffExpired, wantErr: google.ErrHandoffExpired},
-		{name: "state mismatch", code: codes.HandoffStateMismatch, wantErr: google.ErrHandoffStateMismatch},
-		{name: "broker error", code: codes.RateLimited, wantErr: google.ErrBrokerRejected},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			broker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				switch {
-				case r.URL.Path == "/v1/google/oauth/start":
-					var req map[string]any
-					_ = json.NewDecoder(r.Body).Decode(&req)
-					redirect, _ := req["desktop_handoff_redirect"].(string)
-					go func() {
-						time.Sleep(20 * time.Millisecond)
-						resp, err := http.Get(redirect + "?broker_state=state-1&handoff_code=code-1")
-						if err == nil {
-							_ = resp.Body.Close()
-						}
-					}()
-					w.WriteHeader(http.StatusCreated)
-					_ = json.NewEncoder(w).Encode(map[string]any{
-						"auth_url":     "https://accounts.google.com/o/oauth2/v2/auth",
-						"broker_state": "state-1",
-					})
-				case r.URL.Path == "/v1/google/oauth/handoff":
-					w.WriteHeader(http.StatusBadRequest)
-					_ = json.NewEncoder(w).Encode(map[string]string{"error": tc.code})
-				default:
-					http.NotFound(w, r)
-				}
-			}))
-			t.Cleanup(broker.Close)
-
-			flow := &google.BrokerFlow{
-				BaseURL:    broker.URL,
-				HTTPClient: broker.Client(),
-				OpenURL:    func(string) error { return nil },
-			}
-			_, err := flow.Authorize(context.Background(), "user@example.com")
-			if err == nil {
-				t.Fatal("expected error")
-			}
-			if !errors.Is(err, tc.wantErr) {
-				t.Fatalf("want %v, got %v", tc.wantErr, err)
-			}
-		})
-	}
-}
-
-func TestBrokerFlowAuthorizeStartUnavailable(t *testing.T) {
-	broker := httptest.NewServer(legacyBroker(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusServiceUnavailable)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": codes.DatastoreUnavailable})
-	}))
-	t.Cleanup(broker.Close)
-
-	flow := &google.BrokerFlow{
-		BaseURL:    broker.URL,
-		HTTPClient: broker.Client(),
-		OpenURL:    func(string) error { return nil },
-	}
-	_, err := flow.Authorize(context.Background(), "user@example.com")
-	if !errors.Is(err, google.ErrBrokerUnavailable) {
-		t.Fatalf("want ErrBrokerUnavailable, got %v", err)
-	}
-}
-
-func TestBrokerFlowRefreshTokenSuccess(t *testing.T) {
-	var got map[string]any
-	broker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost || r.URL.Path != "/v1/google/oauth/refresh" {
-			http.NotFound(w, r)
-			return
-		}
-		if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
-			t.Fatal(err)
-		}
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"access_token": "access-fresh",
-			"token_type":   "Bearer",
-			"expiry":       time.Date(2026, 7, 8, 14, 0, 0, 0, time.UTC),
-		})
-	}))
-	t.Cleanup(broker.Close)
-
-	flow := &google.BrokerFlow{
-		BaseURL:    broker.URL,
-		HTTPClient: broker.Client(),
-		AppVersion: "0.1.0",
-		Platform:   "darwin-arm64",
-	}
-	tok, err := flow.RefreshToken(context.Background(), "refresh-old", []string{
-		"https://www.googleapis.com/auth/calendar.readonly",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if tok.AccessToken != "access-fresh" {
-		t.Fatalf("access: %q", tok.AccessToken)
-	}
-	if tok.RefreshToken != "refresh-old" {
-		t.Fatalf("expected original refresh kept, got %q", tok.RefreshToken)
-	}
-	if got["refresh_token"] != "refresh-old" {
-		t.Fatalf("request: %#v", got)
-	}
-	if got["app_version"] != "0.1.0" || got["platform"] != "darwin-arm64" {
-		t.Fatalf("metadata: %#v", got)
-	}
-}
-
-func TestBrokerFlowRefreshTokenRotatedRefresh(t *testing.T) {
-	broker := httptest.NewServer(legacyBroker(func(w http.ResponseWriter, r *http.Request) {
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"access_token":  "access-fresh",
-			"refresh_token": "refresh-new",
-			"token_type":    "Bearer",
-			"expiry":        time.Date(2026, 7, 8, 14, 0, 0, 0, time.UTC),
-		})
-	}))
-	t.Cleanup(broker.Close)
-
-	flow := &google.BrokerFlow{BaseURL: broker.URL, HTTPClient: broker.Client()}
-	tok, err := flow.RefreshToken(context.Background(), "refresh-old", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if tok.RefreshToken != "refresh-new" {
-		t.Fatalf("refresh: %q", tok.RefreshToken)
-	}
-}
-
-func TestBrokerFlowRefreshTokenInvalid(t *testing.T) {
-	broker := httptest.NewServer(legacyBroker(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": codes.InvalidRefreshToken})
-	}))
-	t.Cleanup(broker.Close)
-
-	flow := &google.BrokerFlow{BaseURL: broker.URL, HTTPClient: broker.Client()}
-	_, err := flow.RefreshToken(context.Background(), "bad", nil)
-	if !errors.Is(err, google.ErrInvalidRefreshToken) {
-		t.Fatalf("want ErrInvalidRefreshToken, got %v", err)
-	}
-}
-
-func TestBrokerFlowRefreshKillSwitchAndRateLimit(t *testing.T) {
-	cases := []struct {
-		name   string
-		status int
-		code   string
-		want   string
-	}{
-		{name: "refresh disabled", status: http.StatusForbidden, code: codes.RefreshDisabled, want: "temporarily unavailable"},
-		{name: "rate limited", status: http.StatusTooManyRequests, code: codes.RateLimited, want: "try again later"},
-		{name: "app version disabled", status: http.StatusForbidden, code: codes.AppVersionDisabled, want: "update shiet"},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			broker := httptest.NewServer(legacyBroker(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(tc.status)
-				_ = json.NewEncoder(w).Encode(map[string]string{"error": tc.code})
-			}))
-			t.Cleanup(broker.Close)
-
-			flow := &google.BrokerFlow{BaseURL: broker.URL, HTTPClient: broker.Client()}
-			_, err := flow.RefreshToken(context.Background(), "refresh-old", nil)
-			if !errors.Is(err, google.ErrBrokerRejected) {
-				t.Fatalf("want ErrBrokerRejected, got %v", err)
-			}
-			if !strings.Contains(err.Error(), tc.want) {
-				t.Fatalf("error %q missing %q", err, tc.want)
-			}
-		})
-	}
-}
-
-func TestBrokerFlowRefreshTokenUnavailable(t *testing.T) {
-	broker := httptest.NewServer(legacyBroker(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusServiceUnavailable)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": codes.DatastoreUnavailable})
-	}))
-	t.Cleanup(broker.Close)
-
-	flow := &google.BrokerFlow{BaseURL: broker.URL, HTTPClient: broker.Client()}
-	_, err := flow.RefreshToken(context.Background(), "refresh-old", nil)
-	if !errors.Is(err, google.ErrBrokerUnavailable) {
-		t.Fatalf("want ErrBrokerUnavailable, got %v", err)
-	}
-}
-
-func legacyBroker(handler http.HandlerFunc) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, "/shiet.broker.v1.OAuthBrokerService/") {
-			http.NotFound(w, r)
-			return
-		}
-		handler(w, r)
-	})
-}
-
-func TestBrokerFlowRevokeSuccess(t *testing.T) {
-	var got map[string]any
-	broker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost || r.URL.Path != "/v1/google/oauth/revoke" {
-			http.NotFound(w, r)
-			return
-		}
-		if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
-			t.Fatal(err)
-		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"revoked": true})
-	}))
-	t.Cleanup(broker.Close)
-
-	flow := &google.BrokerFlow{
-		BaseURL:    broker.URL,
-		HTTPClient: broker.Client(),
-	}
-	if err := flow.Revoke(context.Background(), "refresh-token"); err != nil {
-		t.Fatal(err)
-	}
-	if got["refresh_token"] != "refresh-token" {
-		t.Fatalf("payload: %#v", got)
-	}
-	if got["reason"] != "user_disconnect" {
-		t.Fatalf("reason: %#v", got["reason"])
+	if result.Token.AccessToken != "google-access" || result.Token.RefreshToken != "google-refresh" || result.Provider != "google" {
+		t.Fatalf("result = %+v", result)
 	}
 }
 
@@ -367,11 +44,7 @@ func TestBrokerFlowRefreshAndRevokeThroughConnect(t *testing.T) {
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/token":
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"access_token": "connect-access",
-				"token_type":   "Bearer",
-				"expires_in":   3600,
-			})
+			_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "connect-access", "token_type": "Bearer", "expires_in": 3600})
 		case "/revoke":
 			w.WriteHeader(http.StatusOK)
 		default:
@@ -381,13 +54,8 @@ func TestBrokerFlowRefreshAndRevokeThroughConnect(t *testing.T) {
 	t.Cleanup(provider.Close)
 
 	brokerServer := httpapi.Server{
-		Config: brokerconfig.Config{
-			GoogleClientID:     "google-client-id",
-			GoogleClientSecret: "google-client-secret",
-		},
-		HTTPClient:      provider.Client(),
-		GoogleTokenURL:  provider.URL + "/token",
-		GoogleRevokeURL: provider.URL + "/revoke",
+		Config:     brokerconfig.Config{GoogleClientID: "google-client-id", GoogleClientSecret: "google-client-secret"},
+		HTTPClient: provider.Client(), GoogleTokenURL: provider.URL + "/token", GoogleRevokeURL: provider.URL + "/revoke",
 	}
 	broker := httptest.NewServer(brokerServer.Handler())
 	t.Cleanup(broker.Close)
@@ -405,19 +73,59 @@ func TestBrokerFlowRefreshAndRevokeThroughConnect(t *testing.T) {
 	}
 }
 
-func TestBrokerFlowRevokeUnavailable(t *testing.T) {
-	broker := httptest.NewServer(legacyBroker(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusBadGateway)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": codes.GoogleRevokeFailed})
-	}))
-	t.Cleanup(broker.Close)
+func TestBrokerFlowDoesNotFallbackWhenConnectIsUnavailable(t *testing.T) {
+	t.Parallel()
 
-	flow := &google.BrokerFlow{
-		BaseURL:    broker.URL,
-		HTTPClient: broker.Client(),
-	}
-	err := flow.Revoke(context.Background(), "refresh-token")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "unavailable", http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(server.Close)
+
+	flow := &google.BrokerFlow{BaseURL: server.URL, HTTPClient: server.Client()}
+	_, err := flow.RefreshToken(context.Background(), "refresh", nil)
 	if !errors.Is(err, google.ErrBrokerUnavailable) {
-		t.Fatalf("want ErrBrokerUnavailable, got %v", err)
+		t.Fatalf("want broker unavailable, got %v", err)
 	}
+}
+
+type googleConnectBroker struct {
+	t *testing.T
+}
+
+func (s *googleConnectBroker) StartAuthorization(_ context.Context, req *connect.Request[brokerv1.StartAuthorizationRequest]) (*connect.Response[brokerv1.StartAuthorizationResponse], error) {
+	if req.Msg.Provider != brokerv1.Provider_PROVIDER_GOOGLE || req.Msg.Application.GetAppVersion() != "1.2.3" {
+		s.t.Fatalf("start request = %+v", req.Msg)
+	}
+	redirect := req.Msg.DesktopHandoffRedirect
+	go func() {
+		time.Sleep(20 * time.Millisecond)
+		response, err := http.Get(redirect + "?broker_state=state-1&handoff_code=code-1")
+		if err != nil {
+			s.t.Errorf("deliver handoff: %v", err)
+			return
+		}
+		_ = response.Body.Close()
+	}()
+	return connect.NewResponse(&brokerv1.StartAuthorizationResponse{
+		AuthUrl: "https://accounts.google.com/o/oauth2/v2/auth?state=state-1", BrokerState: "state-1", ExpiresAt: timestamppb.New(time.Now().Add(time.Minute)),
+	}), nil
+}
+
+func (s *googleConnectBroker) ExchangeHandoff(_ context.Context, req *connect.Request[brokerv1.ExchangeHandoffRequest]) (*connect.Response[brokerv1.ExchangeHandoffResponse], error) {
+	if req.Msg.Provider != brokerv1.Provider_PROVIDER_GOOGLE || req.Msg.Application.GetAppVersion() != "1.2.3" || req.Msg.HandoffCode != "code-1" {
+		s.t.Fatalf("handoff request = %+v", req.Msg)
+	}
+	return connect.NewResponse(&brokerv1.ExchangeHandoffResponse{
+		Provider: brokerv1.Provider_PROVIDER_GOOGLE,
+		Scopes:   []string{"https://www.googleapis.com/auth/calendar.readonly"},
+		Token:    &brokerv1.TokenMaterial{AccessToken: "google-access", RefreshToken: "google-refresh", TokenType: "Bearer"},
+	}), nil
+}
+
+func (*googleConnectBroker) RefreshToken(context.Context, *connect.Request[brokerv1.RefreshTokenRequest]) (*connect.Response[brokerv1.RefreshTokenResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not used"))
+}
+
+func (*googleConnectBroker) RevokeToken(context.Context, *connect.Request[brokerv1.RevokeTokenRequest]) (*connect.Response[brokerv1.RevokeTokenResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not used"))
 }

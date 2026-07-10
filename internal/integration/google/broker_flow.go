@@ -209,13 +209,6 @@ func (f *BrokerFlow) startAuth(ctx context.Context, base, sessionID, challenge, 
 		Application:            &brokerv1.ApplicationMetadata{AppVersion: f.appVersion(), Platform: f.platform()},
 	}
 	response, err := f.brokerClient(base).StartAuthorization(ctx, connect.NewRequest(request))
-	if oauth.ShouldFallbackToLegacy(err) {
-		responseMsg, legacyErr := oauth.LegacyStartAuthorization(ctx, f.HTTPClient, base, service.ProviderGoogle, request)
-		if legacyErr != nil {
-			return nil, f.mapBrokerRPCError(legacyErr, "start")
-		}
-		return responseMsg, nil
-	}
 	if err != nil {
 		return nil, f.mapBrokerRPCError(err, "start")
 	}
@@ -235,13 +228,6 @@ func (f *BrokerFlow) exchangeHandoff(ctx context.Context, base, sessionID, broke
 		Application:      &brokerv1.ApplicationMetadata{AppVersion: f.appVersion(), Platform: f.platform()},
 	}
 	response, err := f.brokerClient(base).ExchangeHandoff(ctx, connect.NewRequest(request))
-	if oauth.ShouldFallbackToLegacy(err) {
-		responseMsg, legacyErr := oauth.LegacyExchangeHandoff(ctx, f.HTTPClient, base, service.ProviderGoogle, request)
-		if legacyErr != nil {
-			return nil, f.mapBrokerRPCError(legacyErr, "handoff")
-		}
-		return responseMsg, nil
-	}
 	if err != nil {
 		return nil, f.mapBrokerRPCError(err, "handoff")
 	}
@@ -271,14 +257,6 @@ func (f *BrokerFlow) RefreshToken(ctx context.Context, refreshToken string, scop
 		Application:  &brokerv1.ApplicationMetadata{AppVersion: f.appVersion(), Platform: f.platform()},
 	}
 	response, err := f.brokerClient(base).RefreshToken(ctx, connect.NewRequest(request))
-	if oauth.ShouldFallbackToLegacy(err) {
-		responseMsg, legacyErr := oauth.LegacyRefreshToken(ctx, f.HTTPClient, base, request)
-		if legacyErr != nil {
-			return secrets.Token{}, f.mapBrokerRPCError(legacyErr, "refresh")
-		}
-		response = connect.NewResponse(responseMsg)
-		err = nil
-	}
 	if err != nil {
 		return secrets.Token{}, f.mapBrokerRPCError(err, "refresh")
 	}
@@ -320,14 +298,6 @@ func (f *BrokerFlow) Revoke(ctx context.Context, refreshToken string) error {
 		Reason:     "user_disconnect",
 	}
 	response, err := f.brokerClient(base).RevokeToken(ctx, connect.NewRequest(request))
-	if oauth.ShouldFallbackToLegacy(err) {
-		responseMsg, legacyErr := oauth.LegacyRevokeToken(ctx, f.HTTPClient, base, service.ProviderGoogle, request)
-		if legacyErr != nil {
-			return f.mapBrokerRPCError(legacyErr, "revoke")
-		}
-		response = connect.NewResponse(responseMsg)
-		err = nil
-	}
 	if err != nil {
 		return f.mapBrokerRPCError(err, "revoke")
 	}
@@ -388,10 +358,6 @@ func (f *BrokerFlow) mapBrokerRPCError(err error, op string) error {
 	}
 	if connect.CodeOf(err) == connect.CodeResourceExhausted {
 		return fmt.Errorf("%w: too many requests; try again later", ErrBrokerRejected)
-	}
-	var legacyErr *oauth.LegacyBrokerError
-	if errors.As(err, &legacyErr) && (legacyErr.Status == 0 || legacyErr.Status >= 500 || legacyErr.Status == http.StatusNotImplemented) {
-		return fmt.Errorf("%w: broker %s unavailable", ErrBrokerUnavailable, op)
 	}
 	if connect.CodeOf(err) == connect.CodeUnavailable || connect.CodeOf(err) == connect.CodeInternal || connect.CodeOf(err) == connect.CodeUnimplemented {
 		return fmt.Errorf("%w: broker %s unavailable", ErrBrokerUnavailable, op)

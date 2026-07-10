@@ -14,6 +14,8 @@ import (
 	brokerv1 "github.com/dylanbr0wn/shiet/gen/shiet/broker/v1"
 	"github.com/dylanbr0wn/shiet/gen/shiet/broker/v1/brokerv1connect"
 	"github.com/dylanbr0wn/shiet/internal/broker/codes"
+	"github.com/dylanbr0wn/shiet/internal/broker/observe"
+	"github.com/dylanbr0wn/shiet/internal/broker/ratelimit"
 	"github.com/dylanbr0wn/shiet/internal/broker/store"
 )
 
@@ -142,76 +144,72 @@ func TestConnectHandoffFailureLimitIncludesApplicationVersion(t *testing.T) {
 	}
 }
 
-func TestBrokerRESTAndConnectValidationParity(t *testing.T) {
+func TestConnectKillSwitchesReturnStableErrorsAndMetrics(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name        string
-		restPath    string
-		restBody    string
-		brokerCode  string
-		connectCall func(context.Context, brokerv1connect.OAuthBrokerServiceClient) error
-	}{
-		{
-			name:       "start",
-			restPath:   "/v1/google/oauth/start",
-			restBody:   `{}`,
-			brokerCode: codes.DesktopSessionAndHandoffChallengeRequired,
-			connectCall: func(ctx context.Context, client brokerv1connect.OAuthBrokerServiceClient) error {
-				_, err := client.StartAuthorization(ctx, connect.NewRequest(&brokerv1.StartAuthorizationRequest{Provider: brokerv1.Provider_PROVIDER_GOOGLE}))
-				return err
-			},
-		},
-		{
-			name:       "handoff",
-			restPath:   "/v1/google/oauth/handoff",
-			restBody:   `{}`,
-			brokerCode: codes.HandoffFieldsRequired,
-			connectCall: func(ctx context.Context, client brokerv1connect.OAuthBrokerServiceClient) error {
-				_, err := client.ExchangeHandoff(ctx, connect.NewRequest(&brokerv1.ExchangeHandoffRequest{Provider: brokerv1.Provider_PROVIDER_GOOGLE}))
-				return err
-			},
-		},
-		{
-			name:       "refresh",
-			restPath:   "/v1/google/oauth/refresh",
-			restBody:   `{}`,
-			brokerCode: codes.RefreshTokenRequired,
-			connectCall: func(ctx context.Context, client brokerv1connect.OAuthBrokerServiceClient) error {
-				_, err := client.RefreshToken(ctx, connect.NewRequest(&brokerv1.RefreshTokenRequest{Provider: brokerv1.Provider_PROVIDER_GOOGLE}))
-				return err
-			},
-		},
-		{
-			name:       "revoke credential pairing",
-			restPath:   "/v1/google/oauth/revoke",
-			restBody:   `{"access_token":"wrong-kind"}`,
-			brokerCode: codes.RefreshTokenRequired,
-			connectCall: func(ctx context.Context, client brokerv1connect.OAuthBrokerServiceClient) error {
-				_, err := client.RevokeToken(ctx, connect.NewRequest(&brokerv1.RevokeTokenRequest{
-					Provider:   brokerv1.Provider_PROVIDER_GOOGLE,
-					Credential: &brokerv1.RevokeTokenRequest_AccessToken{AccessToken: "wrong-kind"},
-				}))
-				return err
-			},
-		},
+	t.Run("auth disabled", func(t *testing.T) {
+		cfg := testConfig()
+		cfg.AuthDisabled = true
+		metrics := observe.NewMetrics()
+		_, err := connectTestClient(Server{Config: cfg, Store: &memoryStore{}, Metrics: metrics}).StartAuthorization(context.Background(), connect.NewRequest(&brokerv1.StartAuthorizationRequest{
+			Provider: brokerv1.Provider_PROVIDER_GOOGLE, DesktopSessionId: "desktop-1", HandoffChallenge: "challenge-1",
+		}))
+		assertConnectBrokerError(t, err, connect.CodeFailedPrecondition, codes.AuthDisabled)
+		if metrics.KillSwitchCount(codes.SurfaceStart) != 1 {
+			t.Fatalf("start kill-switch metric = %d", metrics.KillSwitchCount(codes.SurfaceStart))
+		}
+	})
+
+	t.Run("refresh disabled", func(t *testing.T) {
+		cfg := testConfig()
+		cfg.RefreshDisabled = true
+		metrics := observe.NewMetrics()
+		_, err := connectTestClient(Server{Config: cfg, Store: &memoryStore{}, Metrics: metrics}).RefreshToken(context.Background(), connect.NewRequest(&brokerv1.RefreshTokenRequest{
+			Provider: brokerv1.Provider_PROVIDER_GOOGLE, RefreshToken: "refresh-1",
+		}))
+		assertConnectBrokerError(t, err, connect.CodeFailedPrecondition, codes.RefreshDisabled)
+		if metrics.KillSwitchCount(codes.SurfaceRefresh) != 1 {
+			t.Fatalf("refresh kill-switch metric = %d", metrics.KillSwitchCount(codes.SurfaceRefresh))
+		}
+	})
+
+	t.Run("app version disabled", func(t *testing.T) {
+		cfg := testConfig()
+		cfg.DisabledAppVersions = []string{"0.1.0"}
+		_, err := connectTestClient(Server{Config: cfg, Store: &memoryStore{}, Metrics: observe.NewMetrics()}).StartAuthorization(context.Background(), connect.NewRequest(&brokerv1.StartAuthorizationRequest{
+			Provider: brokerv1.Provider_PROVIDER_GOOGLE, DesktopSessionId: "desktop-1", HandoffChallenge: "challenge-1",
+			Application: &brokerv1.ApplicationMetadata{AppVersion: "0.1.0"},
+		}))
+		assertConnectBrokerError(t, err, connect.CodeFailedPrecondition, codes.AppVersionDisabled)
+	})
+}
+
+func TestConnectRateLimitAndFailureMetrics(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 7, 9, 12, 0, 0, 0, time.UTC)
+	metrics := observe.NewMetrics()
+	limiter := ratelimit.New(time.Minute, func() time.Time { return now })
+	client := connectTestClient(Server{Config: testConfig(), Store: &memoryStore{}, Clock: func() time.Time { return now }, Limiter: limiter, Metrics: metrics})
+	request := &brokerv1.StartAuthorizationRequest{Provider: brokerv1.Provider_PROVIDER_GOOGLE, DesktopSessionId: "desktop-1", HandoffChallenge: "challenge-1"}
+	for index := 0; index < limitStart; index++ {
+		if _, err := client.StartAuthorization(context.Background(), connect.NewRequest(request)); err != nil {
+			t.Fatalf("start %d: %v", index+1, err)
+		}
+	}
+	_, err := client.StartAuthorization(context.Background(), connect.NewRequest(request))
+	assertConnectBrokerError(t, err, connect.CodeResourceExhausted, codes.RateLimited)
+	if metrics.RateLimitedCount(codes.SurfaceStart) != 1 {
+		t.Fatalf("rate-limit metric = %d", metrics.RateLimitedCount(codes.SurfaceStart))
 	}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			mem := &memoryStore{}
-			srv := Server{Config: testConfig(), Store: mem}
-			rest := httptest.NewRecorder()
-			srv.Handler().ServeHTTP(rest, httptest.NewRequest(http.MethodPost, tc.restPath, strings.NewReader(tc.restBody)))
-			if rest.Code != http.StatusBadRequest || !strings.Contains(rest.Body.String(), tc.brokerCode) {
-				t.Fatalf("REST = %d %s, want 400 with %q", rest.Code, rest.Body.String(), tc.brokerCode)
-			}
-			err := tc.connectCall(context.Background(), connectTestClient(srv))
-			assertConnectBrokerError(t, err, connect.CodeInvalidArgument, tc.brokerCode)
-			if len(mem.states) != 0 || len(mem.handoffs) != 0 {
-				t.Fatalf("validation changed datastore: states=%d handoffs=%d", len(mem.states), len(mem.handoffs))
-			}
-		})
+	handoffMetrics := observe.NewMetrics()
+	handoffClient := connectTestClient(Server{Config: testConfig(), Store: &memoryStore{}, Metrics: handoffMetrics})
+	_, _ = handoffClient.ExchangeHandoff(context.Background(), connect.NewRequest(&brokerv1.ExchangeHandoffRequest{
+		Provider: brokerv1.Provider_PROVIDER_GOOGLE, DesktopSessionId: "desktop-1", BrokerState: "missing", HandoffCode: "code-1", HandoffVerifier: "verifier-1",
+	}))
+	if handoffMetrics.HandoffFailureCount(codes.OutcomeNotFound) != 1 {
+		t.Fatalf("handoff failure metric = %d", handoffMetrics.HandoffFailureCount(codes.OutcomeNotFound))
 	}
 }
 

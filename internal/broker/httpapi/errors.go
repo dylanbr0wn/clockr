@@ -1,40 +1,9 @@
 package httpapi
 
 import (
-	"net/http"
-
 	"connectrpc.com/connect"
 	"github.com/dylanbr0wn/shiet/internal/broker/codes"
 )
-
-func restStatus(code string) int {
-	switch code {
-	case codes.ProviderNotConfigured, codes.DatastoreUnavailable:
-		return http.StatusServiceUnavailable
-	case codes.AuthDisabled, codes.RefreshDisabled, codes.AppVersionDisabled:
-		return http.StatusForbidden
-	case codes.RateLimited:
-		return http.StatusTooManyRequests
-	case codes.DesktopSessionAndHandoffChallengeRequired,
-		codes.InvalidDesktopHandoffRedirect,
-		codes.HandoffFieldsRequired,
-		codes.HandoffAlreadyUsed,
-		codes.HandoffExpired,
-		codes.HandoffNotFound,
-		codes.HandoffStateMismatch,
-		codes.HandoffVerifierMismatch,
-		codes.RefreshTokenRequired,
-		codes.AccessTokenRequired,
-		codes.InvalidRefreshToken:
-		return http.StatusBadRequest
-	case codes.OperationNotSupported:
-		return http.StatusNotImplemented
-	case codes.GoogleTokenRefreshFailed, codes.GoogleRevokeFailed, codes.GitHubRevokeFailed:
-		return http.StatusBadGateway
-	default:
-		return http.StatusInternalServerError
-	}
-}
 
 func connectCode(code string) connect.Code {
 	switch code {

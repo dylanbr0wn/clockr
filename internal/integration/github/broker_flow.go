@@ -73,18 +73,6 @@ func (f *BrokerFlow) Revoke(ctx context.Context, accessToken string) error {
 		Reason:     "user_disconnect",
 	}
 	response, err := brokerv1connect.NewOAuthBrokerServiceClient(client, base).RevokeToken(ctx, connect.NewRequest(request))
-	if oauth.ShouldFallbackToLegacy(err) {
-		responseMsg, legacyErr := oauth.LegacyRevokeToken(ctx, f.HTTPClient, base, service.ProviderGitHub, request)
-		if legacyErr != nil {
-			var brokerErr *oauth.LegacyBrokerError
-			if errors.As(legacyErr, &brokerErr) && (brokerErr.Status == 0 || brokerErr.Status >= 500) {
-				return fmt.Errorf("%w: contact broker revoke", ErrBrokerUnavailable)
-			}
-			return fmt.Errorf("%w: broker revoke error %s", ErrBrokerRejected, oauth.BrokerErrorCode(legacyErr))
-		}
-		response = connect.NewResponse(responseMsg)
-		err = nil
-	}
 	if err != nil {
 		code := oauth.BrokerErrorCode(err)
 		if connect.CodeOf(err) == connect.CodeUnavailable || connect.CodeOf(err) == connect.CodeInternal {

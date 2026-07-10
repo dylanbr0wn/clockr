@@ -41,14 +41,11 @@ does not move business rules into the transport. Generated Protobuf messages
 remain behind `frontend/src/lib/api/shietService.ts`, which maps `int64` IDs to
 JavaScript numbers only after checking the safe-integer range.
 
-The broker exposes its generated Connect service alongside the existing REST
-API. Both transports delegate to the same start, handoff, refresh, and revoke
-operations so one-time use, rate limits, kill switches, metrics, and token
-handling cannot drift. REST response adapters preserve the released
-snake_case JSON shapes for existing desktop builds. New desktop builds use the
-generated Connect-Go client. They retry through the released REST API only when
-the broker definitively reports that the Connect procedure is unimplemented;
-ambiguous network or server failures are never replayed across transports.
+The broker replaces its handwritten REST operations with the generated Connect
+service. There are no released users requiring a compatibility period, so this
+branch is a hard transport switch: desktop clients use the generated Connect-Go
+client and the broker exposes no REST aliases or fallback behavior for start,
+handoff, refresh, or revoke.
 
 Google and GitHub callbacks remain ordinary HTTP GET routes because providers
 navigate the user agent to those endpoints with `code` and `state`. Health,
@@ -62,8 +59,7 @@ readiness, and Prometheus metrics also remain ordinary HTTP endpoints.
 - Broker Connect endpoints do not enable cross-origin browser access. A future
   browser client needs an explicit application-session/BFF decision before it
   may use token-bearing operations.
-- Stable broker error identifiers are returned as Connect error details while
-  legacy REST clients continue receiving `{"error":"..."}`.
+- Stable broker error identifiers are returned as Connect error details.
 - Google is the only provider supporting refresh. GitHub refresh returns
   `Unimplemented`; revoke validates that Google supplies a refresh token and
   GitHub supplies an access token.
@@ -95,10 +91,11 @@ file dialogs, clipboard access, keychain storage, and desktop handoff belong
 behind platform adapters. Portable operations can move incrementally through
 the stable frontend API facade.
 
-### Remove the broker REST API
+### Keep REST alongside Connect
 
-Rejected because already-released desktop builds depend on it. REST and
-Connect coexist during migration and share the same operation implementation.
+Rejected because there are no released users to migrate. A dual transport
+would add schema, tests, fallback behavior, and replay risk without providing
+compatibility value.
 
 ## Sources
 
