@@ -28,10 +28,12 @@ func AuthSettingsFromConfig(cfg config.Config) AuthSettings {
 	settings := AuthSettings{
 		Mode:          cfg.Slack.AuthMode,
 		BrokerBaseURL: cfg.Slack.BrokerBaseURL,
-		ClientID:      cfg.Slack.ClientID,
 	}
-	if !cfg.UsesSlackBrokerAuth() {
-		settings.ClientSecret = cfg.Slack.ClientSecret
+	// Broker mode must not carry desktop BYO OAuth credentials into the provider.
+	if cfg.UsesSlackBrokerAuth() {
+		return settings
 	}
+	settings.ClientID = cfg.Slack.ClientID
+	settings.ClientSecret = cfg.Slack.ClientSecret
 	return settings
 }

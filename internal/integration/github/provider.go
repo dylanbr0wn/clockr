@@ -63,14 +63,20 @@ func (p *Provider) Connect(ctx context.Context, pat string) (connection.Connecti
 		return p.connectWithToken(ctx, secrets.Token{AccessToken: pat, TokenType: "Bearer", CredentialSource: secrets.CredentialSourcePAT}, nil, true)
 	}
 	authorizer := p.Authorizer
-	if authorizer == nil && p.usesBrokerAuth() {
-		authorizer = &BrokerFlow{BaseURL: p.BrokerBaseURL, HTTPClient: p.HTTP}
-	}
-	if authorizer == nil && strings.TrimSpace(p.Config.ClientID) != "" {
-		authorizer = &oauth.Flow{Config: p.Config, Store: transientTokenStore{}}
-	}
 	if authorizer == nil {
-		return connection.Connection{}, errors.New("personal access token is required")
+		if p.usesBrokerAuth() {
+			// Broker mode must never fall through to local desktop OAuth, even when
+			// a BYO client_id is present in config from a previous local setup.
+			base := strings.TrimSpace(p.BrokerBaseURL)
+			if base == "" {
+				return connection.Connection{}, fmt.Errorf("%w: set github.broker_base_url or SHIET_GITHUB_BROKER_BASE_URL", config.ErrGitHubBrokerConfig)
+			}
+			authorizer = &BrokerFlow{BaseURL: base, HTTPClient: p.HTTP}
+		} else if strings.TrimSpace(p.Config.ClientID) != "" {
+			authorizer = &oauth.Flow{Config: p.Config, Store: transientTokenStore{}}
+		} else {
+			return connection.Connection{}, errors.New("personal access token is required")
+		}
 	}
 	result, err := authorizer.Authorize(ctx, "github")
 	if err != nil {
@@ -190,7 +196,12 @@ func (p *Provider) Disconnect(ctx context.Context, accountID string) error {
 }
 
 func (p *Provider) usesBrokerAuth() bool {
-	return strings.EqualFold(strings.TrimSpace(p.AuthMode), config.AuthModeBroker)
+	mode := strings.TrimSpace(p.AuthMode)
+	// Empty mode matches the public-build default (broker), same as Google.
+	if mode == "" {
+		return true
+	}
+	return strings.EqualFold(mode, config.AuthModeBroker)
 }
 
 // OAuthAvailable reports whether the configured mode can start browser OAuth.
