@@ -14,6 +14,7 @@ import (
 	"github.com/dylanbr0wn/shiet/internal/api/appapi"
 	"github.com/dylanbr0wn/shiet/internal/config"
 	"github.com/dylanbr0wn/shiet/internal/db"
+	applog "github.com/dylanbr0wn/shiet/internal/log"
 	"github.com/dylanbr0wn/shiet/internal/seed"
 )
 
@@ -26,17 +27,28 @@ func main() {
 		log.Fatalf("load config: %v", err)
 	}
 
+	logger, logCloser, err := applog.Open(cfg.Log.Path, cfg.Log.Level, wailsDevConsole)
+	if err != nil {
+		log.Fatalf("open log: %v", err)
+	}
+	defer logCloser.Close()
+	logger.Info().
+		Str("path", cfg.Log.Path).
+		Str("level", cfg.Log.Level).
+		Bool("console", wailsDevConsole).
+		Msg("app starting")
+
 	// Open the local database, self-migrate to the latest schema, and seed core
 	// data before binding so the service is live when the frontend calls it.
 	conn, err := db.Open(cfg.DB.Path)
 	if err != nil {
-		log.Fatalf("open database: %v", err)
+		logger.Fatal().Err(err).Msg("open database")
 	}
 	if err := db.Migrate(conn); err != nil {
-		log.Fatalf("migrate database: %v", err)
+		logger.Fatal().Err(err).Msg("migrate database")
 	}
 	if err := seed.Core(context.Background(), conn); err != nil {
-		log.Fatalf("seed database: %v", err)
+		logger.Fatal().Err(err).Msg("seed database")
 	}
 
 	// Create an instance of the app structure
@@ -80,6 +92,6 @@ func main() {
 	})
 
 	if err != nil {
-		println("Error:", err.Error())
+		logger.Error().Err(err).Msg("wails run failed")
 	}
 }

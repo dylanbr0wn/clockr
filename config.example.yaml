@@ -6,6 +6,8 @@
 #
 # Environment variables override file values (highest precedence):
 #   SHIET_DB                       -> db.path
+#   SHIET_LOG_PATH                 -> log.path
+#   SHIET_LOG_LEVEL                -> log.level
 #   SHIET_GOOGLE_AUTH_MODE         -> google.auth_mode
 #   SHIET_GOOGLE_BROKER_BASE_URL   -> google.broker_base_url
 #   SHIET_GOOGLE_CLIENT_ID         -> google.client_id
@@ -18,6 +20,10 @@
 #   SHIET_SLACK_BROKER_BASE_URL    -> slack.broker_base_url
 #   SHIET_SLACK_CLIENT_ID          -> slack.client_id
 #   SHIET_SLACK_CLIENT_SECRET      -> slack.client_secret
+#
+# log.path defaults to a sibling of shiet.db under <UserConfigDir>/shiet/shiet.log.
+# log.level: trace|debug|info|warn|error|fatal|panic|disabled (default: info).
+# In `wails dev`, logs also mirror to stderr; production writes the file only.
 #
 # google.auth_mode:
 #   - broker (public default when no local client_id is set): secret-only OAuth broker;
@@ -43,6 +49,10 @@
 
 db:
   path: ~/.config/shiet/shiet.db
+
+log:
+  path: ~/.config/shiet/shiet.log
+  level: info
 
 google:
   auth_mode: broker

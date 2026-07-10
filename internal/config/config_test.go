@@ -16,6 +16,8 @@ func TestLoad_precedenceDefaultFileEnv(t *testing.T) {
 	}
 
 	t.Setenv("SHIET_DB", "")
+	t.Setenv("SHIET_LOG_PATH", "")
+	t.Setenv("SHIET_LOG_LEVEL", "")
 	t.Setenv("SHIET_GOOGLE_CLIENT_ID", "")
 	t.Setenv("SHIET_GOOGLE_CLIENT_SECRET", "")
 	t.Setenv("SHIET_GOOGLE_AUTH_MODE", "")
@@ -177,7 +179,7 @@ func TestLoad_githubBrokerModeClearsDesktopSecret(t *testing.T) {
 }
 
 func TestValidate_githubLocalModeRequiresBYOSecret(t *testing.T) {
-	cfg := Config{}
+	cfg := validLogConfig()
 	cfg.Google.AuthMode = AuthModeBroker
 	cfg.Google.BrokerBaseURL = "https://auth.shiet.app"
 	cfg.GitHub.AuthMode = AuthModeLocal
@@ -190,7 +192,7 @@ func TestValidate_githubLocalModeRequiresBYOSecret(t *testing.T) {
 }
 
 func TestValidate_githubLocalModeAllowsPATOnly(t *testing.T) {
-	cfg := Config{}
+	cfg := validLogConfig()
 	cfg.Google.AuthMode = AuthModeBroker
 	cfg.Google.BrokerBaseURL = "https://auth.shiet.app"
 	cfg.GitHub.AuthMode = AuthModeLocal
@@ -285,7 +287,7 @@ func TestLoad_googleAuthModeFileAndEnvPrecedence(t *testing.T) {
 }
 
 func TestValidate_brokerModeRequiresHTTPSBrokerURLNotClientSecret(t *testing.T) {
-	cfg := Config{}
+	cfg := validLogConfig()
 	cfg.Google.AuthMode = AuthModeBroker
 	cfg.Google.BrokerBaseURL = "https://auth.shiet.app"
 	cfg.Google.ClientSecret = ""
@@ -316,7 +318,7 @@ func TestValidate_brokerModeRequiresHTTPSBrokerURLNotClientSecret(t *testing.T) 
 }
 
 func TestValidate_localModeRequiresClientIDNotBrokerURL(t *testing.T) {
-	cfg := Config{}
+	cfg := validLogConfig()
 	cfg.Google.AuthMode = AuthModeLocal
 	cfg.Google.ClientID = "desktop-client-id"
 	cfg.Google.BrokerBaseURL = ""
@@ -338,7 +340,7 @@ func TestValidate_localModeRequiresClientIDNotBrokerURL(t *testing.T) {
 }
 
 func TestValidate_rejectsUnknownAuthMode(t *testing.T) {
-	cfg := Config{}
+	cfg := validLogConfig()
 	cfg.Google.AuthMode = "weird"
 	err := cfg.Validate()
 	if err == nil {
@@ -370,6 +372,8 @@ func TestLoad_validatesGoogleAuth(t *testing.T) {
 func clearGoogleEnv(t *testing.T) {
 	t.Helper()
 	t.Setenv("SHIET_DB", "")
+	t.Setenv("SHIET_LOG_PATH", "")
+	t.Setenv("SHIET_LOG_LEVEL", "")
 	t.Setenv("SHIET_GOOGLE_CLIENT_ID", "")
 	t.Setenv("SHIET_GOOGLE_CLIENT_SECRET", "")
 	t.Setenv("SHIET_GOOGLE_AUTH_MODE", "")
@@ -382,4 +386,71 @@ func clearGitHubEnv(t *testing.T) {
 	t.Setenv("SHIET_GITHUB_CLIENT_SECRET", "")
 	t.Setenv("SHIET_GITHUB_AUTH_MODE", "")
 	t.Setenv("SHIET_GITHUB_BROKER_BASE_URL", "")
+}
+
+func validLogConfig() Config {
+	cfg := Config{}
+	cfg.Log.Path = "/tmp/shiet.log"
+	cfg.Log.Level = "info"
+	return cfg
+}
+
+func TestLoad_logDefaultsAndEnvOverrides(t *testing.T) {
+	clearGoogleEnv(t)
+
+	cfg, err := load(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Log.Path == "" {
+		t.Fatal("expected non-empty default log path")
+	}
+	if !strings.HasSuffix(cfg.Log.Path, filepath.Join("shiet", "shiet.log")) {
+		t.Fatalf("default log path should end with shiet/shiet.log, got %q", cfg.Log.Path)
+	}
+	if cfg.Log.Level != "info" {
+		t.Fatalf("default level: got %q want info", cfg.Log.Level)
+	}
+	// Sibling of default DB under the same config dir.
+	if filepath.Dir(cfg.Log.Path) != filepath.Dir(cfg.DB.Path) {
+		t.Fatalf("log and db should share config dir: log=%q db=%q", cfg.Log.Path, cfg.DB.Path)
+	}
+
+	dir := t.TempDir()
+	cfgFile := filepath.Join(dir, "shiet.yaml")
+	content := "log:\n  path: /from/file.log\n  level: debug\n"
+	if err := os.WriteFile(cfgFile, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err = load([]string{cfgFile})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Log.Path != "/from/file.log" || cfg.Log.Level != "debug" {
+		t.Fatalf("file override: got path=%q level=%q", cfg.Log.Path, cfg.Log.Level)
+	}
+
+	t.Setenv("SHIET_LOG_PATH", "/from/env.log")
+	t.Setenv("SHIET_LOG_LEVEL", "warn")
+	cfg, err = load([]string{cfgFile})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Log.Path != "/from/env.log" || cfg.Log.Level != "warn" {
+		t.Fatalf("env override: got path=%q level=%q", cfg.Log.Path, cfg.Log.Level)
+	}
+}
+
+func TestLoad_rejectsInvalidLogLevel(t *testing.T) {
+	clearGoogleEnv(t)
+	t.Setenv("SHIET_LOG_LEVEL", "loud")
+
+	_, err := load(nil)
+	if err == nil {
+		t.Fatal("expected invalid log.level error")
+	}
+	if !strings.Contains(err.Error(), "log.level") {
+		t.Fatalf("error should mention log.level: %v", err)
+	}
 }

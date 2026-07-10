@@ -41,6 +41,10 @@ type Config struct {
 	DB struct {
 		Path string `koanf:"path"`
 	} `koanf:"db"`
+	Log struct {
+		Path  string `koanf:"path"`
+		Level string `koanf:"level"`
+	} `koanf:"log"`
 	Google struct {
 		AuthMode      string `koanf:"auth_mode"`
 		BrokerBaseURL string `koanf:"broker_base_url"`
@@ -64,6 +68,8 @@ type Config struct {
 // envKeyMap maps legacy SHIET_* env vars to koanf dotted keys.
 var envKeyMap = map[string]string{
 	"SHIET_DB":                     "db.path",
+	"SHIET_LOG_PATH":               "log.path",
+	"SHIET_LOG_LEVEL":              "log.level",
 	"SHIET_GOOGLE_AUTH_MODE":       "google.auth_mode",
 	"SHIET_GOOGLE_BROKER_BASE_URL": "google.broker_base_url",
 	"SHIET_GOOGLE_CLIENT_ID":       "google.client_id",
@@ -80,15 +86,15 @@ var envKeyMap = map[string]string{
 
 // Load reads configuration using the standard discovery order:
 //
-//  1. Defaults (OS user config dir for db.path; broker base URL for Google)
+//  1. Defaults (OS user config dir for db.path and log.path; broker base URL)
 //  2. Config files, when present (first match wins per path; later paths override):
 //     - $XDG_CONFIG_HOME/shiet/config.yaml, or ~/.config/shiet/config.yaml
 //     - <UserConfigDir>/shiet/config.yaml (e.g. ~/Library/Application Support/shiet on macOS)
 //     - ./shiet.yaml in the process working directory
 //  3. Environment variables (highest precedence)
-	//  4. Auth mode resolution: explicit mode wins; otherwise local when a
-	//     client_id is present, else broker (public-build default). Broker mode
-	//     clears any desktop client_id/client_secret from the loaded config.
+//  4. Auth mode resolution: explicit mode wins; otherwise local when a
+//     client_id is present, else broker (public-build default). Broker mode
+//     clears any desktop client_id/client_secret from the loaded config.
 //
 // A missing config file is fine — defaults and env are enough.
 func Load() (Config, error) {
@@ -100,12 +106,20 @@ func load(configFiles []string) (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	defaultLog, err := defaultLogPath()
+	if err != nil {
+		return Config{}, err
+	}
 
 	k := koanf.New(".")
 
 	if err := k.Load(confmap.Provider(map[string]any{
 		"db": map[string]any{
 			"path": defaultDB,
+		},
+		"log": map[string]any{
+			"path":  defaultLog,
+			"level": "info",
 		},
 		"google": map[string]any{
 			"broker_base_url": defaultBrokerBaseURL,
@@ -138,6 +152,13 @@ func load(configFiles []string) (Config, error) {
 		return Config{}, err
 	}
 	cfg.DB.Path = expanded
+
+	expandedLog, err := expandHome(cfg.Log.Path)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.Log.Path = expandedLog
+	cfg.Log.Level = strings.ToLower(strings.TrimSpace(cfg.Log.Level))
 
 	cfg.Google.AuthMode = strings.ToLower(strings.TrimSpace(cfg.Google.AuthMode))
 	cfg.Google.BrokerBaseURL = strings.TrimSpace(cfg.Google.BrokerBaseURL)
@@ -210,6 +231,9 @@ func (c *Config) resolveSlackAuthMode() {
 // Local/BYO mode requires a desktop client_id and preserves existing OAuth
 // credential fields for development and advanced users.
 func (c Config) Validate() error {
+	if err := c.validateLog(); err != nil {
+		return err
+	}
 	mode := strings.ToLower(strings.TrimSpace(c.Google.AuthMode))
 	var err error
 	switch mode {
@@ -229,6 +253,21 @@ func (c Config) Validate() error {
 		return err
 	}
 	return c.validateSlackAuth()
+}
+
+func (c Config) validateLog() error {
+	if strings.TrimSpace(c.Log.Path) == "" {
+		return fmt.Errorf("log.path is required")
+	}
+	level := strings.ToLower(strings.TrimSpace(c.Log.Level))
+	switch level {
+	case "trace", "debug", "info", "warn", "error", "fatal", "panic", "disabled":
+		return nil
+	case "":
+		return fmt.Errorf("log.level is required")
+	default:
+		return fmt.Errorf("log.level %q is invalid (use trace, debug, info, warn, error, fatal, panic, or disabled)", c.Log.Level)
+	}
 }
 
 func (c Config) validateSlackAuth() error {
@@ -377,6 +416,14 @@ func defaultDBPath() (string, error) {
 		return "", fmt.Errorf("locate user config dir: %w", err)
 	}
 	return filepath.Join(cfg, "shiet", "shiet.db"), nil
+}
+
+func defaultLogPath() (string, error) {
+	cfg, err := os.UserConfigDir()
+	if err != nil {
+		return "", fmt.Errorf("locate user config dir: %w", err)
+	}
+	return filepath.Join(cfg, "shiet", "shiet.log"), nil
 }
 
 func applyEnv(k *koanf.Koanf) {
