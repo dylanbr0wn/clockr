@@ -11,45 +11,55 @@ import (
 )
 
 const (
-	defaultListenAddr        = ":8080"
-	defaultStateTTL          = 5 * time.Minute
-	defaultHandoffTTL        = 2 * time.Minute
-	defaultDesktopHandoffURL = "shiet://oauth/google/handoff"
-	defaultGoogleScope       = "https://www.googleapis.com/auth/calendar.readonly"
+	defaultListenAddr              = ":8080"
+	defaultStateTTL                = 5 * time.Minute
+	defaultHandoffTTL              = 2 * time.Minute
+	defaultDesktopHandoffURL       = "shiet://oauth/google/handoff"
+	defaultGitHubDesktopHandoffURL = "shiet://oauth/github/handoff"
+	defaultGoogleScope             = "https://www.googleapis.com/auth/calendar.readonly"
+	defaultGitHubScope             = "repo"
 )
 
 // Config holds the broker's environment-driven runtime configuration.
 type Config struct {
-	ListenAddr          string
-	PublicOrigin        string
-	GoogleClientID      string
-	GoogleClientSecret  string
-	DesktopHandoffURL   string
-	DatastoreDSN        string
-	StateTTL            time.Duration
-	HandoffTTL          time.Duration
-	GoogleScopes        []string
-	AuthDisabled        bool
-	RefreshDisabled     bool
-	DisabledAppVersions []string
+	ListenAddr              string
+	PublicOrigin            string
+	GoogleClientID          string
+	GoogleClientSecret      string
+	DesktopHandoffURL       string
+	GitHubClientID          string
+	GitHubClientSecret      string
+	GitHubDesktopHandoffURL string
+	DatastoreDSN            string
+	StateTTL                time.Duration
+	HandoffTTL              time.Duration
+	GoogleScopes            []string
+	GitHubScopes            []string
+	AuthDisabled            bool
+	RefreshDisabled         bool
+	DisabledAppVersions     []string
 }
 
 // LoadFromEnv reads SHIET_BROKER_* environment variables and validates the
 // result. The desktop app's local SHIET_* config is intentionally separate.
 func LoadFromEnv() (Config, error) {
 	cfg := Config{
-		ListenAddr:          listenAddrFromEnv(),
-		PublicOrigin:        os.Getenv("SHIET_BROKER_PUBLIC_ORIGIN"),
-		GoogleClientID:      os.Getenv("SHIET_BROKER_GOOGLE_CLIENT_ID"),
-		GoogleClientSecret:  os.Getenv("SHIET_BROKER_GOOGLE_CLIENT_SECRET"),
-		DesktopHandoffURL:   getenv("SHIET_BROKER_DESKTOP_HANDOFF_URL", defaultDesktopHandoffURL),
-		DatastoreDSN:        os.Getenv("SHIET_BROKER_DATASTORE_DSN"),
-		StateTTL:            defaultStateTTL,
-		HandoffTTL:          defaultHandoffTTL,
-		GoogleScopes:        splitScopes(getenv("SHIET_BROKER_GOOGLE_SCOPES", defaultGoogleScope)),
-		AuthDisabled:        envTruthy("SHIET_BROKER_AUTH_DISABLED"),
-		RefreshDisabled:     envTruthy("SHIET_BROKER_REFRESH_DISABLED"),
-		DisabledAppVersions: splitCSV(os.Getenv("SHIET_BROKER_DISABLED_APP_VERSIONS")),
+		ListenAddr:              listenAddrFromEnv(),
+		PublicOrigin:            os.Getenv("SHIET_BROKER_PUBLIC_ORIGIN"),
+		GoogleClientID:          os.Getenv("SHIET_BROKER_GOOGLE_CLIENT_ID"),
+		GoogleClientSecret:      os.Getenv("SHIET_BROKER_GOOGLE_CLIENT_SECRET"),
+		DesktopHandoffURL:       getenv("SHIET_BROKER_DESKTOP_HANDOFF_URL", defaultDesktopHandoffURL),
+		GitHubClientID:          os.Getenv("SHIET_BROKER_GITHUB_CLIENT_ID"),
+		GitHubClientSecret:      os.Getenv("SHIET_BROKER_GITHUB_CLIENT_SECRET"),
+		GitHubDesktopHandoffURL: getenv("SHIET_BROKER_GITHUB_DESKTOP_HANDOFF_URL", defaultGitHubDesktopHandoffURL),
+		DatastoreDSN:            os.Getenv("SHIET_BROKER_DATASTORE_DSN"),
+		StateTTL:                defaultStateTTL,
+		HandoffTTL:              defaultHandoffTTL,
+		GoogleScopes:            splitScopes(getenv("SHIET_BROKER_GOOGLE_SCOPES", defaultGoogleScope)),
+		GitHubScopes:            splitScopes(getenv("SHIET_BROKER_GITHUB_SCOPES", defaultGitHubScope)),
+		AuthDisabled:            envTruthy("SHIET_BROKER_AUTH_DISABLED"),
+		RefreshDisabled:         envTruthy("SHIET_BROKER_REFRESH_DISABLED"),
+		DisabledAppVersions:     splitCSV(os.Getenv("SHIET_BROKER_DISABLED_APP_VERSIONS")),
 	}
 
 	var err error
@@ -91,6 +101,18 @@ func (c Config) Validate() error {
 	if len(c.GoogleScopes) == 0 {
 		problems = append(problems, "SHIET_BROKER_GOOGLE_SCOPES must include at least one scope")
 	}
+	githubID := strings.TrimSpace(c.GitHubClientID)
+	githubSecret := strings.TrimSpace(c.GitHubClientSecret)
+	if (githubID == "") != (githubSecret == "") {
+		if githubID == "" {
+			problems = append(problems, "SHIET_BROKER_GITHUB_CLIENT_ID is required when GitHub OAuth is configured")
+		} else {
+			problems = append(problems, "SHIET_BROKER_GITHUB_CLIENT_SECRET is required when GitHub OAuth is configured")
+		}
+	}
+	if githubID != "" && len(c.GitHubScopes) == 0 {
+		problems = append(problems, "SHIET_BROKER_GITHUB_SCOPES must include at least one scope")
+	}
 	if c.StateTTL <= 0 || c.StateTTL > 10*time.Minute {
 		problems = append(problems, "SHIET_BROKER_STATE_TTL must be greater than 0 and at most 10m")
 	}
@@ -102,6 +124,11 @@ func (c Config) Validate() error {
 	}
 	if _, err := c.desktopHandoffURL(); err != nil {
 		problems = append(problems, err.Error())
+	}
+	if githubID != "" {
+		if _, err := parseDesktopHandoffURL(c.GitHubDesktopHandoffURL, "SHIET_BROKER_GITHUB_DESKTOP_HANDOFF_URL"); err != nil {
+			problems = append(problems, err.Error())
+		}
 	}
 	if len(problems) > 0 {
 		return errors.New(strings.Join(problems, "; "))
@@ -135,6 +162,16 @@ func (c Config) RedirectURI() string {
 	return u.String()
 }
 
+// GitHubRedirectURI returns the GitHub OAuth App callback URI.
+func (c Config) GitHubRedirectURI() string {
+	u, err := c.publicOriginURL()
+	if err != nil {
+		return ""
+	}
+	u.Path = "/v1/github/oauth/callback"
+	return u.String()
+}
+
 func (c Config) publicOriginURL() (*url.URL, error) {
 	raw := strings.TrimSpace(c.PublicOrigin)
 	if raw == "" {
@@ -157,19 +194,23 @@ func (c Config) publicOriginURL() (*url.URL, error) {
 }
 
 func (c Config) desktopHandoffURL() (*url.URL, error) {
-	raw := strings.TrimSpace(c.DesktopHandoffURL)
+	return parseDesktopHandoffURL(c.DesktopHandoffURL, "SHIET_BROKER_DESKTOP_HANDOFF_URL")
+}
+
+func parseDesktopHandoffURL(value, envKey string) (*url.URL, error) {
+	raw := strings.TrimSpace(value)
 	if raw == "" {
-		return nil, errors.New("SHIET_BROKER_DESKTOP_HANDOFF_URL is required")
+		return nil, fmt.Errorf("%s is required", envKey)
 	}
 	u, err := url.Parse(raw)
 	if err != nil {
-		return nil, fmt.Errorf("SHIET_BROKER_DESKTOP_HANDOFF_URL is invalid: %w", err)
+		return nil, fmt.Errorf("%s is invalid: %w", envKey, err)
 	}
 	if u.Scheme == "" {
-		return nil, errors.New("SHIET_BROKER_DESKTOP_HANDOFF_URL must include a scheme")
+		return nil, fmt.Errorf("%s must include a scheme", envKey)
 	}
 	if u.Scheme == "http" || u.Scheme == "https" {
-		return nil, errors.New("SHIET_BROKER_DESKTOP_HANDOFF_URL must use the desktop handoff scheme, not http")
+		return nil, fmt.Errorf("%s must use the desktop handoff scheme, not http", envKey)
 	}
 	return u, nil
 }

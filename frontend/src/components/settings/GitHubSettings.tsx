@@ -25,6 +25,8 @@ import { Toggle } from "@/components/ui/toggle";
 import {
   useConnectGitHub,
   useDisconnectGitHub,
+  useGitHubAuthMode,
+  useGitHubOAuthAvailable,
   useGitHubRepos,
   useIntegrationConnections,
   useRefreshGitHubRepos,
@@ -74,6 +76,8 @@ function ConnectionStatusBadge({ status }: { status: string }) {
 export function GitHubSettings() {
   const connectionsQuery = useIntegrationConnections();
   const reposQuery = useGitHubRepos();
+  const authModeQuery = useGitHubAuthMode();
+  const oauthAvailableQuery = useGitHubOAuthAvailable();
   const connectGitHub = useConnectGitHub();
   const disconnectGitHub = useDisconnectGitHub();
   const setRepoSelected = useSetGitHubRepoSelected();
@@ -98,7 +102,10 @@ export function GitHubSettings() {
     setRepoSelected.isPending ||
     refreshRepos.isPending;
 
-  const handleConnect = async () => {
+  const authMode = authModeQuery.data ?? "broker";
+  const oauthAvailable = oauthAvailableQuery.data ?? true;
+
+  const handlePATConnect = async () => {
     const token = pat.trim();
     if (!token) {
       return;
@@ -108,6 +115,19 @@ export function GitHubSettings() {
     try {
       await connectGitHub.mutateAsync(token);
       setPat("");
+    } catch (error) {
+      setConnectError(
+        error instanceof Error
+          ? error.message
+          : "Unable to connect GitHub account",
+      );
+    }
+  };
+
+  const handleOAuthConnect = async () => {
+    setConnectError(null);
+    try {
+      await connectGitHub.mutateAsync("");
     } catch (error) {
       setConnectError(
         error instanceof Error
@@ -147,7 +167,7 @@ export function GitHubSettings() {
     <div className="mx-auto max-w-2xl space-y-6">
       <SettingBlock
         title="GitHub"
-        description="Connect with a personal access token to pick repositories as evidence sources for AI gap-fill. Tokens stay in the OS keychain."
+        description="Connect GitHub to pick repositories as evidence sources for AI gap-fill. OAuth and PAT tokens stay in the OS keychain."
       >
         <div className="space-y-3">
           {githubConnections.length > 0 ? (
@@ -194,37 +214,63 @@ export function GitHubSettings() {
             </p>
           )}
 
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-            <Field>
-              <FieldLabel htmlFor="github-pat">
-                Personal access token
-              </FieldLabel>
-              <Input
-                id="github-pat"
-                type="password"
-                autoComplete="off"
-                value={pat}
-                placeholder="ghp_… or github_pat_…"
-                onChange={(event) => setPat(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    void handleConnect();
-                  }
-                }}
-              />
-            </Field>
+          {oauthAvailable ? (
             <Button
               type="button"
-              disabled={!pat.trim() || isBusy}
-              onClick={() => void handleConnect()}
+              disabled={isBusy}
+              onClick={() => void handleOAuthConnect()}
             >
               {connectGitHub.isPending ? (
                 <LoaderCircle className="size-4 animate-spin" />
               ) : (
-                "Connect"
+                "Connect with GitHub"
               )}
             </Button>
-          </div>
+          ) : null}
+
+          <details
+            className="rounded-md border border-border/70 p-3"
+            open={authMode === "local"}
+          >
+            <summary className="cursor-pointer text-sm font-medium">
+              Connect with a personal access token
+            </summary>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Local/advanced mode. The token is validated with GitHub and stored
+              only in the OS keychain.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+              <Field>
+                <FieldLabel htmlFor="github-pat">
+                  Personal access token
+                </FieldLabel>
+                <Input
+                  id="github-pat"
+                  type="password"
+                  autoComplete="off"
+                  value={pat}
+                  placeholder="ghp_… or github_pat_…"
+                  onChange={(event) => setPat(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      void handlePATConnect();
+                    }
+                  }}
+                />
+              </Field>
+              <Button
+                type="button"
+                disabled={!pat.trim() || isBusy}
+                onClick={() => void handlePATConnect()}
+              >
+                {connectGitHub.isPending ? (
+                  <LoaderCircle className="size-4 animate-spin" />
+                ) : (
+                  "Connect"
+                )}
+              </Button>
+            </div>
+          </details>
 
           {connectError ? <FieldError>{connectError}</FieldError> : null}
         </div>

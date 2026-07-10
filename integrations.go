@@ -39,6 +39,7 @@ func wireIntegrations(conn *sql.DB, svc *service.Service, cfg config.Config) (*g
 	queries := sqlc.New(conn)
 
 	auth := google.AuthSettingsFromConfig(cfg)
+	githubAuth := github.AuthSettingsFromConfig(cfg)
 	googleProvider := &google.Provider{
 		Config:        google.OAuthConfig(auth.ClientID, auth.ClientSecret),
 		AuthMode:      auth.Mode,
@@ -48,9 +49,12 @@ func wireIntegrations(conn *sql.DB, svc *service.Service, cfg config.Config) (*g
 		Queries:       queries,
 	}
 	githubProvider := &github.Provider{
-		Store:    store,
-		Registry: registry,
-		Queries:  queries,
+		Config:        github.OAuthConfig(githubAuth.ClientID, githubAuth.ClientSecret),
+		Store:         store,
+		Registry:      registry,
+		Queries:       queries,
+		AuthMode:      githubAuth.Mode,
+		BrokerBaseURL: githubAuth.BrokerBaseURL,
 	}
 
 	svc.SetCalendarSync(service.CalendarSyncConfig{

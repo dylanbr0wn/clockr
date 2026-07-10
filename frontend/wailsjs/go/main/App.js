@@ -62,6 +62,14 @@ export function GetSetting(arg1) {
   return window['go']['main']['App']['GetSetting'](arg1);
 }
 
+export function GitHubAuthMode() {
+  return window['go']['main']['App']['GitHubAuthMode']();
+}
+
+export function GitHubOAuthAvailable() {
+  return window['go']['main']['App']['GitHubOAuthAvailable']();
+}
+
 export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
 }

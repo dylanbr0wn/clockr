@@ -78,6 +78,55 @@ func TestLoadFromEnv(t *testing.T) {
 	}
 }
 
+func TestLoadFromEnvGitHubProviderConfig(t *testing.T) {
+	t.Setenv("SHIET_BROKER_PUBLIC_ORIGIN", "https://auth.shiet.app")
+	t.Setenv("SHIET_BROKER_GOOGLE_CLIENT_ID", "google-client-id")
+	t.Setenv("SHIET_BROKER_GOOGLE_CLIENT_SECRET", "google-client-secret")
+	t.Setenv("SHIET_BROKER_GITHUB_CLIENT_ID", "github-client-id")
+	t.Setenv("SHIET_BROKER_GITHUB_CLIENT_SECRET", "github-client-secret")
+	t.Setenv("SHIET_BROKER_GITHUB_SCOPES", "repo,read:user")
+	t.Setenv("SHIET_BROKER_DATASTORE_DSN", "file:broker.db")
+
+	cfg, err := LoadFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.GitHubClientID != "github-client-id" || cfg.GitHubClientSecret != "github-client-secret" {
+		t.Fatalf("github credentials not loaded: %+v", cfg)
+	}
+	if got := strings.Join(cfg.GitHubScopes, ","); got != "repo,read:user" {
+		t.Fatalf("github scopes: got %q", got)
+	}
+	if got, want := cfg.GitHubRedirectURI(), "https://auth.shiet.app/v1/github/oauth/callback"; got != want {
+		t.Fatalf("github redirect uri: got %q want %q", got, want)
+	}
+	if got, want := cfg.GitHubDesktopHandoffURL, "shiet://oauth/github/handoff"; got != want {
+		t.Fatalf("github handoff url: got %q want %q", got, want)
+	}
+}
+
+func TestValidateRejectsPartialGitHubCredentials(t *testing.T) {
+	cfg := Config{
+		ListenAddr:              ":8080",
+		PublicOrigin:            "https://auth.shiet.app",
+		GoogleClientID:          "google-client-id",
+		GoogleClientSecret:      "google-client-secret",
+		DesktopHandoffURL:       "shiet://oauth/google/handoff",
+		GitHubClientID:          "github-client-id",
+		GitHubDesktopHandoffURL: "shiet://oauth/github/handoff",
+		DatastoreDSN:            "file:broker.db",
+		StateTTL:                5 * time.Minute,
+		HandoffTTL:              2 * time.Minute,
+		GoogleScopes:            []string{defaultGoogleScope},
+		GitHubScopes:            []string{defaultGitHubScope},
+	}
+
+	err := cfg.Validate()
+	if err == nil || !strings.Contains(err.Error(), "SHIET_BROKER_GITHUB_CLIENT_SECRET") {
+		t.Fatalf("expected partial GitHub credential error, got %v", err)
+	}
+}
+
 func TestLoadFromEnvUsesRailwayPortWhenListenAddrUnset(t *testing.T) {
 	t.Setenv("SHIET_BROKER_PUBLIC_ORIGIN", "https://auth.shiet.app")
 	t.Setenv("SHIET_BROKER_GOOGLE_CLIENT_ID", "client-id")

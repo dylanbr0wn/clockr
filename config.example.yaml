@@ -10,6 +10,10 @@
 #   SHIET_GOOGLE_BROKER_BASE_URL   -> google.broker_base_url
 #   SHIET_GOOGLE_CLIENT_ID         -> google.client_id
 #   SHIET_GOOGLE_CLIENT_SECRET     -> google.client_secret
+#   SHIET_GITHUB_AUTH_MODE         -> github.auth_mode
+#   SHIET_GITHUB_BROKER_BASE_URL   -> github.broker_base_url
+#   SHIET_GITHUB_CLIENT_ID         -> github.client_id
+#   SHIET_GITHUB_CLIENT_SECRET     -> github.client_secret
 #
 # google.auth_mode:
 #   - broker (public default when no local client_id is set): secret-only OAuth broker;
@@ -20,11 +24,25 @@
 # Public builds default to broker mode and must not embed a shared Google client_secret.
 # Google Desktop OAuth clients may require client_secret at the token endpoint in local mode,
 # but desktop apps cannot keep it confidential once shipped.
+#
+# github.auth_mode mirrors Google:
+#   - broker (public default): the hosted broker owns the shared GitHub OAuth App secret
+#   - local: PAT-only, or BYO GitHub OAuth App credentials when both client_id and
+#     client_secret are set
+#     Register http://127.0.0.1/oauth/callback; GitHub permits the desktop flow
+#     to supply the runtime loopback port.
+# A personal access token can be entered from GitHub settings in either mode.
 
 db:
   path: ~/.config/shiet/shiet.db
 
 google:
+  auth_mode: broker
+  broker_base_url: https://auth.shiet.app
+  client_id: ""
+  client_secret: ""
+
+github:
   auth_mode: broker
   broker_base_url: https://auth.shiet.app
   client_id: ""

@@ -116,6 +116,90 @@ func TestLoad_googleAuthModeDefaultsToBroker(t *testing.T) {
 	}
 }
 
+func TestLoad_githubAuthModeDefaultsToBrokerWithoutDesktopSecret(t *testing.T) {
+	clearGoogleEnv(t)
+	clearGitHubEnv(t)
+
+	cfg, err := load(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.GitHub.AuthMode != AuthModeBroker {
+		t.Fatalf("auth_mode: got %q want %q", cfg.GitHub.AuthMode, AuthModeBroker)
+	}
+	if cfg.GitHub.BrokerBaseURL != defaultBrokerBaseURL {
+		t.Fatalf("broker_base_url: got %q want %q", cfg.GitHub.BrokerBaseURL, defaultBrokerBaseURL)
+	}
+	if cfg.GitHub.ClientSecret != "" {
+		t.Fatalf("public default must not embed client_secret, got %q", cfg.GitHub.ClientSecret)
+	}
+}
+
+func TestLoad_githubLocalModeKeepsBYOCredentials(t *testing.T) {
+	dir := t.TempDir()
+	cfgFile := filepath.Join(dir, "shiet.yaml")
+	content := "github:\n  auth_mode: local\n  client_id: byo-id\n  client_secret: byo-secret\n"
+	if err := os.WriteFile(cfgFile, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	clearGoogleEnv(t)
+	clearGitHubEnv(t)
+
+	cfg, err := load([]string{cfgFile})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.GitHub.AuthMode != AuthModeLocal {
+		t.Fatalf("auth_mode: got %q want %q", cfg.GitHub.AuthMode, AuthModeLocal)
+	}
+	if cfg.GitHub.ClientID != "byo-id" || cfg.GitHub.ClientSecret != "byo-secret" {
+		t.Fatalf("local credentials: got client_id=%q client_secret=%q", cfg.GitHub.ClientID, cfg.GitHub.ClientSecret)
+	}
+}
+
+func TestLoad_githubBrokerModeClearsDesktopSecret(t *testing.T) {
+	dir := t.TempDir()
+	cfgFile := filepath.Join(dir, "shiet.yaml")
+	content := "github:\n  auth_mode: broker\n  broker_base_url: https://auth.shiet.app\n  client_secret: should-be-cleared\n"
+	if err := os.WriteFile(cfgFile, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	clearGoogleEnv(t)
+	clearGitHubEnv(t)
+
+	cfg, err := load([]string{cfgFile})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.GitHub.ClientSecret != "" {
+		t.Fatalf("broker mode must clear client_secret, got %q", cfg.GitHub.ClientSecret)
+	}
+}
+
+func TestValidate_githubLocalModeRequiresBYOSecret(t *testing.T) {
+	cfg := Config{}
+	cfg.Google.AuthMode = AuthModeBroker
+	cfg.Google.BrokerBaseURL = "https://auth.shiet.app"
+	cfg.GitHub.AuthMode = AuthModeLocal
+	cfg.GitHub.ClientID = "client-id"
+
+	err := cfg.Validate()
+	if err == nil || !errors.Is(err, ErrGitHubLocalCredentials) || !strings.Contains(err.Error(), "client_secret") {
+		t.Fatalf("expected GitHub local client_secret error, got %v", err)
+	}
+}
+
+func TestValidate_githubLocalModeAllowsPATOnly(t *testing.T) {
+	cfg := Config{}
+	cfg.Google.AuthMode = AuthModeBroker
+	cfg.Google.BrokerBaseURL = "https://auth.shiet.app"
+	cfg.GitHub.AuthMode = AuthModeLocal
+
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("PAT-only local mode should pass: %v", err)
+	}
+}
+
 func TestLoad_implicitLocalWhenClientIDPresent(t *testing.T) {
 	dir := t.TempDir()
 	cfgFile := filepath.Join(dir, "shiet.yaml")
@@ -289,4 +373,12 @@ func clearGoogleEnv(t *testing.T) {
 	t.Setenv("SHIET_GOOGLE_CLIENT_SECRET", "")
 	t.Setenv("SHIET_GOOGLE_AUTH_MODE", "")
 	t.Setenv("SHIET_GOOGLE_BROKER_BASE_URL", "")
+}
+
+func clearGitHubEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("SHIET_GITHUB_CLIENT_ID", "")
+	t.Setenv("SHIET_GITHUB_CLIENT_SECRET", "")
+	t.Setenv("SHIET_GITHUB_AUTH_MODE", "")
+	t.Setenv("SHIET_GITHUB_BROKER_BASE_URL", "")
 }

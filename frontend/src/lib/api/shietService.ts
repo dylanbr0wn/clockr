@@ -45,6 +45,8 @@ interface ShietApp {
   EnsureCurrentPeriod(today: string, ianaTz: string): Promise<Period>;
   ExcludeEvent(input: ExcludeEventInput): Promise<ExcludeEventResult>;
   GetSetting(key: string): Promise<string>;
+  GitHubAuthMode(): Promise<string>;
+  GitHubOAuthAvailable(): Promise<boolean>;
   ListAIModels(baseURL: string, apiKey: string): Promise<string[]>;
   ListCalendars(): Promise<Calendar[]>;
   ListCategories(): Promise<Category[]>;
@@ -322,6 +324,14 @@ export function disconnectGoogle(accountID: string) {
 
 export function connectGitHub(pat: string) {
   return writeToBackend(() => appBackend.ConnectGitHub(pat));
+}
+
+export function githubAuthMode() {
+  return readFromBackend<string>("broker", () => appBackend.GitHubAuthMode());
+}
+
+export function githubOAuthAvailable() {
+  return readFromBackend<boolean>(true, () => appBackend.GitHubOAuthAvailable());
 }
 
 export function disconnectGitHub(accountID: string) {

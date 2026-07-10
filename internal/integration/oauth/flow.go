@@ -156,7 +156,7 @@ func (f *Flow) Authorize(ctx context.Context, accountID string) (Result, error) 
 
 	oauthTok, err := oauthCfg.Exchange(ctx, code, oauth2.VerifierOption(verifier))
 	if err != nil {
-		exchangeErr := fmt.Errorf("exchange code: %w", describeExchangeError(err))
+		exchangeErr := fmt.Errorf("exchange code: %w", describeExchangeError(err, f.Config.Provider))
 		sendCallbackResult(resultCh, callbackResult{
 			status:  http.StatusBadGateway,
 			message: exchangeErr.Error(),
@@ -196,9 +196,12 @@ func sendCallbackResult(ch chan<- callbackResult, result callbackResult) {
 	}
 }
 
-func describeExchangeError(err error) error {
+func describeExchangeError(err error, provider string) error {
 	var retrieveErr *oauth2.RetrieveError
 	if errors.As(err, &retrieveErr) && isDesktopClientTypeError(retrieveErr) {
+		if strings.EqualFold(strings.TrimSpace(provider), "github") {
+			return fmt.Errorf("%w. GitHub rejected the local OAuth token exchange because the configured OAuth App credentials are incomplete. Set github.client_id and github.client_secret (github.auth_mode=local), or use github.auth_mode=broker for public builds", err)
+		}
 		return fmt.Errorf("%w. Google rejected the OAuth token exchange because the configured local/BYO client requires a client secret. Set google.client_secret or SHIET_GOOGLE_CLIENT_SECRET from the Google Desktop OAuth credential bundle (google.auth_mode=local); desktop apps cannot keep this value confidential, so treat it as a provider-required public credential rather than a security boundary. Public builds should use google.auth_mode=broker instead of shipping a shared secret", err)
 	}
 	return err

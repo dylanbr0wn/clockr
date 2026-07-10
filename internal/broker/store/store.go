@@ -21,13 +21,14 @@ var (
 )
 
 // SQLiteStore stores broker state in a minimal SQLite datastore. It intentionally
-// has no durable Google access-token or refresh-token tables.
+// has no durable provider access-token or refresh-token tables.
 type SQLiteStore struct {
 	db *sql.DB
 }
 
 type OAuthState struct {
 	ID                     string
+	Provider               string
 	DesktopSessionID       string
 	PKCEVerifier           string
 	PKCEChallenge          string
@@ -43,6 +44,7 @@ type OAuthState struct {
 
 type HandoffRecord struct {
 	CodeHash              string
+	Provider              string
 	StateID               string
 	DesktopSessionID      string
 	HandoffChallenge      string
@@ -85,6 +87,17 @@ ALTER TABLE broker_oauth_states ADD COLUMN desktop_handoff_redirect TEXT NOT NUL
 			return fmt.Errorf("migrate broker oauth state redirect column: %w", err)
 		}
 	}
+	for _, migration := range []struct {
+		name string
+		sql  string
+	}{
+		{name: "oauth state provider", sql: `ALTER TABLE broker_oauth_states ADD COLUMN provider TEXT NOT NULL DEFAULT 'google'`},
+		{name: "handoff provider", sql: `ALTER TABLE broker_handoffs ADD COLUMN provider TEXT NOT NULL DEFAULT 'google'`},
+	} {
+		if _, err := s.db.ExecContext(ctx, migration.sql); err != nil && !strings.Contains(strings.ToLower(err.Error()), "duplicate column") {
+			return fmt.Errorf("migrate broker %s column: %w", migration.name, err)
+		}
+	}
 	return nil
 }
 
@@ -95,10 +108,10 @@ func (s *SQLiteStore) SaveOAuthState(ctx context.Context, rec OAuthState) error 
 	}
 	_, err = s.db.ExecContext(ctx, `
 INSERT INTO broker_oauth_states (
-	id, desktop_session_id, pkce_verifier, pkce_challenge, handoff_challenge,
+	id, provider, desktop_session_id, pkce_verifier, pkce_challenge, handoff_challenge,
 	desktop_handoff_redirect, scopes_json, app_version, platform, source_ip_bucket, expires_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		rec.ID, rec.DesktopSessionID, rec.PKCEVerifier, rec.PKCEChallenge,
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		rec.ID, providerOrGoogle(rec.Provider), rec.DesktopSessionID, rec.PKCEVerifier, rec.PKCEChallenge,
 		rec.HandoffChallenge, rec.DesktopHandoffRedirect, string(scopes), rec.AppVersion, rec.Platform,
 		rec.SourceIPBucket, formatTime(rec.ExpiresAt),
 	)
@@ -108,7 +121,7 @@ INSERT INTO broker_oauth_states (
 	return nil
 }
 
-func (s *SQLiteStore) ConsumeOAuthState(ctx context.Context, id string, now time.Time) (OAuthState, error) {
+func (s *SQLiteStore) ConsumeOAuthState(ctx context.Context, id, provider string, now time.Time) (OAuthState, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return OAuthState{}, err
@@ -121,6 +134,9 @@ func (s *SQLiteStore) ConsumeOAuthState(ctx context.Context, id string, now time
 	}
 	if rec.UsedAt != nil {
 		return OAuthState{}, ErrAlreadyUsed
+	}
+	if providerOrGoogle(rec.Provider) != providerOrGoogle(provider) {
+		return OAuthState{}, ErrMismatch
 	}
 	if !now.Before(rec.ExpiresAt) {
 		return OAuthState{}, ErrExpired
@@ -152,10 +168,10 @@ func (s *SQLiteStore) SaveHandoff(ctx context.Context, rec HandoffRecord) error 
 	}
 	_, err = s.db.ExecContext(ctx, `
 INSERT INTO broker_handoffs (
-	code_hash, state_id, desktop_session_id, handoff_challenge,
+	code_hash, provider, state_id, desktop_session_id, handoff_challenge,
 	encrypted_token_payload, account_hint, scopes_json, expires_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		rec.CodeHash, rec.StateID, rec.DesktopSessionID, rec.HandoffChallenge,
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		rec.CodeHash, providerOrGoogle(rec.Provider), rec.StateID, rec.DesktopSessionID, rec.HandoffChallenge,
 		rec.EncryptedTokenPayload, rec.AccountHint, string(scopes), formatTime(rec.ExpiresAt),
 	)
 	if err != nil {
@@ -169,7 +185,7 @@ INSERT INTO broker_handoffs (
 // Binding mismatches leave the handoff reusable so a wrong guess cannot burn it.
 func (s *SQLiteStore) ConsumeHandoff(
 	ctx context.Context,
-	codeHash, desktopSessionID, stateID, handoffChallenge string,
+	codeHash, provider, desktopSessionID, stateID, handoffChallenge string,
 	now time.Time,
 ) (HandoffRecord, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -187,6 +203,9 @@ func (s *SQLiteStore) ConsumeHandoff(
 	}
 	if !now.Before(rec.ExpiresAt) {
 		return HandoffRecord{}, ErrExpired
+	}
+	if providerOrGoogle(rec.Provider) != providerOrGoogle(provider) {
+		return HandoffRecord{}, ErrMismatch
 	}
 	if rec.DesktopSessionID != desktopSessionID || rec.StateID != stateID || rec.HandoffChallenge != handoffChallenge {
 		return HandoffRecord{}, ErrMismatch
@@ -228,10 +247,10 @@ func selectOAuthState(ctx context.Context, q queryer, id string) (OAuthState, er
 	var rec OAuthState
 	var scopesJSON, expiresAt, usedAt sql.NullString
 	err := q.QueryRowContext(ctx, `
-SELECT id, desktop_session_id, pkce_verifier, pkce_challenge, handoff_challenge,
+SELECT id, provider, desktop_session_id, pkce_verifier, pkce_challenge, handoff_challenge,
 	desktop_handoff_redirect, scopes_json, app_version, platform, source_ip_bucket, expires_at, used_at
 FROM broker_oauth_states WHERE id = ?`, id).
-		Scan(&rec.ID, &rec.DesktopSessionID, &rec.PKCEVerifier, &rec.PKCEChallenge,
+		Scan(&rec.ID, &rec.Provider, &rec.DesktopSessionID, &rec.PKCEVerifier, &rec.PKCEChallenge,
 			&rec.HandoffChallenge, &rec.DesktopHandoffRedirect, &scopesJSON, &rec.AppVersion, &rec.Platform,
 			&rec.SourceIPBucket, &expiresAt, &usedAt)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -257,10 +276,10 @@ func selectHandoff(ctx context.Context, q queryer, codeHash string) (HandoffReco
 	var rec HandoffRecord
 	var scopesJSON, expiresAt, usedAt sql.NullString
 	err := q.QueryRowContext(ctx, `
-SELECT code_hash, state_id, desktop_session_id, handoff_challenge,
+SELECT code_hash, provider, state_id, desktop_session_id, handoff_challenge,
 	encrypted_token_payload, account_hint, scopes_json, expires_at, used_at
 FROM broker_handoffs WHERE code_hash = ?`, codeHash).
-		Scan(&rec.CodeHash, &rec.StateID, &rec.DesktopSessionID, &rec.HandoffChallenge,
+		Scan(&rec.CodeHash, &rec.Provider, &rec.StateID, &rec.DesktopSessionID, &rec.HandoffChallenge,
 			&rec.EncryptedTokenPayload, &rec.AccountHint, &scopesJSON, &expiresAt, &usedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return HandoffRecord{}, ErrNotFound
@@ -294,9 +313,18 @@ func parseTime(raw string) time.Time {
 	return t
 }
 
+func providerOrGoogle(provider string) string {
+	provider = strings.TrimSpace(provider)
+	if provider == "" {
+		return "google"
+	}
+	return provider
+}
+
 const schema = `
 CREATE TABLE IF NOT EXISTS broker_oauth_states (
 	id TEXT PRIMARY KEY,
+	provider TEXT NOT NULL DEFAULT 'google',
 	desktop_session_id TEXT NOT NULL,
 	pkce_verifier TEXT NOT NULL,
 	pkce_challenge TEXT NOT NULL,
@@ -315,6 +343,7 @@ CREATE INDEX IF NOT EXISTS broker_oauth_states_expires_idx
 
 CREATE TABLE IF NOT EXISTS broker_handoffs (
 	code_hash TEXT PRIMARY KEY,
+	provider TEXT NOT NULL DEFAULT 'google',
 	state_id TEXT NOT NULL,
 	desktop_session_id TEXT NOT NULL,
 	handoff_challenge TEXT NOT NULL,

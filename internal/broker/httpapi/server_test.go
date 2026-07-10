@@ -103,6 +103,51 @@ func TestStartGoogleOAuthPersistsStateAndReturnsAuthURL(t *testing.T) {
 	}
 }
 
+func TestStartGitHubOAuthPersistsProviderAndReturnsAuthURL(t *testing.T) {
+	now := time.Date(2026, 7, 9, 12, 0, 0, 0, time.UTC)
+	mem := &memoryStore{}
+	srv := Server{Config: testConfig(), Store: mem, Clock: func() time.Time { return now }}
+	body := bytes.NewBufferString(`{
+		"desktop_session_id":"desktop-1",
+		"handoff_challenge":"challenge-1",
+		"app_version":"0.2.0",
+		"platform":"darwin-arm64"
+	}`)
+
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/v1/github/oauth/start", body))
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("status: got %d body %s", rr.Code, rr.Body.String())
+	}
+	var resp startResponse
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatal(err)
+	}
+	if len(mem.states) != 1 || mem.states[0].Provider != "github" {
+		t.Fatalf("github state not persisted: %+v", mem.states)
+	}
+	if got := strings.Join(mem.states[0].Scopes, ","); got != "repo,read:user" {
+		t.Fatalf("scopes: got %q", got)
+	}
+	authURL, err := url.Parse(resp.AuthURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if authURL.Scheme != "https" || authURL.Host != "github.com" || authURL.Path != "/login/oauth/authorize" {
+		t.Fatalf("auth_url: %s", authURL)
+	}
+	q := authURL.Query()
+	if q.Get("client_id") != "github-client-id" {
+		t.Fatalf("client_id: %q", q.Get("client_id"))
+	}
+	if q.Get("redirect_uri") != "https://auth.shiet.app/v1/github/oauth/callback" {
+		t.Fatalf("redirect_uri: %q", q.Get("redirect_uri"))
+	}
+	if q.Get("code_challenge_method") != "S256" || q.Get("code_challenge") == "" {
+		t.Fatalf("missing PKCE query: %s", authURL.RawQuery)
+	}
+}
+
 func TestStartGoogleOAuthRejectsMissingBindingInputs(t *testing.T) {
 	srv := Server{Config: testConfig(), Store: &memoryStore{}}
 
@@ -212,6 +257,110 @@ func TestGoogleCallbackExchangesCodeAndCreatesHandoff(t *testing.T) {
 	if len(mem.handoffs) != 1 {
 		t.Fatalf("replay minted handoffs: %d", len(mem.handoffs))
 	}
+}
+
+func TestGitHubCallbackCreatesExpiringOneTimeHandoff(t *testing.T) {
+	now := time.Date(2026, 7, 9, 12, 0, 0, 0, time.UTC)
+	mem := &memoryStore{}
+	tokenSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Fatalf("token method: %s", r.Method)
+		}
+		if err := r.ParseForm(); err != nil {
+			t.Fatal(err)
+		}
+		for key, want := range map[string]string{
+			"code":          "github-auth-code",
+			"client_id":     "github-client-id",
+			"client_secret": "github-client-secret",
+			"code_verifier": "pkce-verifier",
+			"redirect_uri":  "https://auth.shiet.app/v1/github/oauth/callback",
+		} {
+			if got := r.Form.Get(key); got != want {
+				t.Fatalf("%s: got %q want %q", key, got, want)
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"access_token":"gho_access","token_type":"bearer","scope":"repo,read:user"}`))
+	}))
+	t.Cleanup(tokenSrv.Close)
+
+	srv := Server{
+		Config:         testConfig(),
+		Store:          mem,
+		Clock:          func() time.Time { return now },
+		HTTPClient:     tokenSrv.Client(),
+		GitHubTokenURL: tokenSrv.URL,
+	}
+	if err := mem.SaveOAuthState(context.Background(), store.OAuthState{
+		ID:                     "github-state-1",
+		Provider:               "github",
+		DesktopSessionID:       "desktop-1",
+		PKCEVerifier:           "pkce-verifier",
+		PKCEChallenge:          "pkce-challenge",
+		HandoffChallenge:       pkceS256("desktop-verifier"),
+		DesktopHandoffRedirect: "http://127.0.0.1:9/oauth/handoff",
+		Scopes:                 []string{"repo", "read:user"},
+		ExpiresAt:              now.Add(5 * time.Minute),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/v1/github/oauth/callback?code=github-auth-code&state=github-state-1", nil))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status: got %d body %s", rr.Code, rr.Body.String())
+	}
+	if strings.Contains(rr.Body.String(), "gho_access") {
+		t.Fatal("callback page must not contain GitHub token material")
+	}
+	if !strings.Contains(rr.Body.String(), "finish connecting GitHub") || strings.Contains(rr.Body.String(), "Google Calendar") {
+		t.Fatalf("callback page must use GitHub completion copy: %s", rr.Body.String())
+	}
+	if len(mem.handoffs) != 1 {
+		t.Fatalf("handoffs: got %d", len(mem.handoffs))
+	}
+	handoff := mem.handoffs[0]
+	if handoff.Provider != "github" {
+		t.Fatalf("provider: got %q", handoff.Provider)
+	}
+	if !handoff.ExpiresAt.Equal(now.Add(2 * time.Minute)) {
+		t.Fatalf("handoff expiry: %s", handoff.ExpiresAt)
+	}
+
+	code := handoffCodeFromCallbackPage(t, rr.Body.String())
+	body := bytes.NewBufferString(`{
+		"desktop_session_id":"desktop-1",
+		"broker_state":"github-state-1",
+		"handoff_code":"` + code + `",
+		"handoff_verifier":"desktop-verifier"
+	}`)
+	rr2 := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr2, httptest.NewRequest(http.MethodPost, "/v1/github/oauth/handoff", body))
+	if rr2.Code != http.StatusOK {
+		t.Fatalf("handoff status: got %d body %s", rr2.Code, rr2.Body.String())
+	}
+	var resp handoffResponse
+	if err := json.NewDecoder(rr2.Body).Decode(&resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp.Provider != "github" || resp.Token.AccessToken != "gho_access" || resp.Token.RefreshToken != "" {
+		t.Fatalf("handoff response: %+v", resp)
+	}
+}
+
+func handoffCodeFromCallbackPage(t *testing.T, body string) string {
+	t.Helper()
+	start := strings.Index(body, "handoff_code=")
+	if start < 0 {
+		t.Fatalf("handoff code missing from callback page: %s", body)
+	}
+	start += len("handoff_code=")
+	end := strings.IndexAny(body[start:], "&\"<")
+	if end < 0 {
+		return body[start:]
+	}
+	return body[start : start+end]
 }
 
 func TestGoogleCallbackRejectsExpiredOrMissingState(t *testing.T) {
@@ -434,6 +583,50 @@ func TestRevokeGoogleOAuthSuccess(t *testing.T) {
 	}
 }
 
+func TestRevokeGitHubOAuthUsesServerCredentialsWithoutPersistingToken(t *testing.T) {
+	mem := &memoryStore{}
+	var gotToken string
+	revokeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete || r.URL.Path != "/applications/github-client-id/token" {
+			t.Fatalf("request: %s %s", r.Method, r.URL.Path)
+		}
+		user, pass, ok := r.BasicAuth()
+		if !ok || user != "github-client-id" || pass != "github-client-secret" {
+			t.Fatalf("basic auth: user=%q pass=%q ok=%v", user, pass, ok)
+		}
+		var body struct {
+			AccessToken string `json:"access_token"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		gotToken = body.AccessToken
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(revokeSrv.Close)
+
+	srv := Server{
+		Config:          testConfig(),
+		Store:           mem,
+		HTTPClient:      revokeSrv.Client(),
+		GitHubRevokeURL: revokeSrv.URL,
+	}
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/v1/github/oauth/revoke", bytes.NewBufferString(`{
+		"access_token":"gho_revoke",
+		"reason":"user_disconnect"
+	}`)))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status: got %d body %s", rr.Code, rr.Body.String())
+	}
+	if gotToken != "gho_revoke" {
+		t.Fatalf("access token: got %q", gotToken)
+	}
+	if len(mem.states) != 0 || len(mem.handoffs) != 0 {
+		t.Fatalf("revoke must not write store; states=%d handoffs=%d", len(mem.states), len(mem.handoffs))
+	}
+}
+
 func TestRevokeGoogleOAuthAlreadyRevoked(t *testing.T) {
 	revokeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -508,15 +701,19 @@ func TestRevokeGoogleOAuthGoogleFailure(t *testing.T) {
 
 func testConfig() brokerconfig.Config {
 	return brokerconfig.Config{
-		ListenAddr:         ":8080",
-		PublicOrigin:       "https://auth.shiet.app",
-		GoogleClientID:     "google-client-id",
-		GoogleClientSecret: "google-client-secret",
-		DesktopHandoffURL:  "shiet://oauth/google/handoff",
-		DatastoreDSN:       "file:broker.db",
-		StateTTL:           5 * time.Minute,
-		HandoffTTL:         2 * time.Minute,
-		GoogleScopes:       []string{"https://www.googleapis.com/auth/calendar.readonly"},
+		ListenAddr:              ":8080",
+		PublicOrigin:            "https://auth.shiet.app",
+		GoogleClientID:          "google-client-id",
+		GoogleClientSecret:      "google-client-secret",
+		DesktopHandoffURL:       "shiet://oauth/google/handoff",
+		GitHubClientID:          "github-client-id",
+		GitHubClientSecret:      "github-client-secret",
+		GitHubDesktopHandoffURL: "shiet://oauth/github/handoff",
+		DatastoreDSN:            "file:broker.db",
+		StateTTL:                5 * time.Minute,
+		HandoffTTL:              2 * time.Minute,
+		GoogleScopes:            []string{"https://www.googleapis.com/auth/calendar.readonly"},
+		GitHubScopes:            []string{"repo", "read:user"},
 	}
 }
 
@@ -534,7 +731,7 @@ func (m *memoryStore) SaveOAuthState(_ context.Context, rec store.OAuthState) er
 	return nil
 }
 
-func (m *memoryStore) ConsumeOAuthState(_ context.Context, id string, now time.Time) (store.OAuthState, error) {
+func (m *memoryStore) ConsumeOAuthState(_ context.Context, id, provider string, now time.Time) (store.OAuthState, error) {
 	for i := range m.states {
 		rec := &m.states[i]
 		if rec.ID != id {
@@ -545,6 +742,9 @@ func (m *memoryStore) ConsumeOAuthState(_ context.Context, id string, now time.T
 		}
 		if !now.Before(rec.ExpiresAt) {
 			return store.OAuthState{}, store.ErrExpired
+		}
+		if providerOrGoogle(rec.Provider) != providerOrGoogle(provider) {
+			return store.OAuthState{}, store.ErrMismatch
 		}
 		used := now
 		rec.UsedAt = &used
@@ -558,7 +758,7 @@ func (m *memoryStore) SaveHandoff(_ context.Context, rec store.HandoffRecord) er
 	return nil
 }
 
-func (m *memoryStore) ConsumeHandoff(_ context.Context, codeHash, desktopSessionID, stateID, handoffChallenge string, now time.Time) (store.HandoffRecord, error) {
+func (m *memoryStore) ConsumeHandoff(_ context.Context, codeHash, provider, desktopSessionID, stateID, handoffChallenge string, now time.Time) (store.HandoffRecord, error) {
 	for i := range m.handoffs {
 		rec := &m.handoffs[i]
 		if rec.CodeHash != codeHash {
@@ -569,6 +769,9 @@ func (m *memoryStore) ConsumeHandoff(_ context.Context, codeHash, desktopSession
 		}
 		if !now.Before(rec.ExpiresAt) {
 			return store.HandoffRecord{}, store.ErrExpired
+		}
+		if providerOrGoogle(rec.Provider) != providerOrGoogle(provider) {
+			return store.HandoffRecord{}, store.ErrMismatch
 		}
 		if rec.DesktopSessionID != desktopSessionID || rec.StateID != stateID || rec.HandoffChallenge != handoffChallenge {
 			return store.HandoffRecord{}, store.ErrMismatch

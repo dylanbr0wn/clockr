@@ -122,6 +122,9 @@ func (c *Client) refreshToken(ctx context.Context, current secrets.Token) (secre
 		}
 		next = secrets.TokenFromOAuth2(oauthTok)
 	}
+	if next.CredentialSource == "" {
+		next.CredentialSource = current.CredentialSource
+	}
 
 	if err := c.Store.Set(c.Provider, c.AccountID, next); err != nil {
 		return secrets.Token{}, fmt.Errorf("persist refreshed token: %w", err)

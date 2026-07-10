@@ -35,6 +35,10 @@ export function ExcludeEvent(arg1:service.ExcludeEventInput):Promise<service.Exc
 
 export function GetSetting(arg1:string):Promise<string>;
 
+export function GitHubAuthMode():Promise<string>;
+
+export function GitHubOAuthAvailable():Promise<boolean>;
+
 export function Greet(arg1:string):Promise<string>;
 
 export function ListAIModels(arg1:string,arg2:string):Promise<Array<string>>;

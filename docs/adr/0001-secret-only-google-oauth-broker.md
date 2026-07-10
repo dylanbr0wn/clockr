@@ -1,8 +1,8 @@
-# ADR-0001: Secret-Only Google OAuth Broker
+# ADR-0001: Secret-Only OAuth Broker
 
 - Status: Accepted
 - Date: 2026-07-08
-- Linear: DYL-74
+- Linear: DYL-74, DYL-95
 
 ## Context
 
@@ -59,6 +59,35 @@ rate-limit counters, audit events, and revocation or kill-switch configuration.
 BYO credentials remain available for development and advanced users. Public
 release builds should default to the broker when no explicit local Google OAuth
 credentials are configured.
+
+### GitHub provider extension (DYL-95)
+
+The same confidentiality boundary applies to the shared GitHub OAuth App:
+public desktop builds must not ship its `client_secret`. The broker therefore
+also owns GitHub's web authorization code exchange and exposes provider-specific
+`/v1/github/oauth/start`, `/callback`, `/handoff`, and `/revoke` routes. GitHub
+state and handoff records use the same expiry, one-time-use, verifier binding,
+rate limiting, kill switches, redacted observability, and no-persistent-token
+rules as Google.
+
+The first GitHub broker integration uses an OAuth App user access token rather
+than GitHub App installation tokens. This matches shiet's user-level repository
+picker and evidence access. The broker requests `repo`, hands
+the resulting `gho_` token to the desktop keychain, and never persists it.
+
+GitHub OAuth App user access tokens do not expose the short-lived installation
+token refresh lifecycle used by GitHub Apps. Accordingly, this integration has
+no GitHub refresh route: an invalid or revoked token moves the connection to
+`needs_reauth` and the user reconnects. Disconnect sends the desktop-held access
+token to the broker, which calls GitHub's app-token revocation endpoint using
+server-side Basic authentication with the OAuth App client id and secret. The
+broker does not retain the submitted token or a disconnected-account record.
+
+Local/BYO GitHub OAuth remains available with `github.auth_mode: local` and
+locally configured OAuth App credentials. The PAT path introduced by DYL-56 is
+also retained in either mode as an explicit advanced-user escape hatch. Public
+builds default to `github.auth_mode: broker` and clear any loaded desktop GitHub
+`client_secret` before runtime wiring.
 
 ## Options Considered
 

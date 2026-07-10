@@ -25,14 +25,14 @@ func TestOAuthStateOneTimeUseAndExpiry(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rec, err := s.ConsumeOAuthState(ctx, "state-1", now)
+	rec, err := s.ConsumeOAuthState(ctx, "state-1", "google", now)
 	if err != nil {
 		t.Fatalf("consume state: %v", err)
 	}
 	if rec.UsedAt == nil {
 		t.Fatal("expected consumed state to have used_at")
 	}
-	_, err = s.ConsumeOAuthState(ctx, "state-1", now)
+	_, err = s.ConsumeOAuthState(ctx, "state-1", "google", now)
 	if !errors.Is(err, ErrAlreadyUsed) {
 		t.Fatalf("second consume: got %v want %v", err, ErrAlreadyUsed)
 	}
@@ -48,9 +48,61 @@ func TestOAuthStateOneTimeUseAndExpiry(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	_, err = s.ConsumeOAuthState(ctx, "state-expired", now)
+	_, err = s.ConsumeOAuthState(ctx, "state-expired", "google", now)
 	if !errors.Is(err, ErrExpired) {
 		t.Fatalf("expired consume: got %v want %v", err, ErrExpired)
+	}
+}
+
+func TestOAuthStateAndHandoffKeepProviderBinding(t *testing.T) {
+	ctx := context.Background()
+	s := newTestStore(t)
+	now := time.Date(2026, 7, 9, 12, 0, 0, 0, time.UTC)
+
+	if err := s.SaveOAuthState(ctx, OAuthState{
+		ID:               "github-state",
+		Provider:         "github",
+		DesktopSessionID: "desktop-1",
+		PKCEVerifier:     "verifier",
+		PKCEChallenge:    "challenge",
+		HandoffChallenge: "handoff-challenge",
+		Scopes:           []string{"repo"},
+		ExpiresAt:        now.Add(time.Minute),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.ConsumeOAuthState(ctx, "github-state", "google", now); !errors.Is(err, ErrMismatch) {
+		t.Fatalf("cross-provider state consume: got %v want %v", err, ErrMismatch)
+	}
+	state, err := s.ConsumeOAuthState(ctx, "github-state", "github", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Provider != "github" {
+		t.Fatalf("state provider: got %q", state.Provider)
+	}
+
+	if err := s.SaveHandoff(ctx, HandoffRecord{
+		CodeHash:              "github-hash",
+		Provider:              "github",
+		StateID:               "github-state",
+		DesktopSessionID:      "desktop-1",
+		HandoffChallenge:      "handoff-challenge",
+		EncryptedTokenPayload: []byte("ciphertext"),
+		Scopes:                []string{"repo"},
+		ExpiresAt:             now.Add(time.Minute),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.ConsumeHandoff(ctx, "github-hash", "google", "desktop-1", "github-state", "handoff-challenge", now); !errors.Is(err, ErrMismatch) {
+		t.Fatalf("cross-provider handoff consume: got %v want %v", err, ErrMismatch)
+	}
+	handoff, err := s.ConsumeHandoff(ctx, "github-hash", "github", "desktop-1", "github-state", "handoff-challenge", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if handoff.Provider != "github" {
+		t.Fatalf("handoff provider: got %q", handoff.Provider)
 	}
 }
 
@@ -83,19 +135,19 @@ func TestHandoffOneTimeUseScrubsPayloadAndExpiry(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := s.ConsumeHandoff(ctx, "hash-1", "wrong-desktop", "state-1", "handoff-challenge", now)
+	_, err := s.ConsumeHandoff(ctx, "hash-1", "google", "wrong-desktop", "state-1", "handoff-challenge", now)
 	if !errors.Is(err, ErrMismatch) {
 		t.Fatalf("binding mismatch: got %v want %v", err, ErrMismatch)
 	}
 
-	rec, err := s.ConsumeHandoff(ctx, "hash-1", "desktop-1", "state-1", "handoff-challenge", now)
+	rec, err := s.ConsumeHandoff(ctx, "hash-1", "google", "desktop-1", "state-1", "handoff-challenge", now)
 	if err != nil {
 		t.Fatalf("consume handoff: %v", err)
 	}
 	if string(rec.EncryptedTokenPayload) != "ciphertext" {
 		t.Fatalf("returned payload: got %q", rec.EncryptedTokenPayload)
 	}
-	_, err = s.ConsumeHandoff(ctx, "hash-1", "desktop-1", "state-1", "handoff-challenge", now)
+	_, err = s.ConsumeHandoff(ctx, "hash-1", "google", "desktop-1", "state-1", "handoff-challenge", now)
 	if !errors.Is(err, ErrAlreadyUsed) {
 		t.Fatalf("second consume: got %v want %v", err, ErrAlreadyUsed)
 	}
@@ -109,7 +161,7 @@ func TestHandoffOneTimeUseScrubsPayloadAndExpiry(t *testing.T) {
 	}
 }
 
-func TestSchemaDoesNotCreatePersistentGoogleTokenColumns(t *testing.T) {
+func TestSchemaDoesNotCreatePersistentProviderTokenColumns(t *testing.T) {
 	ctx := context.Background()
 	s := newTestStore(t)
 

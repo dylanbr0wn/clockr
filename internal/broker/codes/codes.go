@@ -6,6 +6,7 @@ package codes
 // JSON error codes returned in {"error":"..."}.
 const (
 	InvalidConfig                             = "invalid_config"
+	ProviderNotConfigured                     = "provider_not_configured"
 	DatastoreUnavailable                      = "datastore_unavailable"
 	InvalidJSON                               = "invalid_json"
 	DesktopSessionAndHandoffChallengeRequired = "desktop_session_id_and_handoff_challenge_required"
@@ -23,9 +24,11 @@ const (
 	HandoffConsumeFailed                      = "handoff_consume_failed"
 	HandoffPayloadInvalid                     = "handoff_payload_invalid"
 	RefreshTokenRequired                      = "refresh_token_required"
+	AccessTokenRequired                       = "access_token_required"
 	InvalidRefreshToken                       = "invalid_refresh_token"
 	GoogleTokenRefreshFailed                  = "google_token_refresh_failed"
 	GoogleRevokeFailed                        = "google_revoke_failed"
+	GitHubRevokeFailed                        = "github_revoke_failed"
 	RateLimited                               = "rate_limited"
 	AuthDisabled                              = "auth_disabled"
 	RefreshDisabled                           = "refresh_disabled"
@@ -58,6 +61,7 @@ const (
 const (
 	OutcomeOK                 = "ok"
 	OutcomeGoogleError        = "google_error"
+	OutcomeProviderError      = "provider_error"
 	OutcomeMissingParams      = "missing_params"
 	OutcomeStateAlreadyUsed   = "state_already_used"
 	OutcomeStateExpired       = "state_expired"
@@ -76,6 +80,7 @@ const (
 	OutcomePayloadInvalid     = "payload_invalid"
 	OutcomeInvalidGrant       = "invalid_grant"
 	OutcomeGoogleFailed       = "google_failed"
+	OutcomeGitHubFailed       = "github_failed"
 	OutcomeAlreadyRevoked     = "already_revoked"
 )
 
