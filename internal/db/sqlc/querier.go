@@ -25,7 +25,6 @@ type Querier interface {
 	DeleteGapFill(ctx context.Context, arg DeleteGapFillParams) (int64, error)
 	DeleteGitHubReposByAccount(ctx context.Context, accountID string) error
 	DeleteIntegrationConnection(ctx context.Context, arg DeleteIntegrationConnectionParams) error
-	DeleteManualGapFill(ctx context.Context, arg DeleteManualGapFillParams) (int64, error)
 	DeleteOverlay(ctx context.Context, id int64) error
 	DeletePeriod(ctx context.Context, id int64) error
 	DeleteTzSegment(ctx context.Context, id int64) error

@@ -69,23 +69,6 @@ func (q *Queries) DeleteGapFill(ctx context.Context, arg DeleteGapFillParams) (i
 	return result.RowsAffected()
 }
 
-const deleteManualGapFill = `-- name: DeleteManualGapFill :execrows
-DELETE FROM gap_fill WHERE id = ? AND period_id = ? AND source = 'manual'
-`
-
-type DeleteManualGapFillParams struct {
-	ID       int64 `json:"id"`
-	PeriodID int64 `json:"period_id"`
-}
-
-func (q *Queries) DeleteManualGapFill(ctx context.Context, arg DeleteManualGapFillParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteManualGapFill, arg.ID, arg.PeriodID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
-}
-
 const listGapFillsForDay = `-- name: ListGapFillsForDay :many
 SELECT id, period_id, day, start_utc, end_utc, category_id, note, source, created_at, updated_at FROM gap_fill WHERE period_id = ? AND day = ? ORDER BY start_utc
 `
@@ -175,7 +158,7 @@ UPDATE gap_fill SET
     category_id = ?,
     note        = ?,
     updated_at  = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-WHERE id = ? AND period_id = ? AND source = 'manual'
+WHERE id = ? AND period_id = ?
 RETURNING id, period_id, day, start_utc, end_utc, category_id, note, source, created_at, updated_at
 `
 
