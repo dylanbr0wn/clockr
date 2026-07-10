@@ -25,5 +25,11 @@ describe("tabular export specs", () => {
     const spec = defaultTabularSpec("detail", "matrix");
     expect(spec.layout).toBe("flat");
     expect(spec.columns.map((column) => column.field)).toContain("start");
+    expect(spec.columns.map((column) => column.field)).toContain("description");
+  });
+
+  it("exposes description in detail catalog", () => {
+    const fields = fieldCatalog("detail", "flat").map((field) => field.field);
+    expect(fields).toContain("description");
   });
 });

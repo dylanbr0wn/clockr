@@ -29,6 +29,7 @@ const DEFAULT_HEADERS: Record<string, string> = {
   start: "Start",
   end: "End",
   title: "Title",
+  description: "Description",
   source: "Source",
   day_actual_hours: "Day actual",
   day_target_hours: "Day target",
@@ -72,6 +73,11 @@ export function fieldCatalog(
         field: "title",
         label: "Title",
         description: "Event title or gap-fill note",
+      },
+      {
+        field: "description",
+        label: "Description",
+        description: "Event or gap-fill work notes",
       },
       { field: "source", label: "Source", description: "event or gap_fill" },
     ];
@@ -134,7 +140,7 @@ export function defaultTabularSpec(
   const columns = fieldCatalog(grain, resolvedLayout)
     .filter((field) => {
       if (grain === "detail") {
-        return ["start", "end", "category_name", "category_key", "hours", "title"].includes(
+        return ["start", "end", "category_name", "category_key", "hours", "title", "description"].includes(
           field.field,
         );
       }

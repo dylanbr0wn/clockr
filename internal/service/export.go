@@ -73,6 +73,7 @@ type ExportEntry struct {
 	EndMinutes   int            `json:"endMinutes"`
 	Minutes      int            `json:"minutes"`
 	Title        string         `json:"title"`
+	Description  string         `json:"description"`
 	Category     ExportCategory `json:"category"`
 }
 
@@ -394,6 +395,7 @@ func eventToExportEntry(
 			EndMinutes:   endMinutes,
 			Minutes:      endMinutes - startMinutes,
 			Title:        title,
+			Description:  event.Description,
 			Category:     category,
 		}, true, nil
 	}
@@ -421,6 +423,7 @@ func eventToExportEntry(
 		EndMinutes:   endMinutes,
 		Minutes:      endMinutes - startMinutes,
 		Title:        title,
+		Description:  event.Description,
 		Category:     category,
 	}, true, nil
 }
@@ -476,6 +479,7 @@ func gapFillToExportEntry(
 		EndMinutes:   endMinutes,
 		Minutes:      endMinutes - startMinutes,
 		Title:        title,
+		Description:  fill.Description,
 		Category:     category,
 	}, true, nil
 }

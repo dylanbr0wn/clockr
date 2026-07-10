@@ -56,14 +56,19 @@ func newGapEnv(t *testing.T, start, end, iana string, target float64) *gapEnv {
 	return &gapEnv{svc: service.New(conn), q: q, periodID: p.ID, calID: cal.ID, catID: cats[0].ID}
 }
 
-func (e *gapEnv) addEvent(t *testing.T, gid string, startUTC, endUTC string) {
+func (e *gapEnv) addEvent(t *testing.T, gid string, startUTC, endUTC string, description ...string) {
 	t.Helper()
+	desc := ""
+	if len(description) > 0 {
+		desc = description[0]
+	}
 	if _, err := e.q.UpsertEvent(context.Background(), sqlc.UpsertEventParams{
 		PeriodID:   e.periodID,
 		CalendarID: e.calID,
 		Provider:   service.ProviderGoogle,
 		ExternalID: gid,
 		Title:         gid,
+		Description:   desc,
 		Status:        "accepted",
 		Attendees:     "[]",
 		StartUtc:      sql.NullString{String: startUTC, Valid: true},

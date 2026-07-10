@@ -347,7 +347,7 @@ func TestRenderPeriodExport_DetailEntriesCSVShape(t *testing.T) {
 		}
 	}
 
-	e.addEvent(t, "meet-1", "2026-06-01T15:00:00Z", "2026-06-01T17:00:00Z")
+	e.addEvent(t, "meet-1", "2026-06-01T15:00:00Z", "2026-06-01T17:00:00Z", "Google notes")
 	if _, err := e.q.UpsertOverlay(ctx, sqlc.UpsertOverlayParams{
 		PeriodID:   e.periodID,
 		Provider:   service.ProviderGoogle,
@@ -358,13 +358,14 @@ func TestRenderPeriodExport_DetailEntriesCSVShape(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := e.q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
-		PeriodID:   e.periodID,
-		Day:        "2026-06-01",
-		StartUtc:   "2026-06-01T17:00:00Z",
-		EndUtc:     "2026-06-01T19:00:00Z",
-		CategoryID: sql.NullInt64{Int64: deepWork.ID, Valid: true},
-		Note:       "Focus",
-		Source:     "manual",
+		PeriodID:    e.periodID,
+		Day:         "2026-06-01",
+		StartUtc:    "2026-06-01T17:00:00Z",
+		EndUtc:      "2026-06-01T19:00:00Z",
+		CategoryID:  sql.NullInt64{Int64: deepWork.ID, Valid: true},
+		Note:        "Focus",
+		Description: "User notes",
+		Source:      "manual",
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -392,13 +393,88 @@ func TestRenderPeriodExport_DetailEntriesCSVShape(t *testing.T) {
 	}
 
 	want := strings.Join([]string{
-		"Start,End,Category,Key,Hours,Title",
-		"2026-06-01T11:00,2026-06-01T13:00,Meetings," + meetings.Key + ",2.00,meet-1",
-		"2026-06-01T13:00,2026-06-01T15:00,Deep Work," + deepWork.Key + ",2.00,Focus",
-		"2026-06-02T10:00,2026-06-02T12:00,Deep Work," + deepWork.Key + ",2.00,Planning",
+		"Start,End,Category,Key,Hours,Title,Description",
+		"2026-06-01T11:00,2026-06-01T13:00,Meetings," + meetings.Key + ",2.00,meet-1,Google notes",
+		"2026-06-01T13:00,2026-06-01T15:00,Deep Work," + deepWork.Key + ",2.00,Focus,User notes",
+		"2026-06-02T10:00,2026-06-02T12:00,Deep Work," + deepWork.Key + ",2.00,Planning,",
 	}, "\n")
 	if render.Content != want {
 		t.Fatalf("csv mismatch\ngot:\n%s\nwant:\n%s", render.Content, want)
+	}
+}
+
+func TestBuildPeriodExport_EntryDescriptions(t *testing.T) {
+	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto", 8)
+	ctx := context.Background()
+
+	cats, err := e.svc.ListCategories(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var meetings service.Category
+	for _, c := range cats {
+		if c.Name == "Meetings" {
+			meetings = c
+		}
+	}
+	if meetings.ID == 0 {
+		t.Fatal("seeded Meetings category missing")
+	}
+
+	e.addEvent(t, "meet-1", "2026-06-01T15:00:00Z", "2026-06-01T17:00:00Z", "Calendar agenda")
+	if _, err := e.q.UpsertOverlay(ctx, sqlc.UpsertOverlayParams{
+		PeriodID:   e.periodID,
+		Provider:   service.ProviderGoogle,
+		ExternalID: "meet-1",
+		CategoryID: sql.NullInt64{Int64: meetings.ID, Valid: true},
+		Kind:       "category",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
+		PeriodID:    e.periodID,
+		Day:         "2026-06-01",
+		StartUtc:    "2026-06-01T17:00:00Z",
+		EndUtc:      "2026-06-01T19:00:00Z",
+		CategoryID:  sql.NullInt64{Int64: meetings.ID, Valid: true},
+		Note:        "Short title",
+		Description: "Longer work notes",
+		Source:      "manual",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	model, err := e.svc.BuildPeriodExport(ctx, e.periodID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(model.Entries) != 2 {
+		t.Fatalf("entries = %d want 2", len(model.Entries))
+	}
+
+	var eventEntry, gapEntry *service.ExportEntry
+	for i := range model.Entries {
+		switch model.Entries[i].Source {
+		case "event":
+			eventEntry = &model.Entries[i]
+		case "gap_fill":
+			gapEntry = &model.Entries[i]
+		}
+	}
+	if eventEntry == nil || gapEntry == nil {
+		t.Fatalf("entries = %+v", model.Entries)
+	}
+	if eventEntry.Description != "Calendar agenda" {
+		t.Fatalf("event description = %q want Calendar agenda", eventEntry.Description)
+	}
+	if eventEntry.Title != "meet-1" {
+		t.Fatalf("event title = %q want meet-1", eventEntry.Title)
+	}
+	if gapEntry.Description != "Longer work notes" {
+		t.Fatalf("gap description = %q want Longer work notes", gapEntry.Description)
+	}
+	if gapEntry.Title != "Short title" {
+		t.Fatalf("gap title = %q want Short title", gapEntry.Title)
 	}
 }
 

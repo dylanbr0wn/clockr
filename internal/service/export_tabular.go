@@ -26,6 +26,7 @@ const (
 	ExportFieldStart        = "start"
 	ExportFieldEnd          = "end"
 	ExportFieldTitle        = "title"
+	ExportFieldDescription  = "description"
 	ExportFieldSource       = "source"
 	ExportFieldDayActual    = "day_actual_hours"
 	ExportFieldDayTarget    = "day_target_hours"
@@ -82,6 +83,7 @@ func DefaultTabularSpec(grain, layout string) TabularTemplateSpec {
 			{Field: ExportFieldCategoryKey, Header: "Key"},
 			{Field: ExportFieldHours, Header: "Hours"},
 			{Field: ExportFieldTitle, Header: "Title"},
+			{Field: ExportFieldDescription, Header: "Description"},
 		}
 	case layout == ExportLayoutMatrix:
 		spec.Columns = []TabularColumnSpec{
@@ -127,6 +129,7 @@ func fieldCatalog(grain, layout string) []ExportFieldInfo {
 			{Field: ExportFieldHours, Label: "Hours", Description: "Duration as decimal hours"},
 			{Field: ExportFieldMinutes, Label: "Minutes", Description: "Duration as whole minutes"},
 			{Field: ExportFieldTitle, Label: "Title", Description: "Event title or gap-fill note"},
+			{Field: ExportFieldDescription, Label: "Description", Description: "Event or gap-fill work notes"},
 			{Field: ExportFieldSource, Label: "Source", Description: "event or gap_fill"},
 		}
 	case layout == ExportLayoutMatrix:
@@ -500,6 +503,8 @@ func detailField(field string, entry ExportEntry) string {
 		return fmt.Sprintf("%d", entry.Minutes)
 	case ExportFieldTitle:
 		return entry.Title
+	case ExportFieldDescription:
+		return entry.Description
 	case ExportFieldSource:
 		return entry.Source
 	default:
