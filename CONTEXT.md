@@ -20,6 +20,17 @@ database.
 - **BYO credentials**: a developer or advanced-user mode where the desktop app
   is configured with provider OAuth credentials from local config or
   environment. GitHub PAT connect is also retained as an advanced-user path.
+- **Integration**: a third-party service the desktop app connects to (e.g. Google
+  Calendar, GitHub, Slack). Each integration has one or more connected accounts
+  tracked in the connection registry.
+- **Calendar source**: an integration kind that imports schedule events (today:
+  Google Calendar). The user selects which calendars count toward the pay period.
+- **Activity evidence provider**: an integration kind that supplies read-only
+  activity context for gap-fill suggestions (e.g. GitHub repos, Slack channels).
+  Evidence never auto-creates time entries.
+- **Integrations settings**: the single Settings area where users connect accounts
+  and configure integration resources. Providers appear in a catalog grouped by
+  kind; adding a provider does not add a new top-level settings tab.
 
 ## Decisions
 
@@ -32,8 +43,14 @@ database.
   are not refreshed by the broker, and are revoked through the broker on
   disconnect. Local/BYO OAuth and PAT connect remain available.
 
+- Integrations settings use one catalog + detail surface for all providers. Adding
+  a provider adds a catalog entry and kind config adapter — not a new top-level
+  settings tab. See
+  [ADR-0002](docs/adr/0002-standardized-integrations-settings-surface.md).
+
 ## Related docs
 
 - [DESIGN.md](DESIGN.md) — product shape, core loop, schema intent, roadmap
+- [docs/adr/0002-standardized-integrations-settings-surface.md](docs/adr/0002-standardized-integrations-settings-surface.md) — Integrations settings IA and API contract
 - [docs/oauth-broker.md](docs/oauth-broker.md) — broker operator runbook
 - [README.md](README.md) — setup, build, config

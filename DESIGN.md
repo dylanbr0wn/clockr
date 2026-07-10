@@ -66,6 +66,26 @@ Assignment runs in layers, fewest clicks over time:
   They never auto-create entries. Entries only ever come from calendar events +
   user-confirmed gap fills.
 
+## Integrations settings
+
+All third-party connections are managed in one **Integrations** area inside
+Settings — not as separate top-level tabs per provider.
+
+- **Catalog + detail** — the user picks a provider from a list grouped by kind,
+  then opens a detail view to connect accounts and configure resources.
+- **Calendar sources** (`calendar_source`) — connect an account, choose which
+  calendars to import, optionally map each calendar to a default category. Today:
+  Google Calendar.
+- **Activity evidence providers** (`activity_evidence`) — connect an account,
+  refresh and select resources (repos, channels, …) the AI may cite during
+  gap-fill. Evidence never auto-creates time entries.
+- **Adding providers** — a new provider (e.g. Bitbucket) adds a catalog entry
+  and a kind-specific config panel. It does **not** add a new top-level settings
+  tab.
+
+See [ADR-0002](docs/adr/0002-standardized-integrations-settings-surface.md) for
+the settings IA, shared UI primitives, Wails API sketch, and migration plan.
+
 ### 4. Export
 - **On-screen summary**: period totals by category + per-day breakdown, copyable.
 - **CSV**: category × hours, per day and per period.
