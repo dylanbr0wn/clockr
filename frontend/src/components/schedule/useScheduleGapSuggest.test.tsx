@@ -99,7 +99,7 @@ describe("useScheduleGapSuggest", () => {
     act(() => {
       result.current.handleConfirmGapSuggest({
         categoryId: 4,
-        note: "Deep work",
+        description: "Deep work",
       });
     });
 
@@ -110,7 +110,7 @@ describe("useScheduleGapSuggest", () => {
         startMinutes: 480,
         endMinutes: 540,
         categoryId: 4,
-        note: "Deep work",
+        description: "Deep work",
       }),
       expect.any(Object),
     );

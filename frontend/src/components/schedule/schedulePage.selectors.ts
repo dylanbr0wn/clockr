@@ -171,6 +171,7 @@ function resolveEditingEvent({
       endMinutes: pendingCreate.endMinutes,
       category: "Unassigned",
       note: "",
+      description: "",
       isNew: true,
     };
   }
@@ -196,5 +197,6 @@ function resolveEditingEvent({
     category: item.metadata?.category ?? "Unassigned",
     categoryId: gapFill.categoryId,
     note: gapFill.note ?? "",
+    description: gapFill.description ?? "",
   };
 }

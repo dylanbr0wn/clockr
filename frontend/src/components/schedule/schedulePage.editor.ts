@@ -27,6 +27,7 @@ interface Mutations {
         endMinutes: number;
         categoryId?: number;
         note: string;
+        description: string;
       },
       options?: { onSuccess?: () => void },
     ) => void;
@@ -41,6 +42,7 @@ interface Mutations {
         endMinutes: number;
         categoryId?: number;
         note: string;
+        description: string;
       },
       options?: { onSuccess?: () => void; onSettled?: () => void },
     ) => void;
@@ -121,6 +123,7 @@ export function useSchedulePageEditor({
             endMinutes: change.endMinutes,
             categoryId: gapFill.categoryId,
             note: gapFill.note ?? "",
+            description: gapFill.description ?? "",
           },
           {
             onSettled: () => {
@@ -164,6 +167,7 @@ export function useSchedulePageEditor({
       endMinutes: item.endMinutes,
       categoryId: gapFill.categoryId,
       note: gapFill.note ?? item.metadata?.title ?? "",
+      description: gapFill.description ?? "",
     });
   };
 
@@ -240,6 +244,7 @@ export function useSchedulePageEditor({
           endMinutes: values.endMinutes,
           categoryId: values.categoryId,
           note: values.note,
+          description: values.description,
         },
         { onSuccess: () => setPendingCreate(null) },
       );
@@ -274,6 +279,7 @@ export function useSchedulePageEditor({
         endMinutes: values.endMinutes,
         categoryId: values.categoryId,
         note: values.note,
+        description: values.description,
       },
       {
         onSuccess: () => setEditingItemId(null),

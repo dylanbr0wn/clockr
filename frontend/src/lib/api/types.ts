@@ -115,6 +115,7 @@ export interface GapFill {
   end: string;
   categoryId?: number;
   note?: string;
+  description?: string;
   source: string;
 }
 
@@ -125,6 +126,7 @@ export interface ManualEventInput {
   endMinutes: number;
   categoryId?: number;
   note?: string;
+  description?: string;
 }
 
 export interface ManualEventUpdateInput extends ManualEventInput {

@@ -34,6 +34,7 @@ export interface EditableScheduleEvent {
   category: string;
   categoryId?: number;
   note: string;
+  description: string;
   isNew?: boolean;
 }
 
@@ -43,6 +44,7 @@ export interface ScheduleEventEditValues {
   endMinutes: number;
   categoryId?: number;
   note: string;
+  description: string;
 }
 
 export interface SchedulePageViewModel {
@@ -101,7 +103,7 @@ export interface SchedulePageViewModel {
   handleRetryGapSuggest: () => void;
   handleConfirmGapSuggest: (values: {
     categoryId?: number;
-    note: string;
+    description: string;
   }) => void;
 }
 

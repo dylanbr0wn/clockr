@@ -631,6 +631,7 @@ export namespace service {
 	    end: string;
 	    categoryId?: number;
 	    note?: string;
+	    description?: string;
 	    source: string;
 	
 	    static createFrom(source: any = {}) {
@@ -646,6 +647,7 @@ export namespace service {
 	        this.end = source["end"];
 	        this.categoryId = source["categoryId"];
 	        this.note = source["note"];
+	        this.description = source["description"];
 	        this.source = source["source"];
 	    }
 	}
@@ -777,6 +779,7 @@ export namespace service {
 	    endMinutes: number;
 	    categoryId?: number;
 	    note?: string;
+	    description?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ManualEventInput(source);
@@ -790,6 +793,7 @@ export namespace service {
 	        this.endMinutes = source["endMinutes"];
 	        this.categoryId = source["categoryId"];
 	        this.note = source["note"];
+	        this.description = source["description"];
 	    }
 	}
 	export class ManualEventUpdateInput {
@@ -800,6 +804,7 @@ export namespace service {
 	    endMinutes: number;
 	    categoryId?: number;
 	    note?: string;
+	    description?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ManualEventUpdateInput(source);
@@ -814,6 +819,7 @@ export namespace service {
 	        this.endMinutes = source["endMinutes"];
 	        this.categoryId = source["categoryId"];
 	        this.note = source["note"];
+	        this.description = source["description"];
 	    }
 	}
 	export class Period {
