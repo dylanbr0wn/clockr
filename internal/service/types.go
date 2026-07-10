@@ -61,6 +61,17 @@ type Calendar struct {
 	DefaultCategoryID *int64 `json:"defaultCategoryId,omitempty"`
 }
 
+// GitHubRepo is a synced GitHub repository available as an evidence source.
+type GitHubRepo struct {
+	ID         int64  `json:"id"`
+	AccountID  string `json:"accountId"`
+	ExternalID string `json:"externalId"`
+	Name       string `json:"name"`
+	FullName   string `json:"fullName"`
+	Private    bool   `json:"private"`
+	Selected   bool   `json:"selected"`
+}
+
 // Attendee mirrors the fields shiet keeps from a Google Calendar attendee.
 type Attendee struct {
 	Email          string `json:"email"`
@@ -148,6 +159,18 @@ func toPeriod(r sqlc.Period) Period {
 
 func toTzSegment(r sqlc.TzSegment) TzSegment {
 	return TzSegment{ID: r.ID, PeriodID: r.PeriodID, EffectiveFromDate: r.EffectiveFromDate, IanaTz: r.IanaTz}
+}
+
+func toGitHubRepo(r sqlc.GithubRepo) GitHubRepo {
+	return GitHubRepo{
+		ID:         r.ID,
+		AccountID:  r.AccountID,
+		ExternalID: r.ExternalID,
+		Name:       r.Name,
+		FullName:   r.FullName,
+		Private:    r.Private == 1,
+		Selected:   r.Selected == 1,
+	}
 }
 
 func toCalendar(r sqlc.Calendar) Calendar {

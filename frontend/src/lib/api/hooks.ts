@@ -2,12 +2,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   classifyAIEndpoint,
   computeGaps,
+  connectGitHub,
   connectGoogle,
   createGapFill,
   createCategory,
   createManualEvent,
   deleteCategory,
   deleteManualEvent,
+  disconnectGitHub,
   disconnectGoogle,
   discoverLocalAIEndpoints,
   ensureCurrentPeriod,
@@ -20,17 +22,20 @@ import {
   listEventCategoryOverlays,
   listEvents,
   listGapFills,
+  listGitHubRepos,
   listIntegrationConnections,
   listOpenReviewItems,
   listPeriods,
   listSelectedCalendars,
   listTzSegments,
+  refreshGitHubRepos,
   resolveReviewItem,
   saveAIConfig,
   saveAIEndpoint,
   saveAIModel,
   setCalendarDefaultCategory,
   setCalendarSelected,
+  setGitHubRepoSelected,
   setSetting,
   suggestGapFill,
   syncPeriod,
@@ -78,6 +83,7 @@ export const shietQueryKeys = {
   connections: () => [...shietQueryKeys.all, "connections"] as const,
   googleAuthStatus: () =>
     [...shietQueryKeys.all, "googleAuthStatus"] as const,
+  githubRepos: () => [...shietQueryKeys.all, "githubRepos"] as const,
   setting: (key: string) => [...shietQueryKeys.all, "settings", key] as const,
   aiDiscovery: () => [...shietQueryKeys.all, "ai", "discovery"] as const,
   aiClassification: (baseURL: string) =>
@@ -621,6 +627,78 @@ export function useSetCalendarSelected() {
       });
       void queryClient.invalidateQueries({
         queryKey: shietQueryKeys.selectedCalendars(),
+      });
+    },
+  });
+}
+
+export function useGitHubRepos() {
+  return useQuery({
+    queryKey: shietQueryKeys.githubRepos(),
+    queryFn: listGitHubRepos,
+  });
+}
+
+export function useConnectGitHub() {
+  const queryClient = useQueryClient();
+  const refreshGitHubQueries = () => {
+    void queryClient.invalidateQueries({
+      queryKey: shietQueryKeys.connections(),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: shietQueryKeys.githubRepos(),
+    });
+  };
+
+  return useMutation({
+    mutationFn: (pat: string) => connectGitHub(pat),
+    onSettled: refreshGitHubQueries,
+  });
+}
+
+export function useDisconnectGitHub() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (accountID: string) => disconnectGitHub(accountID),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.connections(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.githubRepos(),
+      });
+    },
+  });
+}
+
+export function useSetGitHubRepoSelected() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      repoID,
+      selected,
+    }: {
+      repoID: number;
+      selected: boolean;
+    }) => setGitHubRepoSelected(repoID, selected),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.githubRepos(),
+      });
+    },
+  });
+}
+
+export function useRefreshGitHubRepos() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (accountID: string) => refreshGitHubRepos(accountID),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.githubRepos(),
       });
     },
   });

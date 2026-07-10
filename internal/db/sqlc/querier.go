@@ -23,6 +23,7 @@ type Querier interface {
 	DeleteCategory(ctx context.Context, id int64) error
 	DeleteEvent(ctx context.Context, id int64) error
 	DeleteGapFill(ctx context.Context, arg DeleteGapFillParams) (int64, error)
+	DeleteGitHubReposByAccount(ctx context.Context, accountID string) error
 	DeleteIntegrationConnection(ctx context.Context, arg DeleteIntegrationConnectionParams) error
 	DeleteManualGapFill(ctx context.Context, arg DeleteManualGapFillParams) (int64, error)
 	DeleteOverlay(ctx context.Context, id int64) error
@@ -35,6 +36,7 @@ type Querier interface {
 	GetCategoryByKey(ctx context.Context, key string) (Category, error)
 	GetDefaultGapCategory(ctx context.Context) (Category, error)
 	GetEvent(ctx context.Context, id int64) (Event, error)
+	GetGitHubRepo(ctx context.Context, id int64) (GithubRepo, error)
 	GetIntegrationConnection(ctx context.Context, arg GetIntegrationConnectionParams) (IntegrationConnection, error)
 	GetLatestSubmission(ctx context.Context, periodID int64) (Submission, error)
 	GetMemory(ctx context.Context, matchKey string) (Memory, error)
@@ -51,6 +53,8 @@ type Querier interface {
 	ListEventsForPeriod(ctx context.Context, periodID int64) ([]Event, error)
 	ListGapFillsForDay(ctx context.Context, arg ListGapFillsForDayParams) ([]GapFill, error)
 	ListGapFillsForPeriod(ctx context.Context, periodID int64) ([]GapFill, error)
+	ListGitHubRepos(ctx context.Context) ([]GithubRepo, error)
+	ListGitHubReposByAccount(ctx context.Context, accountID string) ([]GithubRepo, error)
 	ListIntegrationConnections(ctx context.Context) ([]IntegrationConnection, error)
 	ListIntegrationConnectionsByProvider(ctx context.Context, provider string) ([]IntegrationConnection, error)
 	ListMemory(ctx context.Context) ([]Memory, error)
@@ -58,6 +62,7 @@ type Querier interface {
 	ListOverlaysForPeriod(ctx context.Context, periodID int64) ([]Overlay, error)
 	ListPeriods(ctx context.Context) ([]Period, error)
 	ListSelectedCalendars(ctx context.Context) ([]Calendar, error)
+	ListSelectedGitHubRepos(ctx context.Context) ([]GithubRepo, error)
 	ListSettings(ctx context.Context) ([]AppSetting, error)
 	ListSubmissions(ctx context.Context, periodID int64) ([]Submission, error)
 	ListTzSegments(ctx context.Context, periodID int64) ([]TzSegment, error)
@@ -70,6 +75,7 @@ type Querier interface {
 	SetDefaultGap(ctx context.Context, id int64) error
 	// Soft-hide / restore all events from a calendar when it is deselected / reselected.
 	SetEventActiveByCalendar(ctx context.Context, arg SetEventActiveByCalendarParams) error
+	SetGitHubRepoSelected(ctx context.Context, arg SetGitHubRepoSelectedParams) error
 	SetSetting(ctx context.Context, arg SetSettingParams) error
 	TouchPeriodSynced(ctx context.Context, arg TouchPeriodSyncedParams) error
 	UpdateCategory(ctx context.Context, arg UpdateCategoryParams) error
@@ -81,6 +87,7 @@ type Querier interface {
 	// Re-sync entry point: insert a fact, or update mutable synced fields on re-pull.
 	// Never touches user decisions (those live in overlay), and preserves `active`.
 	UpsertEvent(ctx context.Context, arg UpsertEventParams) (Event, error)
+	UpsertGitHubRepo(ctx context.Context, arg UpsertGitHubRepoParams) (GithubRepo, error)
 	UpsertIntegrationConnection(ctx context.Context, arg UpsertIntegrationConnectionParams) (IntegrationConnection, error)
 	UpsertOverlay(ctx context.Context, arg UpsertOverlayParams) (Overlay, error)
 	UpsertTzSegment(ctx context.Context, arg UpsertTzSegmentParams) (TzSegment, error)

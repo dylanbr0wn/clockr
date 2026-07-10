@@ -10,6 +10,10 @@ export function ComputeGaps(arg1) {
   return window['go']['main']['App']['ComputeGaps'](arg1);
 }
 
+export function ConnectGitHub(arg1) {
+  return window['go']['main']['App']['ConnectGitHub'](arg1);
+}
+
 export function ConnectGoogle(arg1, arg2) {
   return window['go']['main']['App']['ConnectGoogle'](arg1, arg2);
 }
@@ -32,6 +36,10 @@ export function DeleteCategory(arg1) {
 
 export function DeleteManualEvent(arg1) {
   return window['go']['main']['App']['DeleteManualEvent'](arg1);
+}
+
+export function DisconnectGitHub(arg1) {
+  return window['go']['main']['App']['DisconnectGitHub'](arg1);
 }
 
 export function DisconnectGoogle(arg1) {
@@ -86,6 +94,10 @@ export function ListGapFills(arg1) {
   return window['go']['main']['App']['ListGapFills'](arg1);
 }
 
+export function ListGitHubRepos() {
+  return window['go']['main']['App']['ListGitHubRepos']();
+}
+
 export function ListIntegrationConnections() {
   return window['go']['main']['App']['ListIntegrationConnections']();
 }
@@ -104,6 +116,10 @@ export function ListSelectedCalendars() {
 
 export function ListTzSegments(arg1) {
   return window['go']['main']['App']['ListTzSegments'](arg1);
+}
+
+export function RefreshGitHubRepos(arg1) {
+  return window['go']['main']['App']['RefreshGitHubRepos'](arg1);
 }
 
 export function ResolveReviewItem(arg1) {
@@ -132,6 +148,10 @@ export function SetCalendarDefaultCategory(arg1, arg2) {
 
 export function SetCalendarSelected(arg1, arg2) {
   return window['go']['main']['App']['SetCalendarSelected'](arg1, arg2);
+}
+
+export function SetGitHubRepoSelected(arg1, arg2) {
+  return window['go']['main']['App']['SetGitHubRepoSelected'](arg1, arg2);
 }
 
 export function SetSetting(arg1, arg2) {

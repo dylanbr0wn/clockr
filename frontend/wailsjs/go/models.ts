@@ -475,6 +475,30 @@ export namespace service {
 	        this.evidenceCount = source["evidenceCount"];
 	    }
 	}
+	export class GitHubRepo {
+	    id: number;
+	    accountId: string;
+	    externalId: string;
+	    name: string;
+	    fullName: string;
+	    private: boolean;
+	    selected: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new GitHubRepo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.accountId = source["accountId"];
+	        this.externalId = source["externalId"];
+	        this.name = source["name"];
+	        this.fullName = source["fullName"];
+	        this.private = source["private"];
+	        this.selected = source["selected"];
+	    }
+	}
 	export class IncomingEvent {
 	    CalendarID: number;
 	    Provider: string;

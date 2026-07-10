@@ -86,6 +86,10 @@ export function ListGapFills(arg1, arg2) {
   return window['go']['service']['Service']['ListGapFills'](arg1, arg2);
 }
 
+export function ListGitHubRepos(arg1) {
+  return window['go']['service']['Service']['ListGitHubRepos'](arg1);
+}
+
 export function ListOpenReviewItems(arg1, arg2) {
   return window['go']['service']['Service']['ListOpenReviewItems'](arg1, arg2);
 }
@@ -132,6 +136,10 @@ export function SetCalendarSync(arg1) {
 
 export function SetEvidence(arg1) {
   return window['go']['service']['Service']['SetEvidence'](arg1);
+}
+
+export function SetGitHubRepoSelected(arg1, arg2, arg3) {
+  return window['go']['service']['Service']['SetGitHubRepoSelected'](arg1, arg2, arg3);
 }
 
 export function SetSetting(arg1, arg2, arg3) {

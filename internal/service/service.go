@@ -143,6 +143,34 @@ func (s *Service) ListCalendars(ctx context.Context) ([]Calendar, error) {
 	return out, nil
 }
 
+// ListGitHubRepos returns synced GitHub repositories for evidence selection.
+func (s *Service) ListGitHubRepos(ctx context.Context) ([]GitHubRepo, error) {
+	rows, err := s.q.ListGitHubRepos(ctx)
+	if err != nil {
+		return nil, mapErr("list github repos", err)
+	}
+	out := make([]GitHubRepo, len(rows))
+	for i, r := range rows {
+		out[i] = toGitHubRepo(r)
+	}
+	return out, nil
+}
+
+// SetGitHubRepoSelected toggles whether a repo is included as an evidence source.
+func (s *Service) SetGitHubRepoSelected(ctx context.Context, repoID int64, selected bool) error {
+	sel := int64(0)
+	if selected {
+		sel = 1
+	}
+	if err := s.q.SetGitHubRepoSelected(ctx, sqlc.SetGitHubRepoSelectedParams{
+		Selected: sel,
+		ID:       repoID,
+	}); err != nil {
+		return mapErr("set github repo selected", err)
+	}
+	return nil
+}
+
 func (s *Service) ListSelectedCalendars(ctx context.Context) ([]Calendar, error) {
 	rows, err := s.q.ListSelectedCalendars(ctx)
 	if err != nil {

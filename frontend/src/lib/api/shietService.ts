@@ -13,6 +13,7 @@ import type {
   ExcludeEventResult,
   GapFill,
   GapSuggestion,
+  GitHubRepo,
   GoogleAuthStatus,
   IntegrationConnection,
   ManualEventDeleteInput,
@@ -32,12 +33,14 @@ import type {
 interface ShietApp {
   ClassifyAIEndpoint(baseURL: string): Promise<AIClassification>;
   ComputeGaps(periodId: number): Promise<DayTimeline[]>;
+  ConnectGitHub(pat: string): Promise<IntegrationConnection>;
   ConnectGoogle(accountID: string, accountLabel: string): Promise<IntegrationConnection>;
   CreateCategory(input: CreateCategoryInput): Promise<Category>;
   CreateGapFill(input: ManualEventInput): Promise<ManualEventResult>;
   CreateManualEvent(input: ManualEventInput): Promise<ManualEventResult>;
   DeleteManualEvent(input: ManualEventDeleteInput): Promise<ManualEventResult>;
   DeleteCategory(id: number): Promise<void>;
+  DisconnectGitHub(accountID: string): Promise<void>;
   DisconnectGoogle(accountID: string): Promise<void>;
   DiscoverLocalAIEndpoints(): Promise<AIEndpoint[]>;
   EnsureCurrentPeriod(today: string, ianaTz: string): Promise<Period>;
@@ -50,6 +53,7 @@ interface ShietApp {
   ListEventCategoryOverlays(periodId: number): Promise<EventCategoryOverlay[]>;
   ListEvents(periodId: number): Promise<Event[]>;
   ListGapFills(periodId: number): Promise<GapFill[]>;
+  ListGitHubRepos(): Promise<GitHubRepo[]>;
   ListIntegrationConnections(): Promise<IntegrationConnection[]>;
   ListOpenReviewItems(periodId: number): Promise<ReviewItem[]>;
   ResolveReviewItem(
@@ -58,12 +62,14 @@ interface ShietApp {
   ListPeriods(): Promise<Period[]>;
   ListSelectedCalendars(): Promise<Calendar[]>;
   ListTzSegments(periodId: number): Promise<TzSegment[]>;
+  RefreshGitHubRepos(accountID: string): Promise<void>;
   SaveAIConfig(baseURL: string, model: string): Promise<void>;
   SaveAIEndpoint(baseURL: string): Promise<void>;
   SaveAIModel(model: string): Promise<void>;
   SaveExportFile(defaultFilename: string, content: string): Promise<string>;
   SetCalendarDefaultCategory(calendarID: number, categoryID: number | null): Promise<void>;
   SetCalendarSelected(calendarID: number, selected: boolean): Promise<void>;
+  SetGitHubRepoSelected(repoID: number, selected: boolean): Promise<void>;
   SetSetting(key: string, value: string): Promise<void>;
   SuggestGapFill(window: TimeWindow): Promise<GapSuggestion>;
   SyncPeriod(periodID: number): Promise<SyncResult>;
@@ -321,6 +327,28 @@ export function connectGoogle(accountID: string, accountLabel: string) {
 
 export function disconnectGoogle(accountID: string) {
   return writeToBackend(() => appBackend.DisconnectGoogle(accountID));
+}
+
+export function connectGitHub(pat: string) {
+  return writeToBackend(() => appBackend.ConnectGitHub(pat));
+}
+
+export function disconnectGitHub(accountID: string) {
+  return writeToBackend(() => appBackend.DisconnectGitHub(accountID));
+}
+
+export function listGitHubRepos() {
+  return readFromBackend<GitHubRepo[]>([], () => appBackend.ListGitHubRepos());
+}
+
+export function setGitHubRepoSelected(repoID: number, selected: boolean) {
+  return writeToBackend(() =>
+    appBackend.SetGitHubRepoSelected(repoID, selected),
+  );
+}
+
+export function refreshGitHubRepos(accountID: string) {
+  return writeToBackend(() => appBackend.RefreshGitHubRepos(accountID));
 }
 
 export function setCalendarSelected(calendarID: number, selected: boolean) {

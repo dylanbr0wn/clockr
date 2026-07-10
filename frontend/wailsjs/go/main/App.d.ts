@@ -9,6 +9,8 @@ export function ClassifyAIEndpoint(arg1:string):Promise<main.AIClassification>;
 
 export function ComputeGaps(arg1:number):Promise<Array<service.DayTimeline>>;
 
+export function ConnectGitHub(arg1:string):Promise<connection.Connection>;
+
 export function ConnectGoogle(arg1:string,arg2:string):Promise<connection.Connection>;
 
 export function CreateCategory(arg1:service.CreateCategoryInput):Promise<service.Category>;
@@ -20,6 +22,8 @@ export function CreateManualEvent(arg1:service.ManualEventInput):Promise<main.Ma
 export function DeleteCategory(arg1:number):Promise<void>;
 
 export function DeleteManualEvent(arg1:service.ManualEventDeleteInput):Promise<main.ManualEventResult>;
+
+export function DisconnectGitHub(arg1:string):Promise<void>;
 
 export function DisconnectGoogle(arg1:string):Promise<void>;
 
@@ -47,6 +51,8 @@ export function ListEvents(arg1:number):Promise<Array<service.Event>>;
 
 export function ListGapFills(arg1:number):Promise<Array<service.GapFill>>;
 
+export function ListGitHubRepos():Promise<Array<service.GitHubRepo>>;
+
 export function ListIntegrationConnections():Promise<Array<connection.Connection>>;
 
 export function ListOpenReviewItems(arg1:number):Promise<Array<service.ReviewItem>>;
@@ -56,6 +62,8 @@ export function ListPeriods():Promise<Array<service.Period>>;
 export function ListSelectedCalendars():Promise<Array<service.Calendar>>;
 
 export function ListTzSegments(arg1:number):Promise<Array<service.TzSegment>>;
+
+export function RefreshGitHubRepos(arg1:string):Promise<void>;
 
 export function ResolveReviewItem(arg1:service.ResolveReviewItemInput):Promise<service.ResolveReviewItemResult>;
 
@@ -70,6 +78,8 @@ export function SaveExportFile(arg1:string,arg2:string):Promise<string>;
 export function SetCalendarDefaultCategory(arg1:number,arg2:any):Promise<void>;
 
 export function SetCalendarSelected(arg1:number,arg2:boolean):Promise<void>;
+
+export function SetGitHubRepoSelected(arg1:number,arg2:boolean):Promise<void>;
 
 export function SetSetting(arg1:string,arg2:string):Promise<void>;
 

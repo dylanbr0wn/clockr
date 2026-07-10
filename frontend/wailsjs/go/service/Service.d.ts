@@ -46,6 +46,8 @@ export function ListEvents(arg1:context.Context,arg2:number):Promise<Array<servi
 
 export function ListGapFills(arg1:context.Context,arg2:number):Promise<Array<service.GapFill>>;
 
+export function ListGitHubRepos(arg1:context.Context):Promise<Array<service.GitHubRepo>>;
+
 export function ListOpenReviewItems(arg1:context.Context,arg2:number):Promise<Array<service.ReviewItem>>;
 
 export function ListPeriods(arg1:context.Context):Promise<Array<service.Period>>;
@@ -69,6 +71,8 @@ export function SetCalendarSelected(arg1:context.Context,arg2:number,arg3:boolea
 export function SetCalendarSync(arg1:service.CalendarSyncConfig):Promise<void>;
 
 export function SetEvidence(arg1:service.EvidenceConfig):Promise<void>;
+
+export function SetGitHubRepoSelected(arg1:context.Context,arg2:number,arg3:boolean):Promise<void>;
 
 export function SetSetting(arg1:context.Context,arg2:string,arg3:string):Promise<void>;
 

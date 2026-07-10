@@ -75,6 +75,17 @@ type GapFill struct {
 	UpdatedAt  string        `json:"updated_at"`
 }
 
+type GithubRepo struct {
+	ID         int64  `json:"id"`
+	AccountID  string `json:"account_id"`
+	ExternalID string `json:"external_id"`
+	Name       string `json:"name"`
+	FullName   string `json:"full_name"`
+	Private    int64  `json:"private"`
+	Selected   int64  `json:"selected"`
+	CreatedAt  string `json:"created_at"`
+}
+
 type IntegrationConnection struct {
 	ID           int64  `json:"id"`
 	Provider     string `json:"provider"`

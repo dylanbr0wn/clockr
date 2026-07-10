@@ -9,6 +9,7 @@ import (
 	"github.com/dylanbr0wn/shiet/internal/ai"
 	"github.com/dylanbr0wn/shiet/internal/config"
 	"github.com/dylanbr0wn/shiet/internal/integration/connection"
+	"github.com/dylanbr0wn/shiet/internal/integration/github"
 	"github.com/dylanbr0wn/shiet/internal/integration/google"
 	"github.com/dylanbr0wn/shiet/internal/service"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -20,6 +21,7 @@ type App struct {
 	conn     *sql.DB
 	Svc      *service.Service
 	google   *google.Provider
+	github   *github.Provider
 	registry *connection.Registry
 }
 
@@ -52,11 +54,12 @@ func (a *App) GetGoogleAuthStatus() GoogleAuthStatus {
 // live at bind time (Wails reflects bound instances up front).
 func NewApp(conn *sql.DB, cfg config.Config) *App {
 	svc := service.New(conn)
-	googleProvider, registry := wireIntegrations(conn, svc, cfg)
+	googleProvider, githubProvider, registry := wireIntegrations(conn, svc, cfg)
 	return &App{
 		conn:     conn,
 		Svc:      svc,
 		google:   googleProvider,
+		github:   githubProvider,
 		registry: registry,
 	}
 }
@@ -153,6 +156,32 @@ func (a *App) ConnectGoogle(accountID, accountLabel string) (connection.Connecti
 // DisconnectGoogle removes a Google Calendar connection and its tokens.
 func (a *App) DisconnectGoogle(accountID string) error {
 	return a.google.Disconnect(a.callContext(), accountID)
+}
+
+// ConnectGitHub connects a GitHub account using a personal access token.
+func (a *App) ConnectGitHub(pat string) (connection.Connection, error) {
+	return a.github.Connect(a.callContext(), pat)
+}
+
+// DisconnectGitHub removes a GitHub connection, tokens, and synced repos.
+func (a *App) DisconnectGitHub(accountID string) error {
+	return a.github.Disconnect(a.callContext(), accountID)
+}
+
+// ListGitHubRepos returns synced GitHub repositories for evidence selection.
+func (a *App) ListGitHubRepos() ([]service.GitHubRepo, error) {
+	return a.Svc.ListGitHubRepos(a.callContext())
+}
+
+// SetGitHubRepoSelected toggles whether a repo is included as evidence.
+func (a *App) SetGitHubRepoSelected(repoID int64, selected bool) error {
+	return a.Svc.SetGitHubRepoSelected(a.callContext(), repoID, selected)
+}
+
+// RefreshGitHubRepos re-lists repos for a connected GitHub account.
+func (a *App) RefreshGitHubRepos(accountID string) error {
+	_, err := a.github.SyncRepos(a.callContext(), accountID)
+	return err
 }
 
 // ListEvents returns active events for a period.
