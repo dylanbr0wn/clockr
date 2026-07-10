@@ -232,7 +232,7 @@ export function GitHubSettings() {
 
       <SettingBlock
         title="Repositories"
-        description="Choose which repos to include as evidence sources. Selected repos are used later when fetching commits and PRs."
+        description="Choose which repos to track as evidence for AI gap-fill. Tracked repos are used later when fetching commits and PRs."
       >
         {reposQuery.isLoading ? (
           <p className="text-sm text-muted-foreground">Loading repositories…</p>
@@ -243,7 +243,7 @@ export function GitHubSettings() {
               : "Connect a GitHub account to see repositories here."}
           </p>
         ) : (
-          <ItemGroup className="gap-2">
+          <ItemGroup className="max-h-64 gap-2 overflow-y-auto pr-1">
             {repos.map((repo) => (
               <Item key={repo.id} variant="outline">
                 <ItemContent className="min-w-0">
@@ -262,7 +262,7 @@ export function GitHubSettings() {
                     variant="outline"
                     size="sm"
                     disabled={isBusy}
-                    aria-label={`Include ${repo.fullName}`}
+                    aria-label={`Track ${repo.fullName} as evidence`}
                     onPressedChange={(pressed) => {
                       void setRepoSelected.mutateAsync({
                         repoID: repo.id,
@@ -270,7 +270,7 @@ export function GitHubSettings() {
                       });
                     }}
                   >
-                    {repo.selected ? "Including" : "Include"}
+                    {repo.selected ? "Tracking" : "Track"}
                   </Toggle>
                 </ItemActions>
               </Item>
