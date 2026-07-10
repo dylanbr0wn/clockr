@@ -41,10 +41,21 @@ func TestLookupProviders(t *testing.T) {
 	if err := google.ValidateAuthorizationURL("https://evil.example/o/oauth2/v2/auth"); err == nil {
 		t.Fatal("expected host rejection")
 	}
+
+	slack, ok := oauth.Lookup(oauth.ProviderSlack)
+	if !ok {
+		t.Fatal("expected slack provider")
+	}
+	if slack.ScopeParam != "user_scope" {
+		t.Fatalf("slack scope param: %q", slack.ScopeParam)
+	}
+	if err := slack.ValidateAuthorizationURL("https://slack.com/oauth/v2/authorize?client_id=x"); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestBuildAuthorizationURLAndExchangeSharedContract(t *testing.T) {
-	providers := []string{oauth.ProviderGoogle, oauth.ProviderGitHub}
+	providers := []string{oauth.ProviderGoogle, oauth.ProviderGitHub, oauth.ProviderSlack}
 	for _, id := range providers {
 		t.Run(id, func(t *testing.T) {
 			p := oauth.MustLookup(id)
@@ -105,6 +116,17 @@ func TestBuildAuthorizationURLAndExchangeSharedContract(t *testing.T) {
 			}
 			if id == oauth.ProviderGitHub && gotAccept != "application/json" {
 				t.Fatalf("github accept header: %q", gotAccept)
+			}
+			if id == oauth.ProviderSlack {
+				if gotAccept != "application/json" {
+					t.Fatalf("slack accept header: %q", gotAccept)
+				}
+				if q.Get("user_scope") == "" {
+					t.Fatalf("slack user_scope missing: %v", q)
+				}
+				if q.Get("scope") != "" {
+					t.Fatalf("slack must not use scope param: %v", q)
+				}
 			}
 		})
 	}

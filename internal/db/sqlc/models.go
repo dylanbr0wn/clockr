@@ -154,6 +154,16 @@ type ReviewItem struct {
 	DecisionPayload string         `json:"decision_payload"`
 }
 
+type SlackChannel struct {
+	ID         int64  `json:"id"`
+	AccountID  string `json:"account_id"`
+	ExternalID string `json:"external_id"`
+	Name       string `json:"name"`
+	IsPrivate  int64  `json:"is_private"`
+	Selected   int64  `json:"selected"`
+	CreatedAt  string `json:"created_at"`
+}
+
 type Submission struct {
 	ID          int64  `json:"id"`
 	PeriodID    int64  `json:"period_id"`

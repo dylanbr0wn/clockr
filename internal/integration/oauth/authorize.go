@@ -62,10 +62,17 @@ func BuildAuthorizationURL(p Provider, creds ClientCredentials, redirectURL, sta
 	if len(scopes) == 0 {
 		scopes = append([]string(nil), p.DefaultScopes...)
 	}
+	scopeParam := strings.TrimSpace(p.ScopeParam)
+	if scopeParam == "" {
+		scopeParam = "scope"
+	}
+	scopeSep := " "
+	if p.ScopeSplitComma {
+		scopeSep = ","
+	}
 	cfg := oauth2.Config{
 		ClientID:    creds.ClientID,
 		RedirectURL: redirectURL,
-		Scopes:      append([]string(nil), scopes...),
 		Endpoint: oauth2.Endpoint{
 			AuthURL:   p.AuthURL,
 			TokenURL:  p.TokenURL,
@@ -75,6 +82,7 @@ func BuildAuthorizationURL(p Provider, creds ClientCredentials, redirectURL, sta
 	opts := []oauth2.AuthCodeOption{
 		oauth2.SetAuthURLParam("code_challenge", codeChallenge),
 		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
+		oauth2.SetAuthURLParam(scopeParam, strings.Join(scopes, scopeSep)),
 	}
 	for _, param := range p.AuthURLParams {
 		opts = append(opts, oauth2.SetAuthURLParam(param.Key, param.Value))
@@ -179,6 +187,7 @@ func ExchangeAuthorizationCode(ctx context.Context, p Provider, creds ClientCred
 }
 
 type rawTokenResponse struct {
+	OK               bool           `json:"ok"`
 	AccessToken      string         `json:"access_token"`
 	RefreshToken     string         `json:"refresh_token"`
 	TokenType        string         `json:"token_type"`
@@ -190,16 +199,36 @@ type rawTokenResponse struct {
 }
 
 func (t rawTokenResponse) errorCode() string {
-	return strings.TrimSpace(t.Error)
+	if strings.TrimSpace(t.Error) != "" {
+		return strings.TrimSpace(t.Error)
+	}
+	if t.OK == false && t.AccessToken == "" {
+		return "token_request_failed"
+	}
+	return ""
 }
 
 func decodeTokenResponse(body []byte) (rawTokenResponse, error) {
 	var tok rawTokenResponse
-	if err := json.Unmarshal(body, &tok); err == nil && (tok.AccessToken != "" || tok.Error != "") {
-		var raw map[string]any
+	var raw map[string]any
+	if err := json.Unmarshal(body, &tok); err == nil {
 		_ = json.Unmarshal(body, &raw)
 		tok.Raw = raw
-		return tok, nil
+		if authedUser, ok := raw["authed_user"].(map[string]any); ok {
+			if tok.AccessToken == "" {
+				if accessToken, ok := authedUser["access_token"].(string); ok {
+					tok.AccessToken = accessToken
+				}
+			}
+			if tok.Scope == "" {
+				if scope, ok := authedUser["scope"].(string); ok {
+					tok.Scope = scope
+				}
+			}
+		}
+		if tok.AccessToken != "" || tok.Error != "" || tok.OK || raw["authed_user"] != nil {
+			return tok, nil
+		}
 	}
 	// Providers may return form-urlencoded token responses.
 	vals, err := url.ParseQuery(string(body))

@@ -22,6 +22,10 @@ export function ConnectGoogle(arg1, arg2) {
   return window['go']['main']['App']['ConnectGoogle'](arg1, arg2);
 }
 
+export function ConnectSlack() {
+  return window['go']['main']['App']['ConnectSlack']();
+}
+
 export function CreateCategory(arg1) {
   return window['go']['main']['App']['CreateCategory'](arg1);
 }
@@ -56,6 +60,10 @@ export function DisconnectGitHub(arg1) {
 
 export function DisconnectGoogle(arg1) {
   return window['go']['main']['App']['DisconnectGoogle'](arg1);
+}
+
+export function DisconnectSlack(arg1) {
+  return window['go']['main']['App']['DisconnectSlack'](arg1);
 }
 
 export function DiscoverLocalAIEndpoints() {
@@ -138,6 +146,10 @@ export function ListGitHubRepos() {
   return window['go']['main']['App']['ListGitHubRepos']();
 }
 
+export function ListSlackChannels() {
+  return window['go']['main']['App']['ListSlackChannels']();
+}
+
 export function ListIntegrationConnections() {
   return window['go']['main']['App']['ListIntegrationConnections']();
 }
@@ -164,6 +176,10 @@ export function PreviewExport(arg1) {
 
 export function RefreshGitHubRepos(arg1) {
   return window['go']['main']['App']['RefreshGitHubRepos'](arg1);
+}
+
+export function RefreshSlackChannels(arg1) {
+  return window['go']['main']['App']['RefreshSlackChannels'](arg1);
 }
 
 export function ResolveReviewDecision(arg1) {
@@ -196,6 +212,18 @@ export function SetCalendarSelected(arg1, arg2) {
 
 export function SetGitHubRepoSelected(arg1, arg2) {
   return window['go']['main']['App']['SetGitHubRepoSelected'](arg1, arg2);
+}
+
+export function SetSlackChannelSelected(arg1, arg2) {
+  return window['go']['main']['App']['SetSlackChannelSelected'](arg1, arg2);
+}
+
+export function SlackAuthMode() {
+  return window['go']['main']['App']['SlackAuthMode']();
+}
+
+export function SlackOAuthAvailable() {
+  return window['go']['main']['App']['SlackOAuthAvailable']();
 }
 
 export function SetSetting(arg1, arg2) {

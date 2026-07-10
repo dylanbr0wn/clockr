@@ -10,6 +10,7 @@ import (
 	"github.com/dylanbr0wn/shiet/internal/integration/github"
 	"github.com/dylanbr0wn/shiet/internal/integration/google"
 	"github.com/dylanbr0wn/shiet/internal/integration/secrets"
+	"github.com/dylanbr0wn/shiet/internal/integration/slack"
 	"github.com/dylanbr0wn/shiet/internal/service"
 )
 
@@ -33,13 +34,14 @@ func (a connectionAdapter) ListByProvider(ctx context.Context, provider string) 
 	return out, nil
 }
 
-func wireIntegrations(conn *sql.DB, svc *service.Service, cfg config.Config) (*google.Provider, *github.Provider, *connection.Registry) {
+func wireIntegrations(conn *sql.DB, svc *service.Service, cfg config.Config) (*google.Provider, *github.Provider, *slack.Provider, *connection.Registry) {
 	registry := connection.NewRegistry(conn)
 	store := secrets.NewKeyringStore()
 	queries := sqlc.New(conn)
 
 	auth := google.AuthSettingsFromConfig(cfg)
 	githubAuth := github.AuthSettingsFromConfig(cfg)
+	slackAuth := slack.AuthSettingsFromConfig(cfg)
 	googleProvider := &google.Provider{
 		Config:        google.OAuthConfig(auth.ClientID, auth.ClientSecret),
 		AuthMode:      auth.Mode,
@@ -56,6 +58,14 @@ func wireIntegrations(conn *sql.DB, svc *service.Service, cfg config.Config) (*g
 		AuthMode:      githubAuth.Mode,
 		BrokerBaseURL: githubAuth.BrokerBaseURL,
 	}
+	slackProvider := &slack.Provider{
+		Config:        slack.OAuthConfig(slackAuth.ClientID, slackAuth.ClientSecret),
+		Store:         store,
+		Registry:      registry,
+		Queries:       queries,
+		AuthMode:      slackAuth.Mode,
+		BrokerBaseURL: slackAuth.BrokerBaseURL,
+	}
 
 	svc.SetCalendarSync(service.CalendarSyncConfig{
 		Puller:      googleProvider,
@@ -64,5 +74,5 @@ func wireIntegrations(conn *sql.DB, svc *service.Service, cfg config.Config) (*g
 	svc.SetEvidence(service.EvidenceConfig{
 		Providers: []service.EvidenceProvider{githubProvider},
 	})
-	return googleProvider, githubProvider, registry
+	return googleProvider, githubProvider, slackProvider, registry
 }

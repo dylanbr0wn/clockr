@@ -72,6 +72,16 @@ type GitHubRepo struct {
 	Selected   bool   `json:"selected"`
 }
 
+// SlackChannel is a synced Slack channel available as an evidence source.
+type SlackChannel struct {
+	ID         int64  `json:"id"`
+	AccountID  string `json:"accountId"`
+	ExternalID string `json:"externalId"`
+	Name       string `json:"name"`
+	Private    bool   `json:"private"`
+	Selected   bool   `json:"selected"`
+}
+
 // Attendee mirrors the fields shiet keeps from a Google Calendar attendee.
 type Attendee struct {
 	Email          string `json:"email"`
@@ -188,6 +198,17 @@ func toGitHubRepo(r sqlc.GithubRepo) GitHubRepo {
 		Name:       r.Name,
 		FullName:   r.FullName,
 		Private:    r.Private == 1,
+		Selected:   r.Selected == 1,
+	}
+}
+
+func toSlackChannel(r sqlc.SlackChannel) SlackChannel {
+	return SlackChannel{
+		ID:         r.ID,
+		AccountID:  r.AccountID,
+		ExternalID: r.ExternalID,
+		Name:       r.Name,
+		Private:    r.IsPrivate == 1,
 		Selected:   r.Selected == 1,
 	}
 }

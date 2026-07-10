@@ -67,6 +67,15 @@ export interface GitHubRepo {
   selected: boolean;
 }
 
+export interface SlackChannel {
+  id: number;
+  accountId: string;
+  externalId: string;
+  name: string;
+  private: boolean;
+  selected: boolean;
+}
+
 export interface SyncResult {
   added: number;
   updated: number;

@@ -24,6 +24,7 @@ import type {
   ReviewDecision,
   ResolveReviewDecisionInput,
   ResolveReviewDecisionResult,
+  SlackChannel,
   SyncResult,
   TimeWindow,
   TzSegment,
@@ -41,6 +42,7 @@ interface ShietApp {
   ComputeGaps(periodId: number): Promise<DayTimeline[]>;
   ConnectGitHub(pat: string): Promise<IntegrationConnection>;
   ConnectGoogle(accountID: string, accountLabel: string): Promise<IntegrationConnection>;
+  ConnectSlack(): Promise<IntegrationConnection>;
   CreateCategory(input: CreateCategoryInput): Promise<Category>;
   CreateGapFill(input: ManualEventInput): Promise<ManualEventResult>;
   CreateManualEvent(input: ManualEventInput): Promise<ManualEventResult>;
@@ -48,6 +50,7 @@ interface ShietApp {
   DeleteCategory(id: number): Promise<void>;
   DisconnectGitHub(accountID: string): Promise<void>;
   DisconnectGoogle(accountID: string): Promise<void>;
+  DisconnectSlack(accountID: string): Promise<void>;
   DiscoverLocalAIEndpoints(): Promise<AIEndpoint[]>;
   EnsureCurrentPeriod(today: string, ianaTz: string): Promise<Period>;
   ExcludeEvent(input: ExcludeEventInput): Promise<ExcludeEventResult>;
@@ -62,6 +65,7 @@ interface ShietApp {
   ListEvents(periodId: number): Promise<Event[]>;
   ListGapFills(periodId: number): Promise<GapFill[]>;
   ListGitHubRepos(): Promise<GitHubRepo[]>;
+  ListSlackChannels(): Promise<SlackChannel[]>;
   ListIntegrationConnections(): Promise<IntegrationConnection[]>;
   ListReviewDecisions(periodId: number): Promise<ReviewDecision[]>;
   ResolveReviewDecision(
@@ -71,6 +75,9 @@ interface ShietApp {
   ListSelectedCalendars(): Promise<Calendar[]>;
   ListTzSegments(periodId: number): Promise<TzSegment[]>;
   RefreshGitHubRepos(accountID: string): Promise<void>;
+  RefreshSlackChannels(accountID: string): Promise<void>;
+  SlackAuthMode(): Promise<string>;
+  SlackOAuthAvailable(): Promise<boolean>;
   SaveAIConfig(baseURL: string, model: string): Promise<void>;
   SaveAIEndpoint(baseURL: string): Promise<void>;
   SaveAIModel(model: string): Promise<void>;
@@ -87,6 +94,7 @@ interface ShietApp {
   SetCalendarDefaultCategory(calendarID: number, categoryID: number | null): Promise<void>;
   SetCalendarSelected(calendarID: number, selected: boolean): Promise<void>;
   SetGitHubRepoSelected(repoID: number, selected: boolean): Promise<void>;
+  SetSlackChannelSelected(channelID: number, selected: boolean): Promise<void>;
   SetSetting(key: string, value: string): Promise<void>;
   SuggestGapFill(window: TimeWindow): Promise<GapSuggestion>;
   SyncPeriod(periodID: number): Promise<SyncResult>;
@@ -421,6 +429,36 @@ export function setGitHubRepoSelected(repoID: number, selected: boolean) {
 
 export function refreshGitHubRepos(accountID: string) {
   return writeToBackend(() => appBackend.RefreshGitHubRepos(accountID));
+}
+
+export function connectSlack() {
+  return writeToBackend(() => appBackend.ConnectSlack());
+}
+
+export function slackAuthMode() {
+  return readFromBackend<string>("broker", () => appBackend.SlackAuthMode());
+}
+
+export function slackOAuthAvailable() {
+  return readFromBackend<boolean>(true, () => appBackend.SlackOAuthAvailable());
+}
+
+export function disconnectSlack(accountID: string) {
+  return writeToBackend(() => appBackend.DisconnectSlack(accountID));
+}
+
+export function listSlackChannels() {
+  return readFromBackend<SlackChannel[]>([], () => appBackend.ListSlackChannels());
+}
+
+export function setSlackChannelSelected(channelID: number, selected: boolean) {
+  return writeToBackend(() =>
+    appBackend.SetSlackChannelSelected(channelID, selected),
+  );
+}
+
+export function refreshSlackChannels(accountID: string) {
+  return writeToBackend(() => appBackend.RefreshSlackChannels(accountID));
 }
 
 export function setCalendarSelected(calendarID: number, selected: boolean) {
