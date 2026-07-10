@@ -62,7 +62,7 @@ func wireIntegrations(conn *sql.DB, svc *service.Service, cfg config.Config) (*g
 		Connections: connectionAdapter{reg: registry},
 	})
 	svc.SetEvidence(service.EvidenceConfig{
-		Providers: nil, // Slack/GitHub/Bitbucket evidence fetch wired in follow-up tickets.
+		Providers: []service.EvidenceProvider{githubProvider},
 	})
 	return googleProvider, githubProvider, registry
 }

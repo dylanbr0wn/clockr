@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dylanbr0wn/shiet/internal/db"
 	"github.com/dylanbr0wn/shiet/internal/db/sqlc"
@@ -387,5 +388,268 @@ func TestDisconnect_BrokerModeDoesNotSendPATToBrokerRevoke(t *testing.T) {
 	}
 	if revoker.token != "" {
 		t.Fatalf("PAT must not be sent to broker revoke, got %q", revoker.token)
+	}
+}
+
+func seedSelectedRepo(t *testing.T, q *sqlc.Queries, accountID, fullName string) {
+	t.Helper()
+	ctx := context.Background()
+	repo, err := q.UpsertGitHubRepo(ctx, sqlc.UpsertGitHubRepoParams{
+		AccountID:  accountID,
+		ExternalID: fullName,
+		Name:       strings.TrimPrefix(fullName, accountID+"/"),
+		FullName:   fullName,
+		Private:    0,
+		Column6:    1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := q.SetGitHubRepoSelected(ctx, sqlc.SetGitHubRepoSelectedParams{
+		Selected: 1,
+		ID:       repo.ID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestFetchEvidence_NoSelectedRepos(t *testing.T) {
+	p, _, _ := newProviderEnv(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("unexpected request: %s", r.URL.Path)
+	}))
+
+	got, err := p.FetchEvidence(context.Background(), service.TimeWindow{
+		Start: time.Date(2026, 7, 1, 10, 0, 0, 0, time.UTC),
+		End:   time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("expected empty, got %#v", got)
+	}
+}
+
+func TestFetchEvidence_CommitsAndPRs(t *testing.T) {
+	start := time.Date(2026, 7, 1, 10, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
+
+	p, reg, q := newProviderEnv(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/repos/octocat/Hello-World/commits":
+			_ = json.NewEncoder(w).Encode([]map[string]any{
+				{
+					"sha":      "abcdef1234567890",
+					"html_url": "https://github.com/octocat/Hello-World/commit/abcdef1234567890",
+					"commit": map[string]any{
+						"message": "fix auth middleware\n\nFull body stays in detail.",
+						"author":  map[string]any{"date": "2026-07-01T10:30:00Z"},
+					},
+				},
+				{
+					"sha":      "outside999",
+					"html_url": "https://github.com/octocat/Hello-World/commit/outside999",
+					"commit": map[string]any{
+						"message": "outside window",
+						"author":  map[string]any{"date": "2026-07-01T13:00:00Z"},
+					},
+				},
+			})
+		case r.URL.Path == "/search/issues":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"items": []map[string]any{
+					{
+						"number":    42,
+						"title":     "Ship gap fill",
+						"body":      "PR body text",
+						"html_url":  "https://github.com/octocat/Hello-World/pull/42",
+						"closed_at": "2026-07-01T11:00:00Z",
+						"pull_request": map[string]any{
+							"merged_at": "2026-07-01T11:00:00Z",
+						},
+					},
+				},
+			})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+
+	ctx := context.Background()
+	if err := p.Store.Set(service.ProviderGitHub, "octocat", secrets.Token{
+		AccessToken: "ghp_test",
+		TokenType:   "Bearer",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := reg.Upsert(ctx, connection.UpsertInput{
+		Provider:  service.ProviderGitHub,
+		AccountID: "octocat",
+		Status:    connection.StatusConnected,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	seedSelectedRepo(t, q, "octocat", "octocat/Hello-World")
+
+	got, err := p.FetchEvidence(ctx, service.TimeWindow{Start: start, End: end})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("expected 2 evidence items, got %#v", got)
+	}
+
+	var commit, pr *service.ActivityEvidence
+	for i := range got {
+		switch got[i].Kind {
+		case "commit":
+			commit = &got[i]
+		case "pr":
+			pr = &got[i]
+		}
+	}
+	if commit == nil || pr == nil {
+		t.Fatalf("missing kinds: %#v", got)
+	}
+
+	if commit.Provider != service.ProviderGitHub {
+		t.Fatalf("commit provider: %q", commit.Provider)
+	}
+	if commit.Summary != "abcdef1: fix auth middleware" {
+		t.Fatalf("commit summary: %q", commit.Summary)
+	}
+	if commit.Detail != "fix auth middleware\n\nFull body stays in detail." {
+		t.Fatalf("commit detail: %q", commit.Detail)
+	}
+	if commit.URL != "https://github.com/octocat/Hello-World/commit/abcdef1234567890" {
+		t.Fatalf("commit url: %q", commit.URL)
+	}
+	if !commit.Start.Equal(time.Date(2026, 7, 1, 10, 30, 0, 0, time.UTC)) {
+		t.Fatalf("commit start: %v", commit.Start)
+	}
+
+	if pr.Summary != "Merged PR #42: Ship gap fill" {
+		t.Fatalf("pr summary: %q", pr.Summary)
+	}
+	if !strings.Contains(pr.Detail, "PR body text") {
+		t.Fatalf("pr detail: %q", pr.Detail)
+	}
+	if pr.URL != "https://github.com/octocat/Hello-World/pull/42" {
+		t.Fatalf("pr url: %q", pr.URL)
+	}
+}
+
+func TestFetchEvidence_BestEffortSkipsFailingRepo(t *testing.T) {
+	start := time.Date(2026, 7, 1, 10, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
+
+	p, reg, q := newProviderEnv(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/repos/octocat/bad/commits":
+			http.Error(w, `{"message":"Not Found"}`, http.StatusNotFound)
+		case "/repos/octocat/good/commits":
+			_ = json.NewEncoder(w).Encode([]map[string]any{
+				{
+					"sha":      "deadbeef",
+					"html_url": "https://github.com/octocat/good/commit/deadbeef",
+					"commit": map[string]any{
+						"message": "good commit",
+						"author":  map[string]any{"date": "2026-07-01T10:15:00Z"},
+					},
+				},
+			})
+		case "/search/issues":
+			_ = json.NewEncoder(w).Encode(map[string]any{"items": []any{}})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+
+	ctx := context.Background()
+	if err := p.Store.Set(service.ProviderGitHub, "octocat", secrets.Token{
+		AccessToken: "ghp_test",
+		TokenType:   "Bearer",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := reg.Upsert(ctx, connection.UpsertInput{
+		Provider:  service.ProviderGitHub,
+		AccountID: "octocat",
+		Status:    connection.StatusConnected,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	seedSelectedRepo(t, q, "octocat", "octocat/bad")
+	seedSelectedRepo(t, q, "octocat", "octocat/good")
+
+	got, err := p.FetchEvidence(ctx, service.TimeWindow{Start: start, End: end})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("expected 1 item from good repo, got %#v", got)
+	}
+	if got[0].Kind != "commit" || got[0].Summary != "deadbee: good commit" {
+		t.Fatalf("unexpected item: %+v", got[0])
+	}
+}
+
+func TestFetchEvidence_WindowFilterExcludesBoundaryEnd(t *testing.T) {
+	start := time.Date(2026, 7, 1, 10, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
+
+	p, reg, q := newProviderEnv(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/repos/octocat/Hello-World/commits":
+			_ = json.NewEncoder(w).Encode([]map[string]any{
+				{
+					"sha":      "atstart",
+					"html_url": "https://github.com/octocat/Hello-World/commit/atstart",
+					"commit": map[string]any{
+						"message": "at start",
+						"author":  map[string]any{"date": "2026-07-01T10:00:00Z"},
+					},
+				},
+				{
+					"sha":      "atend",
+					"html_url": "https://github.com/octocat/Hello-World/commit/atend",
+					"commit": map[string]any{
+						"message": "at end exclusive",
+						"author":  map[string]any{"date": "2026-07-01T12:00:00Z"},
+					},
+				},
+			})
+		case "/search/issues":
+			_ = json.NewEncoder(w).Encode(map[string]any{"items": []any{}})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+
+	ctx := context.Background()
+	if err := p.Store.Set(service.ProviderGitHub, "octocat", secrets.Token{
+		AccessToken: "ghp_test",
+		TokenType:   "Bearer",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := reg.Upsert(ctx, connection.UpsertInput{
+		Provider:  service.ProviderGitHub,
+		AccountID: "octocat",
+		Status:    connection.StatusConnected,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	seedSelectedRepo(t, q, "octocat", "octocat/Hello-World")
+
+	got, err := p.FetchEvidence(ctx, service.TimeWindow{Start: start, End: end})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("expected only start-inclusive commit, got %#v", got)
+	}
+	if got[0].Summary != "atstart: at start" {
+		t.Fatalf("unexpected: %+v", got[0])
 	}
 }
