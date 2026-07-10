@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package shiet.app.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/dylanbr0wn/shiet/gen/shiet/app/v1;appv1";
+
+service PeriodService {
+  rpc ListPeriods(ListPeriodsRequest) returns (ListPeriodsResponse);
+  rpc GetPeriod(GetPeriodRequest) returns (GetPeriodResponse);
+  rpc GetPeriodByRange(GetPeriodByRangeRequest) returns (GetPeriodByRangeResponse);
+  rpc EnsureCurrentPeriod(EnsureCurrentPeriodRequest) returns (EnsureCurrentPeriodResponse);
+}
+
+message Period {
+  int64 id = 1;
+  string start_date = 2;
+  string end_date = 3;
+  string cadence = 4;
+  string anchor_date = 5;
+  double target_hours_per_day = 6;
+  google.protobuf.Timestamp last_synced_at = 7;
+}
+
+message ListPeriodsRequest {}
+
+message ListPeriodsResponse {
+  repeated Period periods = 1;
+}
+
+message GetPeriodRequest { int64 id = 1; }
+message GetPeriodResponse { Period period = 1; }
+message GetPeriodByRangeRequest { string start_date = 1; string end_date = 2; }
+message GetPeriodByRangeResponse { Period period = 1; }
+
+message EnsureCurrentPeriodRequest {
+  string today = 1;
+  string iana_tz = 2;
+}
+
+message EnsureCurrentPeriodResponse {
+  Period period = 1;
+}

@@ -20,12 +20,12 @@ type GapSuggestion struct {
 // for an uncovered interval, using aggregated activity evidence as context.
 func (s *Service) SuggestGapFill(ctx context.Context, window TimeWindow) (GapSuggestion, error) {
 	if !window.Start.Before(window.End) {
-		return GapSuggestion{}, fmt.Errorf("suggest gap fill: invalid time window")
+		return GapSuggestion{}, invalidInputf("suggest gap fill: invalid time window")
 	}
 
 	baseURL, model, ok := s.loadAIConfig(ctx)
 	if !ok {
-		return GapSuggestion{}, fmt.Errorf("suggest gap fill: ai not configured")
+		return GapSuggestion{}, failedPreconditionf("suggest gap fill: ai not configured")
 	}
 
 	evidence, err := s.fetchGapEvidence(ctx, window)

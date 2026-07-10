@@ -1,0 +1,375 @@
+syntax = "proto3";
+
+package shiet.app.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/dylanbr0wn/shiet/gen/shiet/app/v1;appv1";
+
+service CategoryService {
+  rpc ListCategories(ListCategoriesRequest) returns (ListCategoriesResponse);
+  rpc GetCategory(GetCategoryRequest) returns (GetCategoryResponse);
+  rpc CreateCategory(CreateCategoryRequest) returns (CreateCategoryResponse);
+  rpc UpdateCategory(UpdateCategoryRequest) returns (UpdateCategoryResponse);
+  rpc DeleteCategory(DeleteCategoryRequest) returns (DeleteCategoryResponse);
+  rpc ListEventCategoryOverlays(ListEventCategoryOverlaysRequest) returns (ListEventCategoryOverlaysResponse);
+}
+
+service CalendarService {
+  rpc ListCalendars(ListCalendarsRequest) returns (ListCalendarsResponse);
+  rpc ListSelectedCalendars(ListSelectedCalendarsRequest) returns (ListSelectedCalendarsResponse);
+  rpc SetCalendarSelected(SetCalendarSelectedRequest) returns (SetCalendarSelectedResponse);
+  rpc SetCalendarDefaultCategory(SetCalendarDefaultCategoryRequest) returns (SetCalendarDefaultCategoryResponse);
+  rpc SyncPeriod(SyncPeriodRequest) returns (SyncPeriodResponse);
+}
+
+service ScheduleService {
+  rpc ListEvents(ListEventsRequest) returns (ListEventsResponse);
+  rpc GetEvent(GetEventRequest) returns (GetEventResponse);
+  rpc ListGapFills(ListGapFillsRequest) returns (ListGapFillsResponse);
+  rpc CreateManualEvent(CreateManualEventRequest) returns (CreateManualEventResponse);
+  rpc CreateGapFill(CreateGapFillRequest) returns (CreateGapFillResponse);
+  rpc UpdateManualEvent(UpdateManualEventRequest) returns (UpdateManualEventResponse);
+  rpc DeleteManualEvent(DeleteManualEventRequest) returns (DeleteManualEventResponse);
+  rpc ListReviewDecisions(ListReviewDecisionsRequest) returns (ListReviewDecisionsResponse);
+  rpc ResolveReviewDecision(ResolveReviewDecisionRequest) returns (ResolveReviewDecisionResponse);
+  rpc ExcludeEvent(ExcludeEventRequest) returns (ExcludeEventResponse);
+  rpc ListTzSegments(ListTzSegmentsRequest) returns (ListTzSegmentsResponse);
+  rpc ComputeGaps(ComputeGapsRequest) returns (ComputeGapsResponse);
+  rpc SuggestGapFill(SuggestGapFillRequest) returns (SuggestGapFillResponse);
+}
+
+service SettingsService {
+  rpc GetSetting(GetSettingRequest) returns (GetSettingResponse);
+  rpc SetSetting(SetSettingRequest) returns (SetSettingResponse);
+}
+
+service IntegrationService {
+  rpc ListIntegrationConnections(ListIntegrationConnectionsRequest) returns (ListIntegrationConnectionsResponse);
+  rpc ListGitHubRepos(ListGitHubReposRequest) returns (ListGitHubReposResponse);
+  rpc SetGitHubRepoSelected(SetGitHubRepoSelectedRequest) returns (SetGitHubRepoSelectedResponse);
+  rpc RefreshGitHubRepos(RefreshGitHubReposRequest) returns (RefreshGitHubReposResponse);
+  rpc ListSlackChannels(ListSlackChannelsRequest) returns (ListSlackChannelsResponse);
+  rpc SetSlackChannelSelected(SetSlackChannelSelectedRequest) returns (SetSlackChannelSelectedResponse);
+  rpc RefreshSlackChannels(RefreshSlackChannelsRequest) returns (RefreshSlackChannelsResponse);
+}
+
+service ExportService {
+  rpc RenderPeriodExport(RenderPeriodExportRequest) returns (RenderPeriodExportResponse);
+  rpc BuildPeriodExport(BuildPeriodExportRequest) returns (BuildPeriodExportResponse);
+  rpc ListExportTemplates(ListExportTemplatesRequest) returns (ListExportTemplatesResponse);
+  rpc GetExportTemplate(GetExportTemplateRequest) returns (GetExportTemplateResponse);
+  rpc CreateExportTemplate(CreateExportTemplateRequest) returns (CreateExportTemplateResponse);
+  rpc UpdateExportTemplate(UpdateExportTemplateRequest) returns (UpdateExportTemplateResponse);
+  rpc DeleteExportTemplate(DeleteExportTemplateRequest) returns (DeleteExportTemplateResponse);
+  rpc DuplicateExportTemplate(DuplicateExportTemplateRequest) returns (DuplicateExportTemplateResponse);
+  rpc PreviewExport(PreviewExportRequest) returns (PreviewExportResponse);
+  rpc ListExportFieldCatalog(ListExportFieldCatalogRequest) returns (ListExportFieldCatalogResponse);
+}
+
+message Category {
+  int64 id = 1;
+  string name = 2;
+  string description = 3;
+  string key = 4;
+  string color = 5;
+  bool is_default_gap = 6;
+}
+message ListCategoriesRequest {}
+message ListCategoriesResponse { repeated Category categories = 1; }
+message GetCategoryRequest { int64 id = 1; }
+message GetCategoryResponse { Category category = 1; }
+message CreateCategoryRequest {
+  string name = 1;
+  string description = 2;
+  string key = 3;
+  string color = 4;
+  bool is_default_gap = 5;
+}
+message UpdateCategoryRequest {
+  int64 id = 1;
+  string name = 2;
+  string description = 3;
+  string key = 4;
+  string color = 5;
+  bool is_default_gap = 6;
+}
+message DeleteCategoryRequest { int64 id = 1; }
+message CreateCategoryResponse { Category category = 1; }
+message UpdateCategoryResponse { Category category = 1; }
+message DeleteCategoryResponse {}
+message EventCategoryOverlay {
+  string provider = 1;
+  string external_id = 2;
+  string instance_id = 3;
+  int64 category_id = 4;
+}
+message ListEventCategoryOverlaysRequest { int64 period_id = 1; }
+message ListEventCategoryOverlaysResponse { repeated EventCategoryOverlay overlays = 1; }
+
+message Calendar {
+  int64 id = 1;
+  string provider = 2;
+  string external_id = 3;
+  string name = 4;
+  bool is_primary = 5;
+  bool selected = 6;
+  optional int64 default_category_id = 7;
+}
+message ListCalendarsRequest {}
+message ListSelectedCalendarsRequest {}
+message ListCalendarsResponse { repeated Calendar calendars = 1; }
+message ListSelectedCalendarsResponse { repeated Calendar calendars = 1; }
+message SetCalendarSelectedRequest { int64 calendar_id = 1; bool selected = 2; }
+message SetCalendarSelectedResponse {}
+message SetCalendarDefaultCategoryRequest { int64 calendar_id = 1; optional int64 category_id = 2; }
+message SetCalendarDefaultCategoryResponse {}
+message SyncPeriodRequest { int64 period_id = 1; }
+message SyncPeriodResponse {
+  int32 added = 1;
+  int32 updated = 2;
+  int32 unchanged = 3;
+  int32 removed = 4;
+  int32 flagged = 5;
+}
+
+message Attendee {
+  string email = 1;
+  string display_name = 2;
+  string response_status = 3;
+  bool organizer = 4;
+  bool self = 5;
+}
+message Event {
+  int64 id = 1;
+  int64 period_id = 2;
+  int64 calendar_id = 3;
+  string provider = 4;
+  string external_id = 5;
+  string instance_id = 6;
+  string recurring_event_id = 7;
+  string ical_uid = 8;
+  string title = 9;
+  string description = 10;
+  string location = 11;
+  string organizer = 12;
+  repeated Attendee attendees = 13;
+  string status = 14;
+  bool all_day = 15;
+  google.protobuf.Timestamp start = 16;
+  google.protobuf.Timestamp end = 17;
+  string start_date = 18;
+  string end_date = 19;
+  string original_tz = 20;
+  bool active = 21;
+}
+message ListEventsRequest { int64 period_id = 1; }
+message ListEventsResponse { repeated Event events = 1; }
+message GetEventRequest { int64 id = 1; }
+message GetEventResponse { Event event = 1; }
+message GapFill {
+  int64 id = 1;
+  int64 period_id = 2;
+  string day = 3;
+  string start = 4;
+  string end = 5;
+  optional int64 category_id = 6;
+  string note = 7;
+  string description = 8;
+  string source = 9;
+}
+message ListGapFillsRequest { int64 period_id = 1; }
+message ListGapFillsResponse { repeated GapFill gap_fills = 1; }
+message ManualEventInput {
+  int64 period_id = 1;
+  string day = 2;
+  int32 start_minutes = 3;
+  int32 end_minutes = 4;
+  optional int64 category_id = 5;
+  string note = 6;
+  string description = 7;
+}
+message CreateManualEventRequest { ManualEventInput input = 1; }
+message CreateGapFillRequest { ManualEventInput input = 1; }
+message UpdateManualEventRequest { int64 id = 1; ManualEventInput input = 2; }
+message DeleteManualEventRequest { int64 id = 1; int64 period_id = 2; }
+message CreateManualEventResponse { int64 period_id = 1; int64 id = 2; }
+message CreateGapFillResponse { int64 period_id = 1; int64 id = 2; }
+message UpdateManualEventResponse { int64 period_id = 1; int64 id = 2; }
+message DeleteManualEventResponse { int64 period_id = 1; int64 id = 2; }
+enum ReviewActionRole {
+  REVIEW_ACTION_ROLE_UNSPECIFIED = 0;
+  REVIEW_ACTION_ROLE_PRIMARY = 1;
+  REVIEW_ACTION_ROLE_SECONDARY = 2;
+}
+enum ReviewActionVariant {
+  REVIEW_ACTION_VARIANT_UNSPECIFIED = 0;
+  REVIEW_ACTION_VARIANT_DEFAULT = 1;
+  REVIEW_ACTION_VARIANT_OUTLINE = 2;
+  REVIEW_ACTION_VARIANT_DESTRUCTIVE = 3;
+}
+message ReviewDecisionAction {
+  string key = 1;
+  string label = 2;
+  ReviewActionRole role = 3;
+  ReviewActionVariant variant = 4;
+}
+message ReviewDecision {
+  int64 id = 1;
+  string kind = 2;
+  optional int64 event_id = 3;
+  string tag = 4;
+  string title = 5;
+  string description = 6;
+  repeated ReviewDecisionAction actions = 7;
+}
+message ListReviewDecisionsRequest { int64 period_id = 1; }
+message ListReviewDecisionsResponse { repeated ReviewDecision decisions = 1; }
+message ResolveReviewDecisionRequest { int64 decision_id = 1; string action = 2; }
+message ResolveReviewDecisionResponse { int64 period_id = 1; }
+message ExcludeEventRequest { int64 event_id = 1; int64 period_id = 2; }
+message ExcludeEventResponse { int64 period_id = 1; int64 event_id = 2; }
+message TzSegment {
+  int64 id = 1;
+  int64 period_id = 2;
+  string effective_from_date = 3;
+  string iana_tz = 4;
+}
+message ListTzSegmentsRequest { int64 period_id = 1; }
+message ListTzSegmentsResponse { repeated TzSegment segments = 1; }
+message Interval { google.protobuf.Timestamp start = 1; google.protobuf.Timestamp end = 2; }
+message DayTimeline {
+  string date = 1;
+  string tz = 2;
+  google.protobuf.Timestamp window_start = 3;
+  google.protobuf.Timestamp window_end = 4;
+  repeated Interval events = 5;
+  repeated Interval filled = 6;
+  repeated Interval gaps = 7;
+  double covered_hours = 8;
+  double gap_hours = 9;
+}
+message ComputeGapsRequest { int64 period_id = 1; }
+message ComputeGapsResponse { repeated DayTimeline days = 1; }
+message SuggestGapFillRequest { google.protobuf.Timestamp start = 1; google.protobuf.Timestamp end = 2; }
+message SuggestGapFillResponse { string category = 1; string description = 2; int32 evidence_count = 3; }
+
+message GetSettingRequest { string key = 1; }
+message GetSettingResponse { string value = 1; }
+message SetSettingRequest { string key = 1; string value = 2; }
+message SetSettingResponse {}
+
+message IntegrationConnection {
+  int64 id = 1;
+  string provider = 2;
+  string account_label = 3;
+  string account_id = 4;
+  repeated string scopes = 5;
+  string status = 6;
+  string connected_at = 7;
+  string updated_at = 8;
+}
+message ListIntegrationConnectionsRequest {}
+message ListIntegrationConnectionsResponse { repeated IntegrationConnection connections = 1; }
+message GitHubRepo {
+  int64 id = 1;
+  string account_id = 2;
+  string external_id = 3;
+  string name = 4;
+  string full_name = 5;
+  bool private = 6;
+  bool selected = 7;
+}
+message ListGitHubReposRequest {}
+message ListGitHubReposResponse { repeated GitHubRepo repos = 1; }
+message SetGitHubRepoSelectedRequest { int64 repo_id = 1; bool selected = 2; }
+message SetGitHubRepoSelectedResponse {}
+message RefreshGitHubReposRequest { string account_id = 1; }
+message RefreshGitHubReposResponse {}
+message SlackChannel {
+  int64 id = 1;
+  string account_id = 2;
+  string external_id = 3;
+  string name = 4;
+  bool private = 5;
+  bool selected = 6;
+}
+message ListSlackChannelsRequest {}
+message ListSlackChannelsResponse { repeated SlackChannel channels = 1; }
+message SetSlackChannelSelectedRequest { int64 channel_id = 1; bool selected = 2; }
+message SetSlackChannelSelectedResponse {}
+message RefreshSlackChannelsRequest { string account_id = 1; }
+message RefreshSlackChannelsResponse {}
+
+message ExportTemplate {
+  int64 id = 1;
+  string key = 2;
+  string name = 3;
+  string description = 4;
+  string format = 5;
+  bool builtin = 6;
+  string body = 7;
+}
+message RenderPeriodExportRequest { int64 period_id = 1; string template_key = 2; }
+message RenderPeriodExportResponse { string filename = 1; string content = 2; string format = 3; }
+message ExportCategory { optional int64 id = 1; string name = 2; string key = 3; string color = 4; }
+message ExportEntry {
+  string source = 1;
+  int64 source_id = 2;
+  string day = 3;
+  int32 start_minutes = 4;
+  int32 end_minutes = 5;
+  int32 minutes = 6;
+  string title = 7;
+  ExportCategory category = 8;
+}
+message ExportCategoryMinutes { ExportCategory category = 1; int32 minutes = 2; }
+message ExportDayTotals {
+  string date = 1;
+  repeated ExportCategoryMinutes categories = 2;
+  int32 actual_minutes = 3;
+  int32 target_minutes = 4;
+}
+message BuildPeriodExportRequest { int64 period_id = 1; }
+message BuildPeriodExportResponse {
+  int64 period_id = 1;
+  string period_label = 2;
+  string start_date = 3;
+  string end_date = 4;
+  double target_hours_per_day = 5;
+  int32 target_minutes = 6;
+  int32 actual_minutes = 7;
+  repeated string days = 8;
+  repeated ExportEntry entries = 9;
+  repeated ExportDayTotals daily_totals = 10;
+  repeated ExportCategoryMinutes period_totals = 11;
+}
+message ListExportTemplatesRequest {}
+message ListExportTemplatesResponse { repeated ExportTemplate templates = 1; }
+message GetExportTemplateRequest { string key = 1; }
+message GetExportTemplateResponse { ExportTemplate template = 1; }
+message CreateExportTemplateRequest {
+  string key = 1;
+  string name = 2;
+  string description = 3;
+  string format = 4;
+  string body = 5;
+}
+message UpdateExportTemplateRequest {
+  int64 id = 1;
+  string name = 2;
+  string description = 3;
+  string format = 4;
+  string body = 5;
+}
+message CreateExportTemplateResponse { ExportTemplate template = 1; }
+message UpdateExportTemplateResponse { ExportTemplate template = 1; }
+message DeleteExportTemplateRequest { int64 id = 1; }
+message DeleteExportTemplateResponse {}
+message DuplicateExportTemplateRequest { string key = 1; }
+message DuplicateExportTemplateResponse { ExportTemplate template = 1; }
+message PreviewExportRequest { int64 period_id = 1; string template_key = 2; string format = 3; string body = 4; }
+message PreviewExportResponse { string filename = 1; string content = 2; string format = 3; }
+message ListExportFieldCatalogRequest { string grain = 1; string layout = 2; }
+message ExportFieldInfo { string field = 1; string label = 2; string description = 3; }
+message ListExportFieldCatalogResponse { repeated ExportFieldInfo fields = 1; }

@@ -11,9 +11,10 @@ see [ADR-0001](docs/adr/0001-secret-only-google-oauth-broker.md) and
 
 ## Development
 
-Prerequisites: Go 1.26+, [pnpm](https://pnpm.io/), [Wails CLI](https://wails.io/docs/gettingstarted/installation).
+Prerequisites: Go 1.26+, [pnpm](https://pnpm.io/), [Wails CLI](https://wails.io/docs/gettingstarted/installation), and [Buf](https://buf.build/docs/cli/installation/).
 
 ```bash
+buf generate
 pnpm -C frontend install
 wails dev
 ```
@@ -31,6 +32,16 @@ Frontend only (no Go / Wails):
 ```bash
 pnpm --dir frontend dev
 ```
+
+Regenerate the shared Connect/Protobuf APIs after editing `proto/`:
+
+```bash
+buf lint
+buf generate
+```
+
+Generated Go and TypeScript API sources are ignored by Git. Run
+`buf generate` after cloning and whenever a protobuf contract changes.
 
 ## Building
 
@@ -71,11 +82,13 @@ credentials). Broker base URL: `google.broker_base_url`.
 
 ```
 .
-├── app.go / main.go / integrations.go   # Wails app bindings
+├── app.go / main.go / integrations.go   # Native Wails adapters and app wiring
 ├── cmd/
 │   ├── db/                              # DB migrate/seed CLI
 │   └── oauth-broker/                    # Deployable OAuth broker
+├── internal/api/appapi/                 # Portable Connect application handlers
 ├── internal/                            # Go services, DB, AI, broker, config
+├── proto/shiet/                         # Versioned app and broker contracts
 ├── frontend/                            # React + Vite + shadcn/ui (pnpm)
 ├── docs/
 │   ├── adr/                             # Architecture decisions

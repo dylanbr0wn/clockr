@@ -86,9 +86,9 @@ var envKeyMap = map[string]string{
 //     - <UserConfigDir>/shiet/config.yaml (e.g. ~/Library/Application Support/shiet on macOS)
 //     - ./shiet.yaml in the process working directory
 //  3. Environment variables (highest precedence)
-//  4. Google auth_mode resolution: explicit mode wins; otherwise local when a
-//     client_id is present, else broker (public-build default). Broker mode
-//     clears any desktop client_secret from the loaded config.
+	//  4. Auth mode resolution: explicit mode wins; otherwise local when a
+	//     client_id is present, else broker (public-build default). Broker mode
+	//     clears any desktop client_id/client_secret from the loaded config.
 //
 // A missing config file is fine — defaults and env are enough.
 func Load() (Config, error) {
@@ -156,14 +156,17 @@ func load(configFiles []string) (Config, error) {
 	cfg.resolveGitHubAuthMode()
 	cfg.resolveSlackAuthMode()
 
-	// Broker mode must not carry a desktop Google client_secret into runtime.
+	// Broker mode must not carry desktop OAuth credentials into runtime.
 	if cfg.UsesBrokerAuth() {
+		cfg.Google.ClientID = ""
 		cfg.Google.ClientSecret = ""
 	}
 	if cfg.UsesGitHubBrokerAuth() {
+		cfg.GitHub.ClientID = ""
 		cfg.GitHub.ClientSecret = ""
 	}
 	if cfg.UsesSlackBrokerAuth() {
+		cfg.Slack.ClientID = ""
 		cfg.Slack.ClientSecret = ""
 	}
 

@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -16,9 +15,13 @@ import (
 	"sync"
 	"time"
 
+	"connectrpc.com/connect"
+	brokerv1 "github.com/dylanbr0wn/shiet/gen/shiet/broker/v1"
+	"github.com/dylanbr0wn/shiet/gen/shiet/broker/v1/brokerv1connect"
 	"github.com/dylanbr0wn/shiet/internal/broker/codes"
 	"github.com/dylanbr0wn/shiet/internal/integration/secrets"
 	"github.com/pkg/browser"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -37,11 +40,15 @@ var (
 )
 
 // BrokerFlow runs the provider-neutral desktop half of the secret-only OAuth
-// broker protocol. Provider packages supply the provider id and retain
-// provider-specific refresh/revoke behavior.
+// broker protocol. Provider packages supply the expected authorization host
+// and path and retain provider-specific refresh/revoke behavior.
 type BrokerFlow struct {
-	Provider      string
-	BaseURL       string
+	Provider string
+	BaseURL  string
+	// AuthURLHost and AuthURLPaths are retained for source compatibility;
+	// authorization URL validation is centralized in the provider registry.
+	AuthURLHost   string
+	AuthURLPaths  []string
 	DefaultScopes []string
 	HTTPClient    *http.Client
 	OpenURL       BrowserOpener
@@ -49,15 +56,20 @@ type BrokerFlow struct {
 	Platform      string
 }
 
+type handoffCallback struct {
+	BrokerState string
+	HandoffCode string
+}
+
 // Authorize implements the integration Authorizer contract.
 func (f *BrokerFlow) Authorize(ctx context.Context, accountID string) (Result, error) {
-	providerID := strings.TrimSpace(f.Provider)
-	if providerID == "" {
+	provider := strings.TrimSpace(f.Provider)
+	if provider == "" {
 		return Result{}, errors.New("provider is required")
 	}
-	desc, ok := Lookup(providerID)
+	desc, ok := Lookup(provider)
 	if !ok {
-		return Result{}, fmt.Errorf("unknown OAuth provider %q", providerID)
+		return Result{}, fmt.Errorf("unknown OAuth provider %q", provider)
 	}
 	base := strings.TrimRight(strings.TrimSpace(f.BaseURL), "/")
 	if base == "" {
@@ -134,7 +146,7 @@ func (f *BrokerFlow) Authorize(ctx context.Context, accountID string) (Result, e
 	expectedMu.Lock()
 	expectedState = start.BrokerState
 	expectedMu.Unlock()
-	if err := desc.ValidateAuthorizationURL(start.AuthURL); err != nil {
+	if err := desc.ValidateAuthorizationURL(start.AuthUrl); err != nil {
 		shutdownBrokerServer(srv, &serveWG)
 		return Result{}, fmt.Errorf("%w: %v", ErrBrokerRejected, err)
 	}
@@ -142,7 +154,7 @@ func (f *BrokerFlow) Authorize(ctx context.Context, accountID string) (Result, e
 	if open == nil {
 		open = browser.OpenURL
 	}
-	if err := open(start.AuthURL); err != nil {
+	if err := open(start.AuthUrl); err != nil {
 		shutdownBrokerServer(srv, &serveWG)
 		return Result{}, fmt.Errorf("%w: open browser: %v", ErrBrokerUnavailable, err)
 	}
@@ -165,10 +177,10 @@ func (f *BrokerFlow) Authorize(ctx context.Context, accountID string) (Result, e
 	if err != nil {
 		return Result{}, err
 	}
-	if handoff.Provider != "" && handoff.Provider != providerID {
+	if handoff.Provider != brokerv1.Provider_PROVIDER_UNSPECIFIED && handoff.Provider != brokerProvider(provider) {
 		return Result{}, fmt.Errorf("%w: handoff provider mismatch", ErrBrokerRejected)
 	}
-	scopes := handoff.Scope
+	scopes := handoff.Scopes
 	if len(scopes) == 0 {
 		scopes = append([]string(nil), f.DefaultScopes...)
 	}
@@ -176,82 +188,66 @@ func (f *BrokerFlow) Authorize(ctx context.Context, accountID string) (Result, e
 		scopes = append([]string(nil), desc.DefaultScopes...)
 	}
 	return Result{
-		Provider:  providerID,
+		Provider:  provider,
 		AccountID: strings.TrimSpace(accountID),
 		Token: secrets.Token{
 			AccessToken:  handoff.Token.AccessToken,
 			RefreshToken: handoff.Token.RefreshToken,
 			TokenType:    handoff.Token.TokenType,
-			Expiry:       handoff.Token.Expiry,
+			Expiry:       timestampTime(handoff.Token.Expiry),
 		},
 		Scopes: scopes,
 	}, nil
 }
 
-func (f *BrokerFlow) startAuth(ctx context.Context, base, sessionID, challenge, redirectURL string) (BrokerStartResponse, error) {
-	body, _ := json.Marshal(BrokerStartRequest{
-		DesktopSessionID:       sessionID,
+func (f *BrokerFlow) startAuth(ctx context.Context, base, sessionID, challenge, redirectURL string) (*brokerv1.StartAuthorizationResponse, error) {
+	request := &brokerv1.StartAuthorizationRequest{
+		Provider:               brokerProvider(f.Provider),
+		DesktopSessionId:       sessionID,
 		HandoffChallenge:       challenge,
-		AppVersion:             f.appVersion(),
-		Platform:               f.platform(),
 		DesktopHandoffRedirect: redirectURL,
-	})
-	var out BrokerStartResponse
-	if err := f.postJSON(ctx, base+"/v1/"+f.Provider+"/oauth/start", body, &out, "start"); err != nil {
-		return BrokerStartResponse{}, err
+		Application:            &brokerv1.ApplicationMetadata{AppVersion: f.appVersion(), Platform: f.platform()},
 	}
-	if out.AuthURL == "" || out.BrokerState == "" {
-		return BrokerStartResponse{}, fmt.Errorf("%w: start response missing auth_url or broker_state", ErrBrokerUnavailable)
+	response, err := f.brokerClient(base).StartAuthorization(ctx, connect.NewRequest(request))
+	if err != nil {
+		return nil, mapBrokerRPCError(err, "start")
 	}
-	return out, nil
+	if response.Msg.AuthUrl == "" || response.Msg.BrokerState == "" {
+		return nil, fmt.Errorf("%w: start response missing auth_url or broker_state", ErrBrokerUnavailable)
+	}
+	return response.Msg, nil
 }
 
-func (f *BrokerFlow) exchangeHandoff(ctx context.Context, base, sessionID, state, code, verifier string) (BrokerHandoffResponse, error) {
-	body, _ := json.Marshal(BrokerHandoffRequest{
-		DesktopSessionID: sessionID,
+func (f *BrokerFlow) exchangeHandoff(ctx context.Context, base, sessionID, state, code, verifier string) (*brokerv1.ExchangeHandoffResponse, error) {
+	request := &brokerv1.ExchangeHandoffRequest{
+		Provider:         brokerProvider(f.Provider),
+		DesktopSessionId: sessionID,
 		BrokerState:      state,
 		HandoffCode:      code,
 		HandoffVerifier:  verifier,
-	})
-	var out BrokerHandoffResponse
-	if err := f.postJSON(ctx, base+"/v1/"+f.Provider+"/oauth/handoff", body, &out, "handoff"); err != nil {
-		return BrokerHandoffResponse{}, err
+		Application:      &brokerv1.ApplicationMetadata{AppVersion: f.appVersion(), Platform: f.platform()},
 	}
-	if strings.TrimSpace(out.Token.AccessToken) == "" {
-		return BrokerHandoffResponse{}, fmt.Errorf("%w: handoff response missing access_token", ErrBrokerUnavailable)
+	response, err := f.brokerClient(base).ExchangeHandoff(ctx, connect.NewRequest(request))
+	if err != nil {
+		return nil, mapBrokerRPCError(err, "handoff")
 	}
-	return out, nil
+	if response.Msg.Token == nil || strings.TrimSpace(response.Msg.Token.AccessToken) == "" {
+		return nil, fmt.Errorf("%w: handoff response missing access_token", ErrBrokerUnavailable)
+	}
+	return response.Msg, nil
 }
 
-func (f *BrokerFlow) postJSON(ctx context.Context, endpoint string, body []byte, out any, op string) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(string(body)))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
+func (f *BrokerFlow) brokerClient(base string) brokerv1connect.OAuthBrokerServiceClient {
 	client := f.HTTPClient
 	if client == nil {
 		client = http.DefaultClient
 	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("%w: contact broker %s: %v", ErrBrokerUnavailable, op, err)
-	}
-	defer resp.Body.Close()
-	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return mapBrokerHTTPError(resp.StatusCode, raw, op)
-	}
-	if err := json.Unmarshal(raw, out); err != nil {
-		return fmt.Errorf("%w: decode %s response", ErrBrokerUnavailable, op)
-	}
-	return nil
+	return brokerv1connect.NewOAuthBrokerServiceClient(client, base)
 }
 
-func mapBrokerHTTPError(status int, raw []byte, op string) error {
-	var er BrokerErrorResponse
-	_ = json.Unmarshal(raw, &er)
-	switch strings.TrimSpace(er.Error) {
+func mapBrokerRPCError(err error, op string) error {
+	code := BrokerErrorCode(err)
+	switch code {
 	case codes.HandoffAlreadyUsed:
 		return ErrHandoffReplay
 	case codes.HandoffExpired:
@@ -261,17 +257,47 @@ func mapBrokerHTTPError(status int, raw []byte, op string) error {
 	case codes.HandoffVerifierMismatch:
 		return ErrHandoffVerifier
 	case codes.RateLimited, codes.AuthDisabled, codes.AppVersionDisabled:
-		return fmt.Errorf("%w: %s", ErrBrokerRejected, er.Error)
+		return fmt.Errorf("%w: %s", ErrBrokerRejected, code)
 	}
-	if status >= 500 {
-		return fmt.Errorf("%w: broker %s returned %d", ErrBrokerUnavailable, op, status)
+	if connect.CodeOf(err) == connect.CodeUnavailable || connect.CodeOf(err) == connect.CodeInternal {
+		return fmt.Errorf("%w: broker %s unavailable", ErrBrokerUnavailable, op)
 	}
-	return fmt.Errorf("%w: broker %s returned %d", ErrBrokerRejected, op, status)
+	return fmt.Errorf("%w: broker %s rejected request: %s", ErrBrokerRejected, op, code)
 }
 
-type handoffCallback struct {
-	BrokerState string
-	HandoffCode string
+func BrokerErrorCode(err error) string {
+	var connectErr *connect.Error
+	if !errors.As(err, &connectErr) {
+		return ""
+	}
+	for _, detail := range connectErr.Details() {
+		value, valueErr := detail.Value()
+		if valueErr != nil {
+			continue
+		}
+		if brokerDetail, ok := value.(*brokerv1.BrokerErrorDetail); ok {
+			return strings.TrimSpace(brokerDetail.Code)
+		}
+	}
+	return strings.TrimSpace(connectErr.Message())
+}
+
+func brokerProvider(provider string) brokerv1.Provider {
+	switch strings.ToLower(strings.TrimSpace(provider)) {
+	case ProviderGitHub:
+		return brokerv1.Provider_PROVIDER_GITHUB
+	case ProviderSlack:
+		return brokerv1.Provider_PROVIDER_SLACK
+	default:
+		return brokerv1.Provider_PROVIDER_GOOGLE
+	}
+}
+
+func timestampTime(timestamp *timestamppb.Timestamp) time.Time {
+	if timestamp == nil {
+		return time.Time{}
+	}
+	return timestamp.AsTime()
 }
 
 func (f *BrokerFlow) appVersion() string {

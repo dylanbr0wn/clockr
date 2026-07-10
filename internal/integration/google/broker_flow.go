@@ -2,14 +2,15 @@ package google
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"runtime"
 	"strings"
 
+	"connectrpc.com/connect"
+	brokerv1 "github.com/dylanbr0wn/shiet/gen/shiet/broker/v1"
+	"github.com/dylanbr0wn/shiet/gen/shiet/broker/v1/brokerv1connect"
 	"github.com/dylanbr0wn/shiet/internal/broker/codes"
 	"github.com/dylanbr0wn/shiet/internal/config"
 	"github.com/dylanbr0wn/shiet/internal/integration/oauth"
@@ -79,36 +80,18 @@ func (f *BrokerFlow) RefreshToken(ctx context.Context, refreshToken string, scop
 		return secrets.Token{}, fmt.Errorf("%w: refresh token is empty", ErrInvalidRefreshToken)
 	}
 
-	payload := oauth.BrokerRefreshRequest{
+	request := &brokerv1.RefreshTokenRequest{
+		Provider:     brokerv1.Provider_PROVIDER_GOOGLE,
 		RefreshToken: refreshToken,
-		AppVersion:   f.appVersion(),
-		Platform:     f.platform(),
-		Scope:        append([]string(nil), scopes...),
+		Scopes:       append([]string(nil), scopes...),
+		Application:  &brokerv1.ApplicationMetadata{AppVersion: f.appVersion(), Platform: f.platform()},
 	}
-	body, err := json.Marshal(payload)
+	response, err := f.brokerClient(base).RefreshToken(ctx, connect.NewRequest(request))
 	if err != nil {
-		return secrets.Token{}, err
+		return secrets.Token{}, f.mapBrokerRPCError(err, "refresh")
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/google/oauth/refresh", strings.NewReader(string(body)))
-	if err != nil {
-		return secrets.Token{}, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := f.httpClient().Do(req)
-	if err != nil {
-		return secrets.Token{}, fmt.Errorf("%w: contact broker refresh: %v", ErrBrokerUnavailable, err)
-	}
-	defer resp.Body.Close()
-	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return secrets.Token{}, mapBrokerHTTPError(resp.StatusCode, raw, "refresh")
-	}
-	var out oauth.BrokerRefreshResponse
-	if err := json.Unmarshal(raw, &out); err != nil {
-		return secrets.Token{}, fmt.Errorf("%w: decode refresh response", ErrBrokerUnavailable)
-	}
-	if strings.TrimSpace(out.AccessToken) == "" {
+	out := response.Msg.Token
+	if out == nil || strings.TrimSpace(out.AccessToken) == "" {
 		return secrets.Token{}, fmt.Errorf("%w: refresh response missing access_token", ErrBrokerUnavailable)
 	}
 	tokenType := strings.TrimSpace(out.TokenType)
@@ -123,7 +106,7 @@ func (f *BrokerFlow) RefreshToken(ctx context.Context, refreshToken string, scop
 		AccessToken:  out.AccessToken,
 		RefreshToken: nextRefresh,
 		TokenType:    tokenType,
-		Expiry:       out.Expiry,
+		Expiry:       out.Expiry.AsTime(),
 	}, nil
 }
 
@@ -139,34 +122,16 @@ func (f *BrokerFlow) Revoke(ctx context.Context, refreshToken string) error {
 		return fmt.Errorf("%w: set google.broker_base_url or SHIET_GOOGLE_BROKER_BASE_URL", config.ErrBrokerConfig)
 	}
 
-	payload := oauth.BrokerRevokeRequest{
-		RefreshToken: refreshToken,
-		Reason:       "user_disconnect",
+	request := &brokerv1.RevokeTokenRequest{
+		Provider:   brokerv1.Provider_PROVIDER_GOOGLE,
+		Credential: &brokerv1.RevokeTokenRequest_RefreshToken{RefreshToken: refreshToken},
+		Reason:     "user_disconnect",
 	}
-	body, err := json.Marshal(payload)
+	response, err := f.brokerClient(base).RevokeToken(ctx, connect.NewRequest(request))
 	if err != nil {
-		return err
+		return f.mapBrokerRPCError(err, "revoke")
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/google/oauth/revoke", strings.NewReader(string(body)))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := f.httpClient().Do(req)
-	if err != nil {
-		return fmt.Errorf("%w: contact broker revoke: %v", ErrBrokerUnavailable, err)
-	}
-	defer resp.Body.Close()
-	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return mapBrokerHTTPError(resp.StatusCode, raw, "revoke")
-	}
-	var out oauth.BrokerRevokeResponse
-	if err := json.Unmarshal(raw, &out); err != nil {
-		return fmt.Errorf("%w: decode revoke response", ErrBrokerUnavailable)
-	}
-	if !out.Revoked {
+	if !response.Msg.Revoked {
 		return fmt.Errorf("%w: revoke response missing revoked=true", ErrBrokerRejected)
 	}
 	return nil
@@ -177,6 +142,10 @@ func (f *BrokerFlow) httpClient() *http.Client {
 		return f.HTTPClient
 	}
 	return http.DefaultClient
+}
+
+func (f *BrokerFlow) brokerClient(base string) brokerv1connect.OAuthBrokerServiceClient {
+	return brokerv1connect.NewOAuthBrokerServiceClient(f.httpClient(), base)
 }
 
 func (f *BrokerFlow) appVersion() string {
@@ -193,10 +162,8 @@ func (f *BrokerFlow) platform() string {
 	return runtime.GOOS + "-" + runtime.GOARCH
 }
 
-func mapBrokerHTTPError(status int, raw []byte, op string) error {
-	var er oauth.BrokerErrorResponse
-	_ = json.Unmarshal(raw, &er)
-	code := strings.TrimSpace(er.Error)
+func (f *BrokerFlow) mapBrokerRPCError(err error, op string) error {
+	code := oauth.BrokerErrorCode(err)
 	switch code {
 	case codes.HandoffAlreadyUsed:
 		return fmt.Errorf("%w: complete a fresh Google connect", ErrHandoffReplay)
@@ -219,14 +186,11 @@ func mapBrokerHTTPError(status int, raw []byte, op string) error {
 	case codes.AppVersionDisabled:
 		return fmt.Errorf("%w: this app version can no longer use broker auth; update shiet", ErrBrokerRejected)
 	}
-	if status == http.StatusTooManyRequests {
-		return fmt.Errorf("%w: too many requests; try again later", ErrBrokerRejected)
-	}
-	if status >= 500 || status == http.StatusNotImplemented || status == http.StatusServiceUnavailable {
-		return fmt.Errorf("%w: broker %s returned %d", ErrBrokerUnavailable, op, status)
+	if connect.CodeOf(err) == connect.CodeUnavailable || connect.CodeOf(err) == connect.CodeInternal {
+		return fmt.Errorf("%w: broker %s unavailable", ErrBrokerUnavailable, op)
 	}
 	if code != "" {
 		return fmt.Errorf("%w: broker %s error %s", ErrBrokerRejected, op, code)
 	}
-	return fmt.Errorf("%w: broker %s returned %d", ErrBrokerRejected, op, status)
+	return fmt.Errorf("%w: broker %s rejected request", ErrBrokerRejected, op)
 }

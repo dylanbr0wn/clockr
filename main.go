@@ -4,12 +4,14 @@ import (
 	"context"
 	"embed"
 	"log"
+	"net/http"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 
+	"github.com/dylanbr0wn/shiet/internal/api/appapi"
 	"github.com/dylanbr0wn/shiet/internal/config"
 	"github.com/dylanbr0wn/shiet/internal/db"
 	"github.com/dylanbr0wn/shiet/internal/seed"
@@ -49,6 +51,19 @@ func main() {
 		MinHeight: 680,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
+			Handler: http.StripPrefix("/rpc", appapi.NewHandler(appapi.Dependencies{
+				Service:         app.Svc,
+				SyncPeriod:      app.Svc.SyncPeriod,
+				ListConnections: app.registry.List,
+				RefreshGitHubRepos: func(ctx context.Context, accountID string) error {
+					_, err := app.github.SyncRepos(ctx, accountID)
+					return err
+				},
+				RefreshSlackChannels: func(ctx context.Context, accountID string) error {
+					_, err := app.slack.SyncChannels(ctx, accountID)
+					return err
+				},
+			})),
 		},
 		Frameless:        false,
 		BackgroundColour: &options.RGBA{R: 0, G: 0, B: 0, A: 0},
@@ -61,7 +76,6 @@ func main() {
 		OnShutdown: app.shutdown,
 		Bind: []interface{}{
 			app,
-			app.Svc,
 		},
 	})
 

@@ -160,7 +160,7 @@ func TestLoad_githubLocalModeKeepsBYOCredentials(t *testing.T) {
 func TestLoad_githubBrokerModeClearsDesktopSecret(t *testing.T) {
 	dir := t.TempDir()
 	cfgFile := filepath.Join(dir, "shiet.yaml")
-	content := "github:\n  auth_mode: broker\n  broker_base_url: https://auth.shiet.app\n  client_secret: should-be-cleared\n"
+	content := "github:\n  auth_mode: broker\n  broker_base_url: https://auth.shiet.app\n  client_id: should-be-cleared\n  client_secret: should-be-cleared\n"
 	if err := os.WriteFile(cfgFile, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -171,8 +171,8 @@ func TestLoad_githubBrokerModeClearsDesktopSecret(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.GitHub.ClientSecret != "" {
-		t.Fatalf("broker mode must clear client_secret, got %q", cfg.GitHub.ClientSecret)
+	if cfg.GitHub.ClientID != "" || cfg.GitHub.ClientSecret != "" {
+		t.Fatalf("broker mode must clear desktop credentials, got client_id=%q client_secret=%q", cfg.GitHub.ClientID, cfg.GitHub.ClientSecret)
 	}
 }
 
@@ -228,6 +228,7 @@ func TestLoad_brokerModeClearsClientSecret(t *testing.T) {
 		"google:\n" +
 		"  auth_mode: broker\n" +
 		"  broker_base_url: https://auth.shiet.app\n" +
+		"  client_id: should-be-cleared\n" +
 		"  client_secret: should-be-cleared\n"
 	if err := os.WriteFile(cfgFile, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
@@ -238,8 +239,8 @@ func TestLoad_brokerModeClearsClientSecret(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Google.ClientSecret != "" {
-		t.Fatalf("broker mode must clear client_secret, got %q", cfg.Google.ClientSecret)
+	if cfg.Google.ClientID != "" || cfg.Google.ClientSecret != "" {
+		t.Fatalf("broker mode must clear desktop credentials, got client_id=%q client_secret=%q", cfg.Google.ClientID, cfg.Google.ClientSecret)
 	}
 }
 

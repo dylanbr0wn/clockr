@@ -979,4 +979,3 @@ func TestExportTemplateCRUD_CustomText(t *testing.T) {
 		t.Fatal(err)
 	}
 }
-

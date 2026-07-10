@@ -4,6 +4,8 @@
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+"${root}/scripts/generate-api.sh"
+
 echo "Running OAuth pre-build checks..."
 "${root}/scripts/prebuild-oauth-check.sh"
 

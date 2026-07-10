@@ -7,6 +7,9 @@
       "cmd/oauth-broker/**",
       "internal/broker/**",
       "deploy/railway/**",
+      "proto/**",
+      "buf.yaml",
+      "buf.gen.yaml",
       "go.mod",
       "go.sum",
       "railway.json"

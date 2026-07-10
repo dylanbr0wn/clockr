@@ -21,6 +21,14 @@ yarn-error.log*
 pnpm-debug.log*
 .pnpm-store
 
+# Buf-generated Protobuf / Connect clients and handlers
+/gen/
+/frontend/src/gen/
+
+# TypeScript project-reference output from vite.config.ts
+/frontend/vite.config.js
+/frontend/vite.config.d.ts
+
 # ── Local databases (SQLite + WAL/SHM sidecars) ───────────────────────
 *.dev.db
 *.dev.db-wal

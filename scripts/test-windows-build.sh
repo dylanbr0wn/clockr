@@ -4,6 +4,9 @@
 
 set -e
 
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+"${root}/scripts/generate-api.sh"
+
 echo "🏗️  Generating test project from template..."
 TEMP_DIR=$(mktemp -d)
 echo "📁 Temp directory: $TEMP_DIR"

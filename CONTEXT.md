@@ -42,6 +42,12 @@ database.
   App secret. GitHub OAuth App user tokens are handed to the desktop keychain,
   are not refreshed by the broker, and are revoked through the broker on
   disconnect. Local/BYO OAuth and PAT connect remain available.
+- Portable frontend/backend operations use versioned Protobuf contracts and
+  Connect behind the frontend API facade. Wails bindings are restricted to
+  native-only desktop capabilities. The OAuth broker serves start,
+  handoff, refresh, and revoke only through Connect; provider callbacks and
+  operational endpoints remain ordinary HTTP. See
+  [ADR-0002](docs/adr/0002-connect-protobuf-api-boundary.md).
 
 - Integrations settings use one catalog + detail surface for all providers. Adding
   a provider adds a catalog entry and kind config adapter — not a new top-level

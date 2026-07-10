@@ -1,6 +1,10 @@
 #!/bin/bash
 # Build script for all platforms
 
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+"${root}/scripts/generate-api.sh"
+
 echo "Building for all platforms..."
 echo "================================"
 

@@ -29,10 +29,13 @@ func AuthSettingsFromConfig(cfg config.Config) AuthSettings {
 	settings := AuthSettings{
 		Mode:          cfg.GitHub.AuthMode,
 		BrokerBaseURL: cfg.GitHub.BrokerBaseURL,
-		ClientID:      cfg.GitHub.ClientID,
 	}
-	if !cfg.UsesGitHubBrokerAuth() {
-		settings.ClientSecret = cfg.GitHub.ClientSecret
+	// Broker mode must not carry desktop BYO OAuth credentials into the provider;
+	// the hosted broker owns the shared GitHub OAuth App secret.
+	if cfg.UsesGitHubBrokerAuth() {
+		return settings
 	}
+	settings.ClientID = cfg.GitHub.ClientID
+	settings.ClientSecret = cfg.GitHub.ClientSecret
 	return settings
 }

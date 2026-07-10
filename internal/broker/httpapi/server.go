@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dylanbr0wn/shiet/gen/shiet/broker/v1/brokerv1connect"
 	"github.com/dylanbr0wn/shiet/internal/broker/codes"
 	brokerconfig "github.com/dylanbr0wn/shiet/internal/broker/config"
 	"github.com/dylanbr0wn/shiet/internal/broker/observe"
@@ -89,27 +90,14 @@ type providerTokenResponse struct {
 
 func (s Server) Handler() http.Handler {
 	mux := http.NewServeMux()
+	connectPath, connectHandler := brokerv1connect.NewOAuthBrokerServiceHandler(connectBrokerService{service: s.service()})
+	mux.Handle(connectPath, connectHandler)
 	mux.HandleFunc("GET /healthz", s.health)
 	mux.HandleFunc("GET /readyz", s.ready)
 	mux.HandleFunc("GET /metrics", s.metrics)
 	for _, provider := range oauth.All() {
 		id := provider.ID
-		mux.HandleFunc("POST /v1/"+id+"/oauth/start", s.startHandler(id))
 		mux.HandleFunc("GET /v1/"+id+"/oauth/callback", s.callbackHandler(id))
-		mux.HandleFunc("POST /v1/"+id+"/oauth/handoff", s.handoffHandler(id))
-		if provider.Capabilities.Refresh {
-			mux.HandleFunc("POST /v1/"+id+"/oauth/refresh", s.refreshGoogleOAuth)
-		}
-		if provider.Capabilities.Revoke {
-			switch id {
-			case oauth.ProviderGoogle:
-				mux.HandleFunc("POST /v1/"+id+"/oauth/revoke", s.revokeGoogleOAuth)
-			case oauth.ProviderGitHub:
-				mux.HandleFunc("POST /v1/"+id+"/oauth/revoke", s.revokeGitHubOAuth)
-			case oauth.ProviderSlack:
-				mux.HandleFunc("POST /v1/"+id+"/oauth/revoke", s.revokeSlackOAuth)
-			}
-		}
 	}
 	return mux
 }

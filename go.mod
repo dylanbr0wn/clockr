@@ -3,6 +3,7 @@ module github.com/dylanbr0wn/shiet
 go 1.26.2
 
 require (
+	connectrpc.com/connect v1.20.0
 	github.com/alecthomas/kong v1.15.0
 	github.com/knadh/koanf/parsers/yaml v1.1.0
 	github.com/knadh/koanf/providers/confmap v1.0.0
@@ -13,6 +14,7 @@ require (
 	github.com/wailsapp/wails/v2 v2.12.0
 	github.com/zalando/go-keyring v0.2.8
 	golang.org/x/oauth2 v0.36.0
+	google.golang.org/protobuf v1.36.11
 	modernc.org/sqlite v1.52.0
 )
 

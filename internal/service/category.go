@@ -127,7 +127,7 @@ func (s *Service) UpdateCategory(ctx context.Context, input UpdateCategoryInput)
 			return Category{}, mapErr("update category", err)
 		}
 	} else if current.IsDefaultGap != 0 {
-		return Category{}, fmt.Errorf("update category: exactly one default-gap category is required")
+		return Category{}, failedPreconditionf("update category: exactly one default-gap category is required")
 	}
 
 	color := strings.TrimSpace(input.Color)
@@ -166,7 +166,7 @@ func (s *Service) DeleteCategory(ctx context.Context, id int64) error {
 		return mapErr("delete category", err)
 	}
 	if current.IsDefaultGap != 0 {
-		return fmt.Errorf("delete category: cannot delete the default-gap category")
+		return failedPreconditionf("delete category: cannot delete the default-gap category")
 	}
 
 	ref := sql.NullInt64{Int64: id, Valid: true}

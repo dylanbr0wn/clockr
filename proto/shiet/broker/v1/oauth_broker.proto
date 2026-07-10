@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+package shiet.broker.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/dylanbr0wn/shiet/gen/shiet/broker/v1;brokerv1";
+
+service OAuthBrokerService {
+  rpc StartAuthorization(StartAuthorizationRequest) returns (StartAuthorizationResponse);
+  rpc ExchangeHandoff(ExchangeHandoffRequest) returns (ExchangeHandoffResponse);
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+  rpc RevokeToken(RevokeTokenRequest) returns (RevokeTokenResponse);
+}
+
+enum Provider {
+  PROVIDER_UNSPECIFIED = 0;
+  PROVIDER_GOOGLE = 1;
+  PROVIDER_GITHUB = 2;
+  PROVIDER_SLACK = 3;
+}
+
+message ApplicationMetadata {
+  string app_version = 1;
+  string platform = 2;
+}
+
+message TokenMaterial {
+  string access_token = 1;
+  string refresh_token = 2;
+  string token_type = 3;
+  google.protobuf.Timestamp expiry = 4;
+}
+
+message StartAuthorizationRequest {
+  Provider provider = 1;
+  string desktop_session_id = 2;
+  string handoff_challenge = 3;
+  ApplicationMetadata application = 4;
+  string desktop_handoff_redirect = 5;
+}
+
+message StartAuthorizationResponse {
+  string auth_url = 1;
+  string broker_state = 2;
+  google.protobuf.Timestamp expires_at = 3;
+}
+
+message ExchangeHandoffRequest {
+  Provider provider = 1;
+  string desktop_session_id = 2;
+  string broker_state = 3;
+  string handoff_code = 4;
+  string handoff_verifier = 5;
+  ApplicationMetadata application = 6;
+}
+
+message ExchangeHandoffResponse {
+  Provider provider = 1;
+  string account_hint = 2;
+  repeated string scopes = 3;
+  TokenMaterial token = 4;
+}
+
+message RefreshTokenRequest {
+  Provider provider = 1;
+  string refresh_token = 2;
+  repeated string scopes = 3;
+  ApplicationMetadata application = 4;
+}
+
+message RefreshTokenResponse {
+  TokenMaterial token = 1;
+}
+
+message RevokeTokenRequest {
+  Provider provider = 1;
+  oneof credential {
+    string refresh_token = 2;
+    string access_token = 3;
+  }
+  string reason = 4;
+}
+
+message RevokeTokenResponse {
+  bool revoked = 1;
+}
+
+message BrokerErrorDetail {
+  string code = 1;
+}

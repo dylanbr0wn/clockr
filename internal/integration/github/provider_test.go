@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dylanbr0wn/shiet/internal/config"
 	"github.com/dylanbr0wn/shiet/internal/db"
 	"github.com/dylanbr0wn/shiet/internal/db/sqlc"
 	"github.com/dylanbr0wn/shiet/internal/integration/connection"
@@ -84,12 +85,84 @@ func TestConnect_RejectsEmptyPAT(t *testing.T) {
 	p, _, _ := newProviderEnv(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 	}))
+	p.AuthMode = "local"
 	_, err := p.Connect(context.Background(), "  ")
 	if err == nil {
 		t.Fatal("expected error for empty PAT")
 	}
 	if !strings.Contains(err.Error(), "personal access token") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestConnect_BrokerModeNeverFallsBackToLocalOAuth(t *testing.T) {
+	p, _, _ := newProviderEnv(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.NotFound(w, r)
+	}))
+	p.AuthMode = "broker"
+	p.BrokerBaseURL = "" // missing broker URL must fail closed
+	p.Config = github.OAuthConfig("desktop-client-id", "desktop-client-secret")
+	localOpened := false
+	p.Authorizer = nil
+	// If local oauth.Flow were selected, Authorize would try to listen/open a browser.
+	// We assert the broker-config error instead.
+	_, err := p.Connect(context.Background(), "")
+	if err == nil {
+		t.Fatal("expected broker config error")
+	}
+	if !errors.Is(err, config.ErrGitHubBrokerConfig) && !strings.Contains(err.Error(), "broker_base_url") {
+		t.Fatalf("want broker config error, got %v (localOpened=%v)", err, localOpened)
+	}
+}
+
+func TestConnect_BrokerModeUsesBrokerEvenWhenDesktopClientIDPresent(t *testing.T) {
+	p, _, _ := newProviderEnv(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/user":
+			_ = json.NewEncoder(w).Encode(map[string]any{"login": "octocat", "name": "The Octocat"})
+		case "/user/repos":
+			_ = json.NewEncoder(w).Encode([]map[string]any{})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	p.AuthMode = "broker"
+	p.BrokerBaseURL = "https://auth.example"
+	p.Config = github.OAuthConfig("desktop-client-id", "desktop-client-secret")
+	p.Authorizer = stubAuthorizer{result: oauth.Result{
+		Provider: service.ProviderGitHub,
+		Token:    secrets.Token{AccessToken: "gho_broker", TokenType: "Bearer"},
+		Scopes:   []string{"repo"},
+	}}
+
+	conn, err := p.Connect(context.Background(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if conn.AccountID != "octocat" {
+		t.Fatalf("connection: %+v", conn)
+	}
+	token, err := p.Store.Get(service.ProviderGitHub, "octocat")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if token.CredentialSource != secrets.CredentialSourceBroker {
+		t.Fatalf("credential source: got %q want broker", token.CredentialSource)
+	}
+}
+
+func TestAuthSettingsFromConfig_BrokerModeOmitsDesktopCredentials(t *testing.T) {
+	cfg := config.Config{}
+	cfg.GitHub.AuthMode = config.AuthModeBroker
+	cfg.GitHub.BrokerBaseURL = "https://auth.example"
+	cfg.GitHub.ClientID = "should-not-copy"
+	cfg.GitHub.ClientSecret = "should-not-copy"
+	got := github.AuthSettingsFromConfig(cfg)
+	if got.ClientID != "" || got.ClientSecret != "" {
+		t.Fatalf("broker settings leaked desktop credentials: %+v", got)
+	}
+	if got.Mode != config.AuthModeBroker || got.BrokerBaseURL != "https://auth.example" {
+		t.Fatalf("settings: %+v", got)
 	}
 }
 

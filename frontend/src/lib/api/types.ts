@@ -282,9 +282,52 @@ export interface PeriodExportRender {
   format: string;
 }
 
+export interface ExportCategory {
+  id?: number;
+  name: string;
+  key: string;
+  color?: string;
+}
+
+export interface ExportEntry {
+  source: string;
+  sourceId: number;
+  day: string;
+  startMinutes: number;
+  endMinutes: number;
+  minutes: number;
+  title: string;
+  category: ExportCategory;
+}
+
+export interface ExportCategoryMinutes {
+  category: ExportCategory;
+  minutes: number;
+}
+
+export interface ExportDayTotals {
+  date: string;
+  categories: ExportCategoryMinutes[];
+  actualMinutes: number;
+  targetMinutes: number;
+}
+
+export interface PeriodExportModel {
+  periodId: number;
+  periodLabel: string;
+  startDate: string;
+  endDate: string;
+  targetHoursPerDay: number;
+  targetMinutes: number;
+  actualMinutes: number;
+  days: string[];
+  entries: ExportEntry[];
+  dailyTotals: ExportDayTotals[];
+  periodTotals: ExportCategoryMinutes[];
+}
+
 export interface ExportFieldInfo {
   field: string;
   label: string;
   description: string;
 }
-

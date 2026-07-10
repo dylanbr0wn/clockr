@@ -95,14 +95,14 @@ func (p reviewPolicy) Apply(ctx context.Context, q *sqlc.Queries, item sqlc.Revi
 		case ReviewActionDismiss:
 			status = "dismissed"
 		default:
-			return "", fmt.Errorf("unsupported action %q for %s", action, item.Kind)
+			return "", invalidInputf("unsupported action %q for %s", action, item.Kind)
 		}
 	case reviewNewInGap:
 		err = p.applyNewInGap(ctx, q, item, action)
 	case reviewTentative, reviewAllDay:
 		err = p.applyIncludeExclude(ctx, q, item, action)
 	case "overlap", "dedup_ambiguous":
-		return "", fmt.Errorf("review kind %q is not supported yet", item.Kind)
+		return "", failedPreconditionf("review kind %q is not supported yet", item.Kind)
 	default:
 		return "", fmt.Errorf("unknown review kind %q", item.Kind)
 	}
@@ -314,7 +314,7 @@ func (p reviewPolicy) applyDeletedCategorized(ctx context.Context, q *sqlc.Queri
 		}
 		return p.MarkExcluded(ctx, q, ev)
 	default:
-		return fmt.Errorf("unsupported action %q for deleted_categorized", action)
+		return invalidInputf("unsupported action %q for deleted_categorized", action)
 	}
 }
 
@@ -384,7 +384,7 @@ func (p reviewPolicy) applyNewInGap(ctx context.Context, q *sqlc.Queries, item s
 		}
 		return shrinkGapFillsForEvent(ctx, q, item.PeriodID, eventSpan, fills)
 	default:
-		return fmt.Errorf("unsupported action %q for new_in_gap", action)
+		return invalidInputf("unsupported action %q for new_in_gap", action)
 	}
 }
 
@@ -413,7 +413,7 @@ func (p reviewPolicy) applyIncludeExclude(ctx context.Context, q *sqlc.Queries, 
 		}
 		return p.MarkExcluded(ctx, q, ev)
 	default:
-		return fmt.Errorf("unsupported action %q for %s", action, item.Kind)
+		return invalidInputf("unsupported action %q for %s", action, item.Kind)
 	}
 }
 

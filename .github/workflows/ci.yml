@@ -11,11 +11,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history so buf breaking can compare against origin/main on PRs.
+          fetch-depth: 0
 
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
+
+      - uses: bufbuild/buf-setup-action@v1
+        with:
+          version: 1.71.0
+
+      - name: Lint Protobuf contracts
+        run: buf lint
+
+      - name: Generate API sources
+        run: buf generate
+
+      - name: Check Protobuf compatibility
+        run: |
+          if git cat-file -e origin/main:buf.yaml 2>/dev/null; then
+            buf breaking --against '.git#branch=origin/main'
+          fi
 
       - name: Run Go tests
         run: go test ./internal/...
@@ -38,6 +57,13 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - uses: bufbuild/buf-setup-action@v1
+        with:
+          version: 1.71.0
+
+      - name: Generate API sources
+        run: buf generate
 
       - name: Install dependencies
         working-directory: frontend

@@ -27,9 +27,10 @@ shiet uses a single-context domain-doc layout: root `CONTEXT.md` plus root `docs
 
 shiet is a single **Wails v2 desktop app**: a Go backend (root `app.go`/`main.go` + `internal/`)
 compiled together with a React/TypeScript frontend (`frontend/`, pnpm) into one native binary.
-There is no server/API between front and back — the frontend calls Go via generated Wails bindings
-(`frontend/wailsjs/`). Data lives in an embedded SQLite file (pure-Go `modernc.org/sqlite`),
-auto-migrated and seeded on startup. There are no separate backing services to run.
+Portable frontend/backend operations may use same-origin Connect handlers mounted through Wails'
+AssetServer; native capabilities continue to use generated Wails bindings (`frontend/wailsjs/`).
+Data lives in an embedded SQLite file (pure-Go `modernc.org/sqlite`), auto-migrated and seeded on
+startup. There are no separate backing services to run.
 
 ### Toolchain / environment notes (non-obvious)
 - **Ubuntu 24.04 ships `webkit2gtk-4.1`, not `4.0`.** Plain `wails build` / `wails dev` fail with
@@ -53,6 +54,7 @@ auto-migrated and seeded on startup. There are no separate backing services to r
 
 | Job | Command |
 |-----|---------|
+| Protobuf contracts | `buf lint`, generation, and breaking checks |
 | Go tests | `go test ./internal/...` |
 | Frontend typecheck | `pnpm -C frontend install --frozen-lockfile && pnpm -C frontend typecheck` |
 | Frontend tests | `pnpm -C frontend install --frozen-lockfile && pnpm -C frontend test` |
@@ -65,6 +67,7 @@ Lint is not gated in CI yet (2 pre-existing `react-refresh/only-export-component
 - Frontend lint: `pnpm -C frontend lint` (note: 2 pre-existing `react-refresh/only-export-components`
   errors in `frontend/src/components/ui/{tabs,toggle}.tsx` — not introduced by setup).
 - Frontend tests: `pnpm -C frontend test` (vitest).
+- Generate Connect/Protobuf sources: `buf generate` (outputs are Git-ignored).
 - Go tests: `go test ./internal/...` (service layer has the tests).
 - Run only the Vite frontend standalone (no Go): `pnpm --dir frontend dev` (see `.claude/launch.json`).
 - DB dev tooling (migrate/seed/reset a dev DB): `./scripts/db.sh`; regenerate sqlc: `./scripts/sqlc-gen.sh`

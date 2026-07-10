@@ -112,7 +112,7 @@ func ListExportFieldCatalog(grain, layout string) ([]ExportFieldInfo, error) {
 		layout = ExportLayoutFlat
 	}
 	if err := validateGrainLayout(grain, layout); err != nil {
-		return nil, err
+		return nil, invalidInputf("list export field catalog: %v", err)
 	}
 	return fieldCatalog(grain, layout), nil
 }

@@ -132,13 +132,13 @@ type manualEventSpan struct {
 
 func (s *Service) manualEventSpan(ctx context.Context, action string, input ManualEventInput) (manualEventSpan, error) {
 	if input.PeriodID <= 0 {
-		return manualEventSpan{}, fmt.Errorf("%s: periodId is required", action)
+		return manualEventSpan{}, invalidInputf("%s: periodId is required", action)
 	}
 	if input.StartMinutes < 0 || input.StartMinutes >= 24*60 {
-		return manualEventSpan{}, fmt.Errorf("%s: startMinutes must be within the day", action)
+		return manualEventSpan{}, invalidInputf("%s: startMinutes must be within the day", action)
 	}
 	if input.EndMinutes <= input.StartMinutes || input.EndMinutes > 24*60 {
-		return manualEventSpan{}, fmt.Errorf("%s: endMinutes must be after startMinutes and within the day", action)
+		return manualEventSpan{}, invalidInputf("%s: endMinutes must be after startMinutes and within the day", action)
 	}
 
 	period, err := s.GetPeriod(ctx, input.PeriodID)
@@ -147,7 +147,7 @@ func (s *Service) manualEventSpan(ctx context.Context, action string, input Manu
 	}
 	day, err := parseDate(input.Day)
 	if err != nil {
-		return manualEventSpan{}, fmt.Errorf("%s: day: %w", action, err)
+		return manualEventSpan{}, invalidInputf("%s: day: %v", action, err)
 	}
 	startDay, err := parseDate(period.StartDate)
 	if err != nil {
@@ -158,7 +158,7 @@ func (s *Service) manualEventSpan(ctx context.Context, action string, input Manu
 		return manualEventSpan{}, fmt.Errorf("%s: period end_date: %w", action, err)
 	}
 	if day.Before(startDay) || day.After(endDay) {
-		return manualEventSpan{}, fmt.Errorf("%s: day %s is outside period %s to %s", action, input.Day, period.StartDate, period.EndDate)
+		return manualEventSpan{}, invalidInputf("%s: day %s is outside period %s to %s", action, input.Day, period.StartDate, period.EndDate)
 	}
 
 	segs, err := s.ListTzSegments(ctx, input.PeriodID)
@@ -166,7 +166,7 @@ func (s *Service) manualEventSpan(ctx context.Context, action string, input Manu
 		return manualEventSpan{}, err
 	}
 	if len(segs) == 0 {
-		return manualEventSpan{}, fmt.Errorf("%s: period %d has no timezone segment", action, input.PeriodID)
+		return manualEventSpan{}, failedPreconditionf("%s: period %d has no timezone segment", action, input.PeriodID)
 	}
 	seg := activeSegment(segs, input.Day)
 	loc, err := loadLoc(map[string]*time.Location{}, seg.IanaTz)

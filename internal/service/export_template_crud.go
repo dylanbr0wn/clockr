@@ -47,15 +47,15 @@ var exportTemplateKeyPattern = regexp.MustCompile(`[^a-z0-9]+`)
 func (s *Service) CreateExportTemplate(ctx context.Context, input CreateExportTemplateInput) (ExportTemplate, error) {
 	name := strings.TrimSpace(input.Name)
 	if name == "" {
-		return ExportTemplate{}, fmt.Errorf("create export template: name is required")
+		return ExportTemplate{}, invalidInputf("create export template: name is required")
 	}
 	format, err := normalizeExportFormat(input.Format)
 	if err != nil {
-		return ExportTemplate{}, fmt.Errorf("create export template: %w", err)
+		return ExportTemplate{}, invalidInputf("create export template: %v", err)
 	}
 	body, err := normalizeExportBody(input.Body, format)
 	if err != nil {
-		return ExportTemplate{}, fmt.Errorf("create export template: %w", err)
+		return ExportTemplate{}, invalidInputf("create export template: %v", err)
 	}
 	key := strings.TrimSpace(input.Key)
 	if key == "" {
@@ -64,7 +64,7 @@ func (s *Service) CreateExportTemplate(ctx context.Context, input CreateExportTe
 		key = slugifyExportTemplateKey(key)
 	}
 	if key == "" {
-		return ExportTemplate{}, fmt.Errorf("create export template: key is required")
+		return ExportTemplate{}, invalidInputf("create export template: key is required")
 	}
 	key, err = s.uniqueExportTemplateKey(ctx, key)
 	if err != nil {
@@ -97,15 +97,15 @@ func (s *Service) UpdateExportTemplate(ctx context.Context, input UpdateExportTe
 
 	name := strings.TrimSpace(input.Name)
 	if name == "" {
-		return ExportTemplate{}, fmt.Errorf("update export template: name is required")
+		return ExportTemplate{}, invalidInputf("update export template: name is required")
 	}
 	format, err := normalizeExportFormat(input.Format)
 	if err != nil {
-		return ExportTemplate{}, fmt.Errorf("update export template: %w", err)
+		return ExportTemplate{}, invalidInputf("update export template: %v", err)
 	}
 	body, err := normalizeExportBody(input.Body, format)
 	if err != nil {
-		return ExportTemplate{}, fmt.Errorf("update export template: %w", err)
+		return ExportTemplate{}, invalidInputf("update export template: %v", err)
 	}
 
 	row, err := s.q.UpdateExportTemplate(ctx, sqlc.UpdateExportTemplateParams{
@@ -209,11 +209,11 @@ func (s *Service) PreviewExport(ctx context.Context, input PreviewExportInput) (
 	if strings.TrimSpace(body) != "" {
 		format, err := normalizeExportFormat(input.Format)
 		if err != nil {
-			return PeriodExportRender{}, fmt.Errorf("preview export: %w", err)
+			return PeriodExportRender{}, invalidInputf("preview export: %v", err)
 		}
 		body, err = normalizeExportBody(body, format)
 		if err != nil {
-			return PeriodExportRender{}, fmt.Errorf("preview export: %w", err)
+			return PeriodExportRender{}, invalidInputf("preview export: %v", err)
 		}
 		tmpl := ExportTemplate{
 			Key:    "preview",

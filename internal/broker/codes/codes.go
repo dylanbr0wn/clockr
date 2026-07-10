@@ -1,14 +1,14 @@
-// Package codes holds stable string identifiers shared by the OAuth broker
-// HTTP API and desktop client. Prefer these constants over raw literals when
-// emitting or matching error codes, metric labels, and log event names.
+// Package codes holds stable string identifiers shared by the OAuth broker and
+// desktop client. Prefer these constants over raw literals when emitting or
+// matching Connect error details, metric labels, and log event names.
 package codes
 
-// JSON error codes returned in {"error":"..."}.
+// Broker error identifiers returned in BrokerErrorDetail.code.
 const (
 	InvalidConfig                             = "invalid_config"
+	InvalidJSON                               = "invalid_json"
 	ProviderNotConfigured                     = "provider_not_configured"
 	DatastoreUnavailable                      = "datastore_unavailable"
-	InvalidJSON                               = "invalid_json"
 	DesktopSessionAndHandoffChallengeRequired = "desktop_session_id_and_handoff_challenge_required"
 	InvalidDesktopHandoffRedirect             = "invalid_desktop_handoff_redirect"
 	RandomStateFailed                         = "random_state_failed"
@@ -34,6 +34,7 @@ const (
 	AuthDisabled                              = "auth_disabled"
 	RefreshDisabled                           = "refresh_disabled"
 	AppVersionDisabled                        = "app_version_disabled"
+	OperationNotSupported                     = "operation_not_supported"
 )
 
 // Surfaces used for rate-limit keys, kill-switch metrics, and log fields.

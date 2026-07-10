@@ -131,13 +131,27 @@ install_go_tools() {
 
   log "Installing Wails CLI v2.12.0"
   go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+
+  log "Installing Buf CLI v1.71.0"
+  go install github.com/bufbuild/buf/cmd/buf@v1.71.0
+}
+
+generate_api() {
+  if ! command -v buf >/dev/null 2>&1; then
+    warn "Buf is unavailable; generated API sources will be missing"
+    return 1
+  fi
+
+  log "Generating Connect/Protobuf API sources"
+  ./scripts/generate-api.sh
 }
 
 install_ubuntu_wails_deps
 persist_shell_env
+install_go_tools
+generate_api
 ensure_pnpm
 install_frontend
-install_go_tools
 
 log "Shiet environment setup complete"
 printf 'Use DISPLAY=:1 wails dev -tags webkit2_41 on Ubuntu 24.04 environments.\n'

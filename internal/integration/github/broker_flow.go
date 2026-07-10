@@ -2,13 +2,14 @@ package github
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 
+	"connectrpc.com/connect"
+	brokerv1 "github.com/dylanbr0wn/shiet/gen/shiet/broker/v1"
+	"github.com/dylanbr0wn/shiet/gen/shiet/broker/v1/brokerv1connect"
 	"github.com/dylanbr0wn/shiet/internal/config"
 	"github.com/dylanbr0wn/shiet/internal/integration/oauth"
 	"github.com/dylanbr0wn/shiet/internal/service"
@@ -39,11 +40,12 @@ func (f *BrokerFlow) Authorize(ctx context.Context, accountID string) (oauth.Res
 	if base == "" {
 		return oauth.Result{}, fmt.Errorf("%w: set github.broker_base_url or SHIET_GITHUB_BROKER_BASE_URL", config.ErrGitHubBrokerConfig)
 	}
-	desc := oauth.MustLookup(oauth.ProviderGitHub)
 	flow := oauth.BrokerFlow{
 		Provider:      service.ProviderGitHub,
 		BaseURL:       base,
-		DefaultScopes: append([]string(nil), desc.DefaultScopes...),
+		AuthURLHost:   "github.com",
+		AuthURLPaths:  []string{"/login/oauth/authorize"},
+		DefaultScopes: []string{"repo"},
 		HTTPClient:    f.HTTPClient,
 		OpenURL:       f.OpenURL,
 		AppVersion:    f.AppVersion,
@@ -61,30 +63,24 @@ func (f *BrokerFlow) Revoke(ctx context.Context, accessToken string) error {
 	if base == "" {
 		return fmt.Errorf("%w: set github.broker_base_url or SHIET_GITHUB_BROKER_BASE_URL", config.ErrGitHubBrokerConfig)
 	}
-	body, _ := json.Marshal(oauth.BrokerRevokeRequest{
-		AccessToken: accessToken,
-		Reason:      "user_disconnect",
-	})
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/github/oauth/revoke", strings.NewReader(string(body)))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
 	client := f.HTTPClient
 	if client == nil {
 		client = http.DefaultClient
 	}
-	resp, err := client.Do(req)
+	request := &brokerv1.RevokeTokenRequest{
+		Provider:   brokerv1.Provider_PROVIDER_GITHUB,
+		Credential: &brokerv1.RevokeTokenRequest_AccessToken{AccessToken: accessToken},
+		Reason:     "user_disconnect",
+	}
+	response, err := brokerv1connect.NewOAuthBrokerServiceClient(client, base).RevokeToken(ctx, connect.NewRequest(request))
 	if err != nil {
-		return fmt.Errorf("%w: contact broker revoke: %v", ErrBrokerUnavailable, err)
+		code := oauth.BrokerErrorCode(err)
+		if connect.CodeOf(err) == connect.CodeUnavailable || connect.CodeOf(err) == connect.CodeInternal {
+			return fmt.Errorf("%w: contact broker revoke", ErrBrokerUnavailable)
+		}
+		return fmt.Errorf("%w: broker revoke error %s", ErrBrokerRejected, code)
 	}
-	defer resp.Body.Close()
-	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("%w: broker revoke returned %d: %s", ErrBrokerRejected, resp.StatusCode, strings.TrimSpace(string(raw)))
-	}
-	var out oauth.BrokerRevokeResponse
-	if err := json.Unmarshal(raw, &out); err != nil || !out.Revoked {
+	if !response.Msg.Revoked {
 		return fmt.Errorf("%w: invalid revoke response", ErrBrokerRejected)
 	}
 	return nil

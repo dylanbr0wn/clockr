@@ -64,8 +64,9 @@ credentials are configured.
 
 The same confidentiality boundary applies to the shared GitHub OAuth App:
 public desktop builds must not ship its `client_secret`. The broker therefore
-also owns GitHub's web authorization code exchange and exposes provider-specific
-`/v1/github/oauth/start`, `/callback`, `/handoff`, and `/revoke` routes. GitHub
+also owns GitHub's web authorization code exchange. ADR-0002 supersedes the
+application transport with provider-neutral Connect methods; only the provider
+callback remains an ordinary `/v1/github/oauth/callback` route. GitHub
 state and handoff records use the same expiry, one-time-use, verifier binding,
 rate limiting, kill switches, redacted observability, and no-persistent-token
 rules as Google.
@@ -163,22 +164,29 @@ backend.
 
 ## Broker API Contract
 
-All endpoints are HTTPS-only. Requests and responses use JSON unless the Google
-redirect endpoint is rendering a browser page. Exact field names may evolve, but
-the security properties below are contract requirements.
+ADR-0002 supersedes the original REST wire contract. The generated Connect
+service in `proto/shiet/broker/v1/oauth_broker.proto` is the source of truth for
+operation fields and encoding. The examples below use canonical Protobuf JSON
+only to illustrate message shape; desktop clients use generated messages. The
+provider callbacks remain HTTPS browser endpoints that render HTML. The
+security properties below remain contract requirements.
 
 ### Start Auth
 
-`POST /v1/google/oauth/start`
+`OAuthBrokerService.StartAuthorization`
 
 Request:
 
 ```json
 {
-  "desktop_session_id": "random app-generated identifier",
-  "handoff_challenge": "hash of a desktop-held handoff verifier",
-  "app_version": "0.1.0",
-  "platform": "darwin-arm64"
+  "provider": "PROVIDER_GOOGLE",
+  "desktopSessionId": "random app-generated identifier",
+  "handoffChallenge": "hash of a desktop-held handoff verifier",
+  "application": {
+    "appVersion": "0.1.0",
+    "platform": "darwin-arm64"
+  },
+  "desktopHandoffRedirect": "http://127.0.0.1:49152/oauth/handoff"
 }
 ```
 
@@ -186,9 +194,9 @@ Response:
 
 ```json
 {
-  "auth_url": "https://accounts.google.com/o/oauth2/v2/auth?...",
-  "broker_state": "opaque state identifier",
-  "expires_at": "2026-07-08T12:05:00Z"
+  "authUrl": "https://accounts.google.com/o/oauth2/v2/auth?...",
+  "brokerState": "opaque state identifier",
+  "expiresAt": "2026-07-08T12:05:00Z"
 }
 ```
 
@@ -233,16 +241,21 @@ Requirements:
 
 ### One-Time Handoff Exchange
 
-`POST /v1/google/oauth/handoff`
+`OAuthBrokerService.ExchangeHandoff`
 
 Request:
 
 ```json
 {
-  "desktop_session_id": "same app-generated identifier",
-  "broker_state": "opaque state identifier",
-  "handoff_code": "short-lived one-time code",
-  "handoff_verifier": "desktop-held verifier matching the start challenge"
+  "provider": "PROVIDER_GOOGLE",
+  "desktopSessionId": "same app-generated identifier",
+  "brokerState": "opaque state identifier",
+  "handoffCode": "short-lived one-time code",
+  "handoffVerifier": "desktop-held verifier matching the start challenge",
+  "application": {
+    "appVersion": "0.1.0",
+    "platform": "darwin-arm64"
+  }
 }
 ```
 
@@ -250,13 +263,13 @@ Response:
 
 ```json
 {
-  "provider": "google",
-  "account_hint": "user@example.com",
-  "scope": ["https://www.googleapis.com/auth/calendar.readonly"],
+  "provider": "PROVIDER_GOOGLE",
+  "accountHint": "user@example.com",
+  "scopes": ["https://www.googleapis.com/auth/calendar.readonly"],
   "token": {
-    "access_token": "google access token",
-    "refresh_token": "google refresh token",
-    "token_type": "Bearer",
+    "accessToken": "google access token",
+    "refreshToken": "google refresh token",
+    "tokenType": "Bearer",
     "expiry": "2026-07-08T13:00:00Z"
   }
 }
@@ -276,16 +289,19 @@ Requirements:
 
 ### Refresh Token Exchange
 
-`POST /v1/google/oauth/refresh`
+`OAuthBrokerService.RefreshToken`
 
 Request:
 
 ```json
 {
-  "refresh_token": "google refresh token from the desktop keychain",
-  "scope": ["https://www.googleapis.com/auth/calendar.readonly"],
-  "app_version": "0.1.0",
-  "platform": "darwin-arm64"
+  "provider": "PROVIDER_GOOGLE",
+  "refreshToken": "google refresh token from the desktop keychain",
+  "scopes": ["https://www.googleapis.com/auth/calendar.readonly"],
+  "application": {
+    "appVersion": "0.1.0",
+    "platform": "darwin-arm64"
+  }
 }
 ```
 
@@ -293,10 +309,12 @@ Response:
 
 ```json
 {
-  "access_token": "new google access token",
-  "refresh_token": "optional rotated google refresh token",
-  "token_type": "Bearer",
-  "expiry": "2026-07-08T13:00:00Z"
+  "token": {
+    "accessToken": "new google access token",
+    "refreshToken": "optional rotated google refresh token",
+    "tokenType": "Bearer",
+    "expiry": "2026-07-08T13:00:00Z"
+  }
 }
 ```
 
@@ -313,13 +331,14 @@ Requirements:
 
 ### Disconnect/Revoke
 
-`POST /v1/google/oauth/revoke`
+`OAuthBrokerService.RevokeToken`
 
 Request:
 
 ```json
 {
-  "refresh_token": "google refresh token from the desktop keychain",
+  "provider": "PROVIDER_GOOGLE",
+  "refreshToken": "google refresh token from the desktop keychain",
   "reason": "user_disconnect"
 }
 ```
