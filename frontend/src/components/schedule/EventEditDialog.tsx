@@ -18,6 +18,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Popover,
   PopoverContent,
@@ -121,6 +122,7 @@ export function EventEditDialog({
     UNASSIGNED_CATEGORY_VALUE,
   );
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const selectedDate = dateStringToDate(day);
@@ -139,6 +141,7 @@ export function EventEditDialog({
         : UNASSIGNED_CATEGORY_VALUE,
     );
     setTitle(event.note);
+    setDescription(event.description);
     setFormError(null);
     setDatePickerOpen(false);
   }, [event]);
@@ -173,6 +176,7 @@ export function EventEditDialog({
           ? undefined
           : Number(categoryValue),
       note: title.trim(),
+      description: description.trim(),
     });
   };
 
@@ -203,6 +207,19 @@ export function EventEditDialog({
                 value={title}
                 onChange={(changeEvent) => setTitle(changeEvent.target.value)}
                 placeholder={event?.category ?? "Unassigned"}
+              />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="event-description">Description</FieldLabel>
+              <Textarea
+                id="event-description"
+                value={description}
+                onChange={(changeEvent) =>
+                  setDescription(changeEvent.target.value)
+                }
+                placeholder="What did you work on?"
+                rows={3}
               />
             </Field>
 

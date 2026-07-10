@@ -74,16 +74,17 @@ type ExportTemplate struct {
 }
 
 type GapFill struct {
-	ID         int64         `json:"id"`
-	PeriodID   int64         `json:"period_id"`
-	Day        string        `json:"day"`
-	StartUtc   string        `json:"start_utc"`
-	EndUtc     string        `json:"end_utc"`
-	CategoryID sql.NullInt64 `json:"category_id"`
-	Note       string        `json:"note"`
-	Source     string        `json:"source"`
-	CreatedAt  string        `json:"created_at"`
-	UpdatedAt  string        `json:"updated_at"`
+	ID          int64         `json:"id"`
+	PeriodID    int64         `json:"period_id"`
+	Day         string        `json:"day"`
+	StartUtc    string        `json:"start_utc"`
+	EndUtc      string        `json:"end_utc"`
+	CategoryID  sql.NullInt64 `json:"category_id"`
+	Note        string        `json:"note"`
+	Source      string        `json:"source"`
+	CreatedAt   string        `json:"created_at"`
+	UpdatedAt   string        `json:"updated_at"`
+	Description string        `json:"description"`
 }
 
 type GithubRepo struct {

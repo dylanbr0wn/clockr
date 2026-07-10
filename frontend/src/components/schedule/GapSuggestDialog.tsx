@@ -46,7 +46,7 @@ export interface SelectedGap {
 
 export interface GapSuggestConfirmValues {
   categoryId?: number;
-  note: string;
+  description: string;
 }
 
 interface GapSuggestDialogProps {
@@ -79,7 +79,7 @@ export function GapSuggestDialog({
   onConfirm,
 }: GapSuggestDialogProps) {
   const [categoryValue, setCategoryValue] = useState(UNASSIGNED_CATEGORY_VALUE);
-  const [note, setNote] = useState("");
+  const [description, setDescription] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -93,14 +93,14 @@ export function GapSuggestDialog({
     setCategoryValue(
       matched ? matched.id.toString() : UNASSIGNED_CATEGORY_VALUE,
     );
-    setNote(suggestion.description);
+    setDescription(suggestion.description);
     setFormError(null);
   }, [categories, open, suggestion]);
 
   useEffect(() => {
     if (!open) {
       setCategoryValue(UNASSIGNED_CATEGORY_VALUE);
-      setNote("");
+      setDescription("");
       setFormError(null);
     }
   }, [open]);
@@ -115,7 +115,7 @@ export function GapSuggestDialog({
 
     onConfirm({
       categoryId: Number(categoryValue),
-      note: note.trim(),
+      description: description.trim(),
     });
   };
 
@@ -190,11 +190,13 @@ export function GapSuggestDialog({
 
             <FieldGroup>
               <Field>
-                <FieldLabel htmlFor="gap-suggest-note">Description</FieldLabel>
+                <FieldLabel htmlFor="gap-suggest-description">Description</FieldLabel>
                 <Input
-                  id="gap-suggest-note"
-                  value={note}
-                  onChange={(changeEvent) => setNote(changeEvent.target.value)}
+                  id="gap-suggest-description"
+                  value={description}
+                  onChange={(changeEvent) =>
+                    setDescription(changeEvent.target.value)
+                  }
                   placeholder="What were you working on?"
                 />
               </Field>

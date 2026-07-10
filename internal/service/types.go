@@ -141,14 +141,15 @@ type ReviewDecision struct {
 
 // GapFill is a user entry covering an uncovered interval / manual block.
 type GapFill struct {
-	ID         int64  `json:"id"`
-	PeriodID   int64  `json:"periodId"`
-	Day        string `json:"day"` // YYYY-MM-DD
-	Start      string `json:"start"`
-	End        string `json:"end"`
-	CategoryID *int64 `json:"categoryId,omitempty"`
-	Note       string `json:"note,omitempty"`
-	Source     string `json:"source"`
+	ID          int64  `json:"id"`
+	PeriodID    int64  `json:"periodId"`
+	Day         string `json:"day"` // YYYY-MM-DD
+	Start       string `json:"start"`
+	End         string `json:"end"`
+	CategoryID  *int64 `json:"categoryId,omitempty"`
+	Note        string `json:"note,omitempty"`
+	Description string `json:"description,omitempty"`
+	Source      string `json:"source"`
 }
 
 // ── converters from sqlc rows ─────────────────────────────────────────
@@ -246,14 +247,15 @@ func toReviewItem(r sqlc.ReviewItem) ReviewItem {
 
 func toGapFill(r sqlc.GapFill) GapFill {
 	return GapFill{
-		ID:         r.ID,
-		PeriodID:   r.PeriodID,
-		Day:        r.Day,
-		Start:      r.StartUtc,
-		End:        r.EndUtc,
-		CategoryID: nullInt64Ptr(r.CategoryID),
-		Note:       r.Note,
-		Source:     r.Source,
+		ID:          r.ID,
+		PeriodID:    r.PeriodID,
+		Day:         r.Day,
+		Start:       r.StartUtc,
+		End:         r.EndUtc,
+		CategoryID:  nullInt64Ptr(r.CategoryID),
+		Note:        r.Note,
+		Description: r.Description,
+		Source:      r.Source,
 	}
 }
 

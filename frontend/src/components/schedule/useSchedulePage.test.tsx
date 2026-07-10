@@ -38,6 +38,7 @@ const mockState = vi.hoisted(() => {
         endMinutes: 600,
         categoryId: 10,
         note: "manual one",
+        description: "Manual description",
         source: "manual",
       },
       {
@@ -211,6 +212,8 @@ describe("useSchedulePage", () => {
         day: "2026-07-02",
         startMinutes: 560,
         endMinutes: 620,
+        note: "manual one",
+        description: "Manual description",
       }),
       expect.objectContaining({
         onSettled: expect.any(Function),

@@ -18,6 +18,7 @@ type ManualEventInput struct {
 	EndMinutes   int    `json:"endMinutes"`
 	CategoryID   *int64 `json:"categoryId,omitempty"`
 	Note         string `json:"note,omitempty"`
+	Description  string `json:"description,omitempty"`
 }
 
 // ManualEventUpdateInput describes a scheduler edit to an existing manual block.
@@ -54,13 +55,14 @@ func (s *Service) createGapFillEntry(ctx context.Context, action string, input M
 	}
 
 	row, err := s.q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
-		PeriodID:   input.PeriodID,
-		Day:        input.Day,
-		StartUtc:   span.start.Format(time.RFC3339),
-		EndUtc:     span.end.Format(time.RFC3339),
-		CategoryID: categoryID,
-		Note:       strings.TrimSpace(input.Note),
-		Source:     source,
+		PeriodID:    input.PeriodID,
+		Day:         input.Day,
+		StartUtc:    span.start.Format(time.RFC3339),
+		EndUtc:      span.end.Format(time.RFC3339),
+		CategoryID:  categoryID,
+		Note:        strings.TrimSpace(input.Note),
+		Description: strings.TrimSpace(input.Description),
+		Source:      source,
 	})
 	if err != nil {
 		return GapFill{}, mapErr(action, err)
@@ -86,13 +88,14 @@ func (s *Service) UpdateManualEvent(ctx context.Context, input ManualEventUpdate
 	}
 
 	row, err := s.q.UpdateGapFill(ctx, sqlc.UpdateGapFillParams{
-		Day:        input.Day,
-		StartUtc:   span.start.Format(time.RFC3339),
-		EndUtc:     span.end.Format(time.RFC3339),
-		CategoryID: categoryID,
-		Note:       strings.TrimSpace(input.Note),
-		ID:         input.ID,
-		PeriodID:   input.PeriodID,
+		Day:         input.Day,
+		StartUtc:    span.start.Format(time.RFC3339),
+		EndUtc:      span.end.Format(time.RFC3339),
+		CategoryID:  categoryID,
+		Note:        strings.TrimSpace(input.Note),
+		Description: strings.TrimSpace(input.Description),
+		ID:          input.ID,
+		PeriodID:    input.PeriodID,
 	})
 	if err != nil {
 		return GapFill{}, mapErr("update manual event", err)

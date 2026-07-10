@@ -11,19 +11,20 @@ import (
 )
 
 const createGapFill = `-- name: CreateGapFill :one
-INSERT INTO gap_fill (period_id, day, start_utc, end_utc, category_id, note, source)
-VALUES (?, ?, ?, ?, ?, ?, ?)
-RETURNING id, period_id, day, start_utc, end_utc, category_id, note, source, created_at, updated_at
+INSERT INTO gap_fill (period_id, day, start_utc, end_utc, category_id, note, description, source)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, period_id, day, start_utc, end_utc, category_id, note, source, created_at, updated_at, description
 `
 
 type CreateGapFillParams struct {
-	PeriodID   int64         `json:"period_id"`
-	Day        string        `json:"day"`
-	StartUtc   string        `json:"start_utc"`
-	EndUtc     string        `json:"end_utc"`
-	CategoryID sql.NullInt64 `json:"category_id"`
-	Note       string        `json:"note"`
-	Source     string        `json:"source"`
+	PeriodID    int64         `json:"period_id"`
+	Day         string        `json:"day"`
+	StartUtc    string        `json:"start_utc"`
+	EndUtc      string        `json:"end_utc"`
+	CategoryID  sql.NullInt64 `json:"category_id"`
+	Note        string        `json:"note"`
+	Description string        `json:"description"`
+	Source      string        `json:"source"`
 }
 
 func (q *Queries) CreateGapFill(ctx context.Context, arg CreateGapFillParams) (GapFill, error) {
@@ -34,6 +35,7 @@ func (q *Queries) CreateGapFill(ctx context.Context, arg CreateGapFillParams) (G
 		arg.EndUtc,
 		arg.CategoryID,
 		arg.Note,
+		arg.Description,
 		arg.Source,
 	)
 	var i GapFill
@@ -48,6 +50,7 @@ func (q *Queries) CreateGapFill(ctx context.Context, arg CreateGapFillParams) (G
 		&i.Source,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Description,
 	)
 	return i, err
 }
@@ -70,7 +73,7 @@ func (q *Queries) DeleteGapFill(ctx context.Context, arg DeleteGapFillParams) (i
 }
 
 const listGapFillsForDay = `-- name: ListGapFillsForDay :many
-SELECT id, period_id, day, start_utc, end_utc, category_id, note, source, created_at, updated_at FROM gap_fill WHERE period_id = ? AND day = ? ORDER BY start_utc
+SELECT id, period_id, day, start_utc, end_utc, category_id, note, source, created_at, updated_at, description FROM gap_fill WHERE period_id = ? AND day = ? ORDER BY start_utc
 `
 
 type ListGapFillsForDayParams struct {
@@ -98,6 +101,7 @@ func (q *Queries) ListGapFillsForDay(ctx context.Context, arg ListGapFillsForDay
 			&i.Source,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Description,
 		); err != nil {
 			return nil, err
 		}
@@ -113,7 +117,7 @@ func (q *Queries) ListGapFillsForDay(ctx context.Context, arg ListGapFillsForDay
 }
 
 const listGapFillsForPeriod = `-- name: ListGapFillsForPeriod :many
-SELECT id, period_id, day, start_utc, end_utc, category_id, note, source, created_at, updated_at FROM gap_fill WHERE period_id = ? ORDER BY day, start_utc
+SELECT id, period_id, day, start_utc, end_utc, category_id, note, source, created_at, updated_at, description FROM gap_fill WHERE period_id = ? ORDER BY day, start_utc
 `
 
 func (q *Queries) ListGapFillsForPeriod(ctx context.Context, periodID int64) ([]GapFill, error) {
@@ -136,6 +140,7 @@ func (q *Queries) ListGapFillsForPeriod(ctx context.Context, periodID int64) ([]
 			&i.Source,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Description,
 		); err != nil {
 			return nil, err
 		}
@@ -157,19 +162,21 @@ UPDATE gap_fill SET
     end_utc     = ?,
     category_id = ?,
     note        = ?,
+    description = ?,
     updated_at  = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
 WHERE id = ? AND period_id = ?
-RETURNING id, period_id, day, start_utc, end_utc, category_id, note, source, created_at, updated_at
+RETURNING id, period_id, day, start_utc, end_utc, category_id, note, source, created_at, updated_at, description
 `
 
 type UpdateGapFillParams struct {
-	Day        string        `json:"day"`
-	StartUtc   string        `json:"start_utc"`
-	EndUtc     string        `json:"end_utc"`
-	CategoryID sql.NullInt64 `json:"category_id"`
-	Note       string        `json:"note"`
-	ID         int64         `json:"id"`
-	PeriodID   int64         `json:"period_id"`
+	Day         string        `json:"day"`
+	StartUtc    string        `json:"start_utc"`
+	EndUtc      string        `json:"end_utc"`
+	CategoryID  sql.NullInt64 `json:"category_id"`
+	Note        string        `json:"note"`
+	Description string        `json:"description"`
+	ID          int64         `json:"id"`
+	PeriodID    int64         `json:"period_id"`
 }
 
 func (q *Queries) UpdateGapFill(ctx context.Context, arg UpdateGapFillParams) (GapFill, error) {
@@ -179,6 +186,7 @@ func (q *Queries) UpdateGapFill(ctx context.Context, arg UpdateGapFillParams) (G
 		arg.EndUtc,
 		arg.CategoryID,
 		arg.Note,
+		arg.Description,
 		arg.ID,
 		arg.PeriodID,
 	)
@@ -194,6 +202,7 @@ func (q *Queries) UpdateGapFill(ctx context.Context, arg UpdateGapFillParams) (G
 		&i.Source,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Description,
 	)
 	return i, err
 }
@@ -204,7 +213,7 @@ UPDATE gap_fill SET
     end_utc     = ?,
     updated_at  = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
 WHERE id = ? AND period_id = ?
-RETURNING id, period_id, day, start_utc, end_utc, category_id, note, source, created_at, updated_at
+RETURNING id, period_id, day, start_utc, end_utc, category_id, note, source, created_at, updated_at, description
 `
 
 type UpdateGapFillSpanParams struct {
@@ -233,6 +242,7 @@ func (q *Queries) UpdateGapFillSpan(ctx context.Context, arg UpdateGapFillSpanPa
 		&i.Source,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Description,
 	)
 	return i, err
 }

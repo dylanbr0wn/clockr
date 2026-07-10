@@ -22,7 +22,7 @@ interface CreateGapFillMutation {
       startMinutes: number;
       endMinutes: number;
       categoryId?: number;
-      note: string;
+      description: string;
     },
     options?: { onSuccess?: () => void },
   ) => void;
@@ -90,7 +90,10 @@ export function useScheduleGapSuggest({
     requestGapSuggestion(selectedGap);
   };
 
-  const handleConfirmGapSuggest = (values: { categoryId?: number; note: string }) => {
+  const handleConfirmGapSuggest = (values: {
+    categoryId?: number;
+    description: string;
+  }) => {
     if (!selectedGap || !activePeriodId) {
       return;
     }
@@ -102,7 +105,7 @@ export function useScheduleGapSuggest({
         startMinutes: selectedGap.startMinutes,
         endMinutes: selectedGap.endMinutes,
         categoryId: values.categoryId,
-        note: values.note,
+        description: values.description,
       },
       {
         onSuccess: () => {
