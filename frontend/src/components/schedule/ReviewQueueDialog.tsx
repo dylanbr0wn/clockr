@@ -19,13 +19,13 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import {
-  useEvents,
-  useOpenReviewItems,
-  useResolveReviewItem,
-  type ReviewItem,
+  useReviewDecisions,
+  useResolveReviewDecision,
+  type ReviewDecision,
+  type ReviewDecisionAction,
 } from "@/lib/api";
 import { errorMessage } from "@/lib/schedule";
-import { buildReviewItemViews } from "./reviewQueue";
+import { kindBadgeClass } from "./reviewQueue";
 
 interface ReviewQueueDialogProps {
   periodId: number | undefined;
@@ -33,21 +33,8 @@ interface ReviewQueueDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-function kindBadgeClass(kind: ReviewItem["kind"]) {
-  switch (kind) {
-    case "deleted_categorized":
-      return "bg-destructive/10 text-destructive";
-    case "new_in_gap":
-      return "bg-amber-500/10 text-amber-700 dark:text-amber-300";
-    case "title_changed":
-      return "bg-blue-500/10 text-blue-700 dark:text-blue-300";
-    case "tentative":
-      return "bg-violet-500/10 text-violet-700 dark:text-violet-300";
-    case "all_day":
-      return "bg-slate-500/10 text-slate-700 dark:text-slate-300";
-    default:
-      return "bg-muted text-muted-foreground";
-  }
+function actionVariant(action: ReviewDecisionAction) {
+  return action.variant ?? (action.role === "primary" ? "default" : "outline");
 }
 
 export function ReviewQueueDialog({
@@ -55,30 +42,25 @@ export function ReviewQueueDialog({
   open,
   onOpenChange,
 }: ReviewQueueDialogProps) {
-  const reviewItemsQuery = useOpenReviewItems(periodId);
-  const eventsQuery = useEvents(periodId);
-  const resolveMutation = useResolveReviewItem();
+  const reviewDecisionsQuery = useReviewDecisions(periodId);
+  const resolveMutation = useResolveReviewDecision();
 
-  const views = useMemo(
-    () =>
-      buildReviewItemViews(
-        reviewItemsQuery.data ?? [],
-        eventsQuery.data ?? [],
-      ),
-    [eventsQuery.data, reviewItemsQuery.data],
+  const decisions = useMemo(
+    () => reviewDecisionsQuery.data ?? [],
+    [reviewDecisionsQuery.data],
   );
 
   const pendingId =
     resolveMutation.isPending && resolveMutation.variables
-      ? resolveMutation.variables.reviewItemId
+      ? resolveMutation.variables.decisionId
       : null;
 
-  const handleResolve = (reviewItemId: number, action: string) => {
+  const handleResolve = (decisionId: number, action: string) => {
     resolveMutation.mutate(
-      { reviewItemId, action },
+      { decisionId, action },
       {
         onSuccess: () => {
-          const remaining = (reviewItemsQuery.data?.length ?? 1) - 1;
+          const remaining = (reviewDecisionsQuery.data?.length ?? 1) - 1;
           if (remaining <= 0) {
             onOpenChange(false);
           }
@@ -87,8 +69,8 @@ export function ReviewQueueDialog({
     );
   };
 
-  const isLoading = reviewItemsQuery.isLoading || eventsQuery.isLoading;
-  const error = reviewItemsQuery.error ?? eventsQuery.error ?? resolveMutation.error;
+  const isLoading = reviewDecisionsQuery.isLoading;
+  const error = reviewDecisionsQuery.error ?? resolveMutation.error;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -96,8 +78,8 @@ export function ReviewQueueDialog({
         <DialogHeader className="border-b border-border px-6 py-4">
           <DialogTitle>Review queue</DialogTitle>
           <DialogDescription>
-            {views.length > 0
-              ? `${views.length} item${views.length === 1 ? " needs" : "s need"} a decision after the last sync. Safe changes were applied automatically.`
+            {decisions.length > 0
+              ? `${decisions.length} item${decisions.length === 1 ? " needs" : "s need"} a decision after the last sync. Safe changes were applied automatically.`
               : "No open review items for this period."}
           </DialogDescription>
         </DialogHeader>
@@ -107,7 +89,7 @@ export function ReviewQueueDialog({
             <p className="text-sm text-muted-foreground">Loading review items…</p>
           ) : null}
 
-          {!isLoading && views.length === 0 ? (
+          {!isLoading && decisions.length === 0 ? (
             <ItemGroup>
               <Item variant="muted">
                 <ItemMedia variant="icon">
@@ -122,48 +104,38 @@ export function ReviewQueueDialog({
             </ItemGroup>
           ) : null}
 
-          {views.length > 0 ? (
+          {decisions.length > 0 ? (
             <ItemGroup className="gap-3">
-              {views.map((item) => (
-              <Item key={item.id} variant="outline">
-                <ItemContent>
-                  <ItemTitle className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${kindBadgeClass(item.kind)}`}
-                    >
-                      {item.tag}
-                    </span>
-                    {item.title}
-                  </ItemTitle>
-                  <ItemDescription>{item.description}</ItemDescription>
-                </ItemContent>
-                <ItemFooter>
-                  <div className="flex flex-wrap gap-2">
-                    {item.secondaryAction ? (
-                      <Button
-                        disabled={pendingId === item.id}
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          handleResolve(item.id, item.secondaryAction!.action)
-                        }
+              {decisions.map((decision: ReviewDecision) => (
+                <Item key={decision.id} variant="outline">
+                  <ItemContent>
+                    <ItemTitle className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${kindBadgeClass(decision.kind)}`}
                       >
-                        {item.secondaryAction.label}
-                      </Button>
-                    ) : null}
-                    <Button
-                      disabled={pendingId === item.id}
-                      size="sm"
-                      onClick={() =>
-                        handleResolve(item.id, item.primaryAction.action)
-                      }
-                    >
-                      {item.primaryAction.label}
-                    </Button>
-                  </div>
-                </ItemFooter>
-              </Item>
-            ))}
+                        {decision.tag}
+                      </span>
+                      {decision.title}
+                    </ItemTitle>
+                    <ItemDescription>{decision.description}</ItemDescription>
+                  </ItemContent>
+                  <ItemFooter>
+                    <div className="flex flex-wrap gap-2">
+                      {decision.actions.map((action) => (
+                        <Button
+                          key={action.key}
+                          disabled={pendingId === decision.id}
+                          size="sm"
+                          variant={actionVariant(action)}
+                          onClick={() => handleResolve(decision.id, action.key)}
+                        >
+                          {action.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </ItemFooter>
+                </Item>
+              ))}
             </ItemGroup>
           ) : null}
 

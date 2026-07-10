@@ -47,6 +47,7 @@ func (s *Service) applyAISuggestion(ctx context.Context, q *sqlc.Queries, period
 		buildEventContext(inc),
 		local,
 		privacy,
+		s.loadAIMaxTokens(ctx),
 	)
 	if err != nil {
 		return nil
@@ -70,4 +71,3 @@ func (s *Service) applyAISuggestion(ctx context.Context, q *sqlc.Queries, period
 	}
 	return nil
 }
-

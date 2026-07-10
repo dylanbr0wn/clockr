@@ -4,7 +4,7 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import { useMemo } from "react";
-import type { Event, ReviewItem } from "@/lib/api";
+import type { Event, ReviewDecision } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -30,7 +30,7 @@ import {
 } from "./attentionItems";
 
 interface NeedsAttentionCardProps {
-  reviewItems: ReviewItem[];
+  reviewDecisions: ReviewDecision[];
   events: Event[];
   visibleGaps: ScheduleGapOverlay[];
   onOpenReviewQueue?: () => void;
@@ -105,15 +105,15 @@ function AttentionRow({
 }
 
 export function NeedsAttentionCard({
-  reviewItems,
+  reviewDecisions,
   events,
   visibleGaps,
   onOpenReviewQueue,
   className,
 }: NeedsAttentionCardProps) {
   const items = useMemo(
-    () => buildAttentionItems({ reviewItems, events, visibleGaps }),
-    [events, reviewItems, visibleGaps],
+    () => buildAttentionItems({ reviewDecisions, events, visibleGaps }),
+    [events, reviewDecisions, visibleGaps],
   );
 
   if (items.length === 0) {

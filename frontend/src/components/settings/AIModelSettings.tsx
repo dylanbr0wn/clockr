@@ -37,12 +37,17 @@ import {
   useSaveAIConfig,
   useSaveAIEndpoint,
   useSaveAIModel,
+  useSetSetting,
   useSetting,
   useValidateAIConfig,
 } from "@/lib/api";
 import type { AIEndpoint } from "@/lib/api/types";
 import { aiEndpointsMatch } from "@/lib/ai/endpoints";
 import { SettingBlock } from "./SettingBlock";
+
+const DEFAULT_MAX_TOKENS = 512;
+const MIN_MAX_TOKENS = 64;
+const MAX_MAX_TOKENS = 8192;
 
 function parseJsonSetting<T>(raw: string | null | undefined, fallback: T): T {
   if (!raw) {
@@ -56,9 +61,62 @@ function parseJsonSetting<T>(raw: string | null | undefined, fallback: T): T {
   }
 }
 
+function MaxTokensField({
+  value,
+  onCommit,
+}: {
+  value: number;
+  onCommit: (value: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(value));
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commitDraft = () => {
+    const parsed = Number(draft);
+    if (!Number.isFinite(parsed)) {
+      setDraft(String(value));
+      return;
+    }
+
+    const clamped = Math.min(
+      Math.max(Math.round(parsed), MIN_MAX_TOKENS),
+      MAX_MAX_TOKENS,
+    );
+    setDraft(String(clamped));
+    if (clamped !== value) {
+      onCommit(clamped);
+    }
+  };
+
+  return (
+    <Field>
+      <FieldLabel htmlFor="ai-max-tokens">Max tokens</FieldLabel>
+      <Input
+        id="ai-max-tokens"
+        type="number"
+        min={MIN_MAX_TOKENS}
+        max={MAX_MAX_TOKENS}
+        step={64}
+        value={draft}
+        onBlur={commitDraft}
+        onChange={(event) => setDraft(event.target.value)}
+      />
+      <FieldDescription>
+        Completion budget sent as max_tokens. Raise this for local reasoning
+        models that spend tokens on thinking before the answer.
+      </FieldDescription>
+    </Field>
+  );
+}
+
 export function AIModelSettings() {
   const baseURLSetting = useSetting("ai.base_url");
   const modelSetting = useSetting("ai.model");
+  const maxTokensSetting = useSetting("ai.max_tokens");
+  const setSetting = useSetSetting();
   const savedBaseURL = useMemo(
     () => parseJsonSetting(baseURLSetting.data, ""),
     [baseURLSetting.data],
@@ -66,6 +124,10 @@ export function AIModelSettings() {
   const savedModel = useMemo(
     () => parseJsonSetting(modelSetting.data, ""),
     [modelSetting.data],
+  );
+  const savedMaxTokens = useMemo(
+    () => parseJsonSetting(maxTokensSetting.data, DEFAULT_MAX_TOKENS),
+    [maxTokensSetting.data],
   );
 
   const [baseURLDraft, setBaseURLDraft] = useState("");
@@ -154,6 +216,13 @@ export function AIModelSettings() {
     void saveModel.mutate(nextModel);
   };
 
+  const handleMaxTokensCommit = (nextValue: number) => {
+    setSetting.mutate({
+      key: "ai.max_tokens",
+      value: JSON.stringify(nextValue),
+    });
+  };
+
   const handleValidate = async () => {
     const result = await validate.refetch();
     if (result.error) {
@@ -183,7 +252,8 @@ export function AIModelSettings() {
     saveEndpoint.isPending ||
     saveModel.isPending ||
     clearModel.isPending ||
-    saveConfig.isPending;
+    saveConfig.isPending ||
+    setSetting.isPending;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -360,6 +430,11 @@ export function AIModelSettings() {
               placeholder="Or type a model name"
             />
           </Field>
+
+          <MaxTokensField
+            value={savedMaxTokens}
+            onCommit={handleMaxTokensCommit}
+          />
 
           {isSavedEndpoint ? (
             <FieldDescription>

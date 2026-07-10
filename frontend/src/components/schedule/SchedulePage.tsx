@@ -51,7 +51,7 @@ export function SchedulePage({ titlebarPaddingClass }: SchedulePageProps) {
           categories={schedule.categories}
           items={schedule.items}
           events={schedule.events}
-          reviewItems={schedule.reviewItems}
+          reviewDecisions={schedule.reviewDecisions}
           visibleGaps={schedule.visibleGaps}
           onOpenReviewQueue={() => schedule.setReviewQueueOpen(true)}
           isBackendLoading={schedule.isBackendLoading}

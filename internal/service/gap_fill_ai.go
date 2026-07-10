@@ -53,6 +53,7 @@ func (s *Service) SuggestGapFill(ctx context.Context, window TimeWindow) (GapSug
 		constToGapContext(window),
 		buildEvidencePayload(evidence, local),
 		local,
+		s.loadAIMaxTokens(ctx),
 	)
 	if err != nil {
 		return GapSuggestion{}, mapErr("suggest gap fill", err)
@@ -85,6 +86,7 @@ func buildEvidencePayload(evidence []ActivityEvidence, local bool) []ai.Evidence
 			Provider: item.Provider,
 			Kind:     item.Kind,
 			Summary:  item.Summary,
+			Source:   item.Source,
 		}
 		if local {
 			payload.Detail = item.Detail

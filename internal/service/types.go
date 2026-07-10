@@ -72,6 +72,16 @@ type GitHubRepo struct {
 	Selected   bool   `json:"selected"`
 }
 
+// SlackChannel is a synced Slack channel available as an evidence source.
+type SlackChannel struct {
+	ID         int64  `json:"id"`
+	AccountID  string `json:"accountId"`
+	ExternalID string `json:"externalId"`
+	Name       string `json:"name"`
+	Private    bool   `json:"private"`
+	Selected   bool   `json:"selected"`
+}
+
 // Attendee mirrors the fields shiet keeps from a Google Calendar attendee.
 type Attendee struct {
 	Email          string `json:"email"`
@@ -120,16 +130,36 @@ type ReviewItem struct {
 	DecisionPayload string `json:"decisionPayload,omitempty"`
 }
 
+// ReviewDecisionAction is one allowed user choice for a review decision.
+type ReviewDecisionAction struct {
+	Key     string `json:"key"`
+	Label   string `json:"label"`
+	Role    string `json:"role"`
+	Variant string `json:"variant,omitempty"`
+}
+
+// ReviewDecision is the frontend-facing review read model.
+type ReviewDecision struct {
+	ID          int64                  `json:"id"`
+	Kind        string                 `json:"kind"`
+	EventID     *int64                 `json:"eventId,omitempty"`
+	Tag         string                 `json:"tag"`
+	Title       string                 `json:"title"`
+	Description string                 `json:"description"`
+	Actions     []ReviewDecisionAction `json:"actions"`
+}
+
 // GapFill is a user entry covering an uncovered interval / manual block.
 type GapFill struct {
-	ID         int64  `json:"id"`
-	PeriodID   int64  `json:"periodId"`
-	Day        string `json:"day"` // YYYY-MM-DD
-	Start      string `json:"start"`
-	End        string `json:"end"`
-	CategoryID *int64 `json:"categoryId,omitempty"`
-	Note       string `json:"note,omitempty"`
-	Source     string `json:"source"`
+	ID          int64  `json:"id"`
+	PeriodID    int64  `json:"periodId"`
+	Day         string `json:"day"` // YYYY-MM-DD
+	Start       string `json:"start"`
+	End         string `json:"end"`
+	CategoryID  *int64 `json:"categoryId,omitempty"`
+	Note        string `json:"note,omitempty"`
+	Description string `json:"description,omitempty"`
+	Source      string `json:"source"`
 }
 
 // ── converters from sqlc rows ─────────────────────────────────────────
@@ -169,6 +199,17 @@ func toGitHubRepo(r sqlc.GithubRepo) GitHubRepo {
 		Name:       r.Name,
 		FullName:   r.FullName,
 		Private:    r.Private == 1,
+		Selected:   r.Selected == 1,
+	}
+}
+
+func toSlackChannel(r sqlc.SlackChannel) SlackChannel {
+	return SlackChannel{
+		ID:         r.ID,
+		AccountID:  r.AccountID,
+		ExternalID: r.ExternalID,
+		Name:       r.Name,
+		Private:    r.IsPrivate == 1,
 		Selected:   r.Selected == 1,
 	}
 }
@@ -227,14 +268,15 @@ func toReviewItem(r sqlc.ReviewItem) ReviewItem {
 
 func toGapFill(r sqlc.GapFill) GapFill {
 	return GapFill{
-		ID:         r.ID,
-		PeriodID:   r.PeriodID,
-		Day:        r.Day,
-		Start:      r.StartUtc,
-		End:        r.EndUtc,
-		CategoryID: nullInt64Ptr(r.CategoryID),
-		Note:       r.Note,
-		Source:     r.Source,
+		ID:          r.ID,
+		PeriodID:    r.PeriodID,
+		Day:         r.Day,
+		Start:       r.StartUtc,
+		End:         r.EndUtc,
+		CategoryID:  nullInt64Ptr(r.CategoryID),
+		Note:        r.Note,
+		Description: r.Description,
+		Source:      r.Source,
 	}
 }
 

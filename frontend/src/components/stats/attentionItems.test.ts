@@ -1,37 +1,19 @@
 import { describe, expect, it } from "vitest";
-import type { Event, ReviewItem } from "@/lib/api";
+import type { ReviewDecision } from "@/lib/api";
 import { buildAttentionItems } from "@/components/stats/attentionItems";
 import type { ScheduleGapOverlay } from "@/lib/schedule";
 
-const event: Event = {
-  id: 1,
-  periodId: 1,
-  calendarId: 1,
-  provider: "google",
-  externalId: "evt-1",
-  title: "Sprint planning",
-  allDay: false,
-  active: true,
-};
-
 describe("buildAttentionItems", () => {
-  it("groups overlaps, gaps, and deleted review items", () => {
-    const reviewItems: ReviewItem[] = [
-      {
-        id: 1,
-        periodId: 1,
-        kind: "overlap",
-        eventId: 1,
-        payload: JSON.stringify({ title: "Sprint planning" }),
-        status: "open",
-      },
+  it("groups gaps and deleted review decisions", () => {
+    const reviewDecisions: ReviewDecision[] = [
       {
         id: 2,
-        periodId: 1,
         kind: "deleted_categorized",
         eventId: 1,
-        payload: JSON.stringify({ title: "Design review" }),
-        status: "open",
+        tag: "Removed",
+        title: "Design review",
+        description: "Deleted from your calendar",
+        actions: [],
       },
     ];
     const visibleGaps: ScheduleGapOverlay[] = [
@@ -54,35 +36,24 @@ describe("buildAttentionItems", () => {
     ];
 
     const items = buildAttentionItems({
-      reviewItems,
-      events: [event],
+      reviewDecisions,
+      events: [],
       visibleGaps,
     });
 
-    expect(items.map((item) => item.id)).toEqual(["overlap", "gaps", "deleted"]);
-    expect(items[1]).toMatchObject({
+    expect(items.map((item) => item.id)).toEqual(["gaps", "deleted"]);
+    expect(items[0]).toMatchObject({
       title: "2 unfilled gaps",
       subtitle: "3h uncategorized",
       actionLabel: "Fill",
     });
   });
 
-  it("ignores closed review items", () => {
-    const reviewItems: ReviewItem[] = [
-      {
-        id: 1,
-        periodId: 1,
-        kind: "deleted_categorized",
-        eventId: 1,
-        payload: "{}",
-        status: "resolved",
-      },
-    ];
-
+  it("returns empty when there are no decisions or gaps", () => {
     expect(
       buildAttentionItems({
-        reviewItems,
-        events: [event],
+        reviewDecisions: [],
+        events: [],
         visibleGaps: [],
       }),
     ).toEqual([]);

@@ -38,6 +38,7 @@ const mockState = vi.hoisted(() => {
         endMinutes: 600,
         categoryId: 10,
         note: "manual one",
+        description: "Manual description",
         source: "manual",
       },
       {
@@ -54,7 +55,7 @@ const mockState = vi.hoisted(() => {
       },
     ],
     gapTimeline: [],
-    reviewItems: [],
+    reviewDecisions: [],
     tzSegments: [],
     aiConfigured: true,
     aiLocal: false,
@@ -92,8 +93,8 @@ vi.mock("@/lib/api", () => ({
   }),
   useGapFills: () => ({ data: mockState.gapFills, isLoading: false, error: null }),
   useGapTimeline: () => ({ data: mockState.gapTimeline, isLoading: false, error: null }),
-  useOpenReviewItems: () => ({
-    data: mockState.reviewItems,
+  useReviewDecisions: () => ({
+    data: mockState.reviewDecisions,
     isLoading: false,
     error: null,
   }),
@@ -211,6 +212,8 @@ describe("useSchedulePage", () => {
         day: "2026-07-02",
         startMinutes: 560,
         endMinutes: 620,
+        note: "manual one",
+        description: "Manual description",
       }),
       expect.objectContaining({
         onSettled: expect.any(Function),

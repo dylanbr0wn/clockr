@@ -3,6 +3,8 @@ import type { Period } from "@/lib/api";
 import type { ScheduleItem } from "@/lib/schedule/types";
 import {
   defaultExportFilename,
+  formatDetailEntriesCSV,
+  formatFlatDailyCSV,
   formatSummaryCSV,
   formatSummaryText,
 } from "./formatters";
@@ -115,6 +117,39 @@ describe("period export", () => {
         "Category,2026-06-01,2026-06-02,Total",
         "Calendar,2.00,0.00,2.00",
         "Development,2.00,2.00,4.00",
+      ].join("\n"),
+    );
+  });
+
+  it("formats a flat daily category×day CSV", () => {
+    const summary = buildPeriodExportSummary(items, period);
+    const csv = formatFlatDailyCSV(summary, {
+      Calendar: "CAL",
+      Development: "DEV",
+    });
+
+    expect(csv).toBe(
+      [
+        "Date,Category,Key,Hours",
+        "2026-06-01,Calendar,CAL,2.00",
+        "2026-06-01,Development,DEV,2.00",
+        "2026-06-02,Development,DEV,2.00",
+      ].join("\n"),
+    );
+  });
+
+  it("formats a detail-entries CSV", () => {
+    const csv = formatDetailEntriesCSV(items, {
+      Calendar: "CAL",
+      Development: "DEV",
+    });
+
+    expect(csv).toBe(
+      [
+        "Start,End,Category,Key,Hours,Title",
+        "2026-06-01T09:00,2026-06-01T11:00,Calendar,CAL,2.00,Meeting",
+        "2026-06-01T13:00,2026-06-01T15:00,Development,DEV,2.00,Deep work",
+        "2026-06-02T10:00,2026-06-02T12:00,Development,DEV,2.00,Planning",
       ].join("\n"),
     );
   });

@@ -10,7 +10,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"runtime"
 	"strings"
 	"sync"
@@ -44,8 +43,10 @@ var (
 // broker protocol. Provider packages supply the expected authorization host
 // and path and retain provider-specific refresh/revoke behavior.
 type BrokerFlow struct {
-	Provider      string
-	BaseURL       string
+	Provider string
+	BaseURL  string
+	// AuthURLHost and AuthURLPaths are retained for source compatibility;
+	// authorization URL validation is centralized in the provider registry.
 	AuthURLHost   string
 	AuthURLPaths  []string
 	DefaultScopes []string
@@ -65,6 +66,10 @@ func (f *BrokerFlow) Authorize(ctx context.Context, accountID string) (Result, e
 	provider := strings.TrimSpace(f.Provider)
 	if provider == "" {
 		return Result{}, errors.New("provider is required")
+	}
+	desc, ok := Lookup(provider)
+	if !ok {
+		return Result{}, fmt.Errorf("unknown OAuth provider %q", provider)
 	}
 	base := strings.TrimRight(strings.TrimSpace(f.BaseURL), "/")
 	if base == "" {
@@ -141,7 +146,7 @@ func (f *BrokerFlow) Authorize(ctx context.Context, accountID string) (Result, e
 	expectedMu.Lock()
 	expectedState = start.BrokerState
 	expectedMu.Unlock()
-	if err := f.validateAuthURL(start.AuthUrl); err != nil {
+	if err := desc.ValidateAuthorizationURL(start.AuthUrl); err != nil {
 		shutdownBrokerServer(srv, &serveWG)
 		return Result{}, fmt.Errorf("%w: %v", ErrBrokerRejected, err)
 	}
@@ -178,6 +183,9 @@ func (f *BrokerFlow) Authorize(ctx context.Context, accountID string) (Result, e
 	scopes := handoff.Scopes
 	if len(scopes) == 0 {
 		scopes = append([]string(nil), f.DefaultScopes...)
+	}
+	if len(scopes) == 0 {
+		scopes = append([]string(nil), desc.DefaultScopes...)
 	}
 	return Result{
 		Provider:  provider,
@@ -275,10 +283,14 @@ func BrokerErrorCode(err error) string {
 }
 
 func brokerProvider(provider string) brokerv1.Provider {
-	if strings.EqualFold(strings.TrimSpace(provider), "github") {
+	switch strings.ToLower(strings.TrimSpace(provider)) {
+	case ProviderGitHub:
 		return brokerv1.Provider_PROVIDER_GITHUB
+	case ProviderSlack:
+		return brokerv1.Provider_PROVIDER_SLACK
+	default:
+		return brokerv1.Provider_PROVIDER_GOOGLE
 	}
-	return brokerv1.Provider_PROVIDER_GOOGLE
 }
 
 func timestampTime(timestamp *timestamppb.Timestamp) time.Time {
@@ -286,19 +298,6 @@ func timestampTime(timestamp *timestamppb.Timestamp) time.Time {
 		return time.Time{}
 	}
 	return timestamp.AsTime()
-}
-
-func (f *BrokerFlow) validateAuthURL(raw string) error {
-	u, err := url.Parse(raw)
-	if err != nil || u.Scheme != "https" || u.Host != f.AuthURLHost {
-		return errors.New("broker returned an invalid authorization URL")
-	}
-	for _, path := range f.AuthURLPaths {
-		if u.Path == path {
-			return nil
-		}
-	}
-	return errors.New("broker authorization URL path is not allowed")
 }
 
 func (f *BrokerFlow) appVersion() string {

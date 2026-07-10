@@ -193,57 +193,6 @@ export function CalendarSettings() {
         description={authDescription}
       >
         <div className="space-y-3">
-          {googleConnections.length > 0 ? (
-            <ItemGroup className="gap-2">
-              {googleConnections.map((connection) => (
-                <Item key={connection.id} variant="outline">
-                  <ItemContent className="min-w-0">
-                    <ItemTitle className="flex flex-wrap items-center gap-2">
-                      <span className="truncate">{connection.accountLabel}</span>
-                      <ConnectionStatusBadge status={connection.status} />
-                    </ItemTitle>
-                    <ItemDescription className="truncate">
-                      {connection.accountId}
-                    </ItemDescription>
-                  </ItemContent>
-                  <ItemActions>
-                    {connection.status === "needs_reauth" ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={isBusy}
-                        onClick={() =>
-                          void handleReconnect(
-                            connection.accountId,
-                            connection.accountLabel,
-                          )
-                        }
-                      >
-                        <RefreshCw className="size-4" />
-                        Reconnect
-                      </Button>
-                    ) : null}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={isBusy}
-                      onClick={() => void handleDisconnect(connection.accountId)}
-                    >
-                      <LogOut className="size-4" />
-                      Disconnect
-                    </Button>
-                  </ItemActions>
-                </Item>
-              ))}
-            </ItemGroup>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No Google account connected yet.
-            </p>
-          )}
-
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
             <Field>
               <FieldLabel htmlFor="google-account-email">
@@ -278,7 +227,61 @@ export function CalendarSettings() {
           {connectError ? <FieldError>{connectError}</FieldError> : null}
         </div>
       </SettingBlock>
-
+      <SettingBlock
+        title="Connected Google Accounts"
+        description="Manage your connected Google accounts."
+      >
+        {googleConnections.length > 0 ? (
+          <ItemGroup className="gap-2">
+            {googleConnections.map((connection) => (
+              <Item key={connection.id} variant="outline">
+                <ItemContent className="min-w-0">
+                  <ItemTitle className="flex flex-wrap items-center gap-2">
+                    <span className="truncate">{connection.accountLabel}</span>
+                    <ConnectionStatusBadge status={connection.status} />
+                  </ItemTitle>
+                  <ItemDescription className="truncate">
+                    {connection.accountId}
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  {connection.status === "needs_reauth" ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={isBusy}
+                      onClick={() =>
+                        void handleReconnect(
+                          connection.accountId,
+                          connection.accountLabel,
+                        )
+                      }
+                    >
+                      <RefreshCw className="size-4" />
+                      Reconnect
+                    </Button>
+                  ) : null}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={isBusy}
+                    onClick={() => void handleDisconnect(connection.accountId)}
+                  >
+                    <LogOut className="size-4" />
+                    Disconnect
+                  </Button>
+                </ItemActions>
+              </Item>
+            ))}
+          </ItemGroup>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No Google account connected yet.
+          </p>
+        )}
+      </SettingBlock>
       <SettingBlock
         title="Calendars"
         description="Choose which calendars to import. Primary is selected by default on first connect."

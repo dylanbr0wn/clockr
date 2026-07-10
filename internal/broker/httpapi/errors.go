@@ -25,7 +25,8 @@ func connectCode(code string) connect.Code {
 		codes.HandoffConsumeFailed,
 		codes.GoogleTokenRefreshFailed,
 		codes.GoogleRevokeFailed,
-		codes.GitHubRevokeFailed:
+		codes.GitHubRevokeFailed,
+		codes.SlackRevokeFailed:
 		return connect.CodeUnavailable
 	case codes.OperationNotSupported:
 		return connect.CodeUnimplemented

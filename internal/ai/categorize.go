@@ -15,6 +15,7 @@ func SuggestCategory(
 	event EventContext,
 	local bool,
 	privacy PrivacyFields,
+	maxTokens int,
 ) (string, error) {
 	if len(categories) == 0 {
 		return "", fmt.Errorf("no categories configured")
@@ -42,7 +43,7 @@ func SuggestCategory(
 		string(eventJSON),
 	)
 
-	reply, err := client.ChatCompletion(ctx, model, systemPrompt, userPrompt)
+	reply, err := client.ChatCompletion(ctx, model, systemPrompt, userPrompt, maxTokens)
 	if err != nil {
 		return "", err
 	}

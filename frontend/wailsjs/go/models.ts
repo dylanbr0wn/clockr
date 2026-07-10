@@ -1,16 +1,16 @@
 export namespace ai {
-	
+
 	export class Endpoint {
 	    name: string;
 	    baseUrl: string;
 	    local: boolean;
 	    running: boolean;
 	    models?: string[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Endpoint(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
@@ -25,11 +25,11 @@ export namespace ai {
 	    local: boolean;
 	    verdict: string;
 	    message: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ValidationResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
@@ -42,7 +42,7 @@ export namespace ai {
 }
 
 export namespace connection {
-	
+
 	export class Connection {
 	    id: number;
 	    provider: string;
@@ -52,11 +52,11 @@ export namespace connection {
 	    status: string;
 	    connectedAt: string;
 	    updatedAt: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Connection(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -73,15 +73,15 @@ export namespace connection {
 }
 
 export namespace main {
-	
+
 	export class AIClassification {
 	    local: boolean;
 	    verdict: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new AIClassification(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.local = source["local"];
@@ -91,11 +91,11 @@ export namespace main {
 	export class GoogleAuthStatus {
 	    mode: string;
 	    brokerBaseUrl: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new GoogleAuthStatus(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.mode = source["mode"];
@@ -105,11 +105,11 @@ export namespace main {
 	export class ManualEventResult {
 	    periodId: number;
 	    id: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ManualEventResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.periodId = source["periodId"];
@@ -120,18 +120,18 @@ export namespace main {
 }
 
 export namespace service {
-	
+
 	export class Attendee {
 	    email: string;
 	    displayName?: string;
 	    responseStatus?: string;
 	    organizer?: boolean;
 	    self?: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Attendee(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.email = source["email"];
@@ -149,11 +149,11 @@ export namespace service {
 	    isPrimary: boolean;
 	    selected: boolean;
 	    defaultCategoryId?: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Calendar(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -168,11 +168,11 @@ export namespace service {
 	export class CalendarSyncConfig {
 	    Puller: any;
 	    Connections: any;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new CalendarSyncConfig(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Puller = source["Puller"];
@@ -186,11 +186,11 @@ export namespace service {
 	    key: string;
 	    color: string;
 	    isDefaultGap: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Category(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -207,11 +207,11 @@ export namespace service {
 	    key: string;
 	    color: string;
 	    isDefaultGap: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new CreateCategoryInput(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
@@ -221,22 +221,42 @@ export namespace service {
 	        this.isDefaultGap = source["isDefaultGap"];
 	    }
 	}
+	export class CreateExportTemplateInput {
+	    key: string;
+	    name: string;
+	    description: string;
+	    format: string;
+	    body: string;
+
+	    static createFrom(source: any = {}) {
+	        return new CreateExportTemplateInput(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.format = source["format"];
+	        this.body = source["body"];
+	    }
+	}
 	export class Interval {
 	    // Go type: time
 	    start: any;
 	    // Go type: time
 	    end: any;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Interval(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.start = this.convertValues(source["start"], null);
 	        this.end = this.convertValues(source["end"], null);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -267,11 +287,11 @@ export namespace service {
 	    gaps: Interval[];
 	    coveredHours: number;
 	    gapHours: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new DayTimeline(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.date = source["date"];
@@ -284,7 +304,7 @@ export namespace service {
 	        this.coveredHours = source["coveredHours"];
 	        this.gapHours = source["gapHours"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -327,11 +347,11 @@ export namespace service {
 	    endDate?: string;
 	    originalTz?: string;
 	    active: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Event(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -356,7 +376,7 @@ export namespace service {
 	        this.originalTz = source["originalTz"];
 	        this.active = source["active"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -380,11 +400,11 @@ export namespace service {
 	    externalId: string;
 	    instanceId?: string;
 	    categoryId: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new EventCategoryOverlay(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.provider = source["provider"];
@@ -395,11 +415,11 @@ export namespace service {
 	}
 	export class EvidenceConfig {
 	    Providers: any[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new EvidenceConfig(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Providers = source["Providers"];
@@ -408,11 +428,11 @@ export namespace service {
 	export class ExcludeEventInput {
 	    eventId: number;
 	    periodId: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ExcludeEventInput(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.eventId = source["eventId"];
@@ -422,15 +442,185 @@ export namespace service {
 	export class ExcludeEventResult {
 	    periodId: number;
 	    eventId: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ExcludeEventResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.periodId = source["periodId"];
 	        this.eventId = source["eventId"];
+	    }
+	}
+	export class ExportCategory {
+	    id?: number;
+	    name: string;
+	    key: string;
+	    color?: string;
+
+	    static createFrom(source: any = {}) {
+	        return new ExportCategory(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.key = source["key"];
+	        this.color = source["color"];
+	    }
+	}
+	export class ExportCategoryMinutes {
+	    category: ExportCategory;
+	    minutes: number;
+
+	    static createFrom(source: any = {}) {
+	        return new ExportCategoryMinutes(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category = this.convertValues(source["category"], ExportCategory);
+	        this.minutes = source["minutes"];
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ExportDayTotals {
+	    date: string;
+	    categories: ExportCategoryMinutes[];
+	    actualMinutes: number;
+	    targetMinutes: number;
+
+	    static createFrom(source: any = {}) {
+	        return new ExportDayTotals(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.date = source["date"];
+	        this.categories = this.convertValues(source["categories"], ExportCategoryMinutes);
+	        this.actualMinutes = source["actualMinutes"];
+	        this.targetMinutes = source["targetMinutes"];
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ExportEntry {
+	    source: string;
+	    sourceId: number;
+	    day: string;
+	    startMinutes: number;
+	    endMinutes: number;
+	    minutes: number;
+	    title: string;
+	    category: ExportCategory;
+
+	    static createFrom(source: any = {}) {
+	        return new ExportEntry(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.source = source["source"];
+	        this.sourceId = source["sourceId"];
+	        this.day = source["day"];
+	        this.startMinutes = source["startMinutes"];
+	        this.endMinutes = source["endMinutes"];
+	        this.minutes = source["minutes"];
+	        this.title = source["title"];
+	        this.category = this.convertValues(source["category"], ExportCategory);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ExportFieldInfo {
+	    field: string;
+	    label: string;
+	    description: string;
+
+	    static createFrom(source: any = {}) {
+	        return new ExportFieldInfo(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.field = source["field"];
+	        this.label = source["label"];
+	        this.description = source["description"];
+	    }
+	}
+	export class ExportTemplate {
+	    id: number;
+	    key: string;
+	    name: string;
+	    description: string;
+	    format: string;
+	    builtin: boolean;
+	    body: string;
+
+	    static createFrom(source: any = {}) {
+	        return new ExportTemplate(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.key = source["key"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.format = source["format"];
+	        this.builtin = source["builtin"];
+	        this.body = source["body"];
 	    }
 	}
 	export class GapFill {
@@ -441,12 +631,13 @@ export namespace service {
 	    end: string;
 	    categoryId?: number;
 	    note?: string;
+	    description?: string;
 	    source: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new GapFill(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -456,6 +647,7 @@ export namespace service {
 	        this.end = source["end"];
 	        this.categoryId = source["categoryId"];
 	        this.note = source["note"];
+	        this.description = source["description"];
 	        this.source = source["source"];
 	    }
 	}
@@ -463,11 +655,11 @@ export namespace service {
 	    category: string;
 	    description: string;
 	    evidenceCount: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new GapSuggestion(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.category = source["category"];
@@ -483,11 +675,11 @@ export namespace service {
 	    fullName: string;
 	    private: boolean;
 	    selected: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new GitHubRepo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -495,6 +687,28 @@ export namespace service {
 	        this.externalId = source["externalId"];
 	        this.name = source["name"];
 	        this.fullName = source["fullName"];
+	        this.private = source["private"];
+	        this.selected = source["selected"];
+	    }
+	}
+	export class SlackChannel {
+	    id: number;
+	    accountId: string;
+	    externalId: string;
+	    name: string;
+	    private: boolean;
+	    selected: boolean;
+
+	    static createFrom(source: any = {}) {
+	        return new SlackChannel(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.accountId = source["accountId"];
+	        this.externalId = source["externalId"];
+	        this.name = source["name"];
 	        this.private = source["private"];
 	        this.selected = source["selected"];
 	    }
@@ -520,11 +734,11 @@ export namespace service {
 	    StartDate: string;
 	    EndDate: string;
 	    OriginalTz: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new IncomingEvent(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.CalendarID = source["CalendarID"];
@@ -546,7 +760,7 @@ export namespace service {
 	        this.EndDate = source["EndDate"];
 	        this.OriginalTz = source["OriginalTz"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -565,15 +779,15 @@ export namespace service {
 		    return a;
 		}
 	}
-	
+
 	export class ManualEventDeleteInput {
 	    id: number;
 	    periodId: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ManualEventDeleteInput(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -587,11 +801,12 @@ export namespace service {
 	    endMinutes: number;
 	    categoryId?: number;
 	    note?: string;
-	
+	    description?: string;
+
 	    static createFrom(source: any = {}) {
 	        return new ManualEventInput(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.periodId = source["periodId"];
@@ -600,6 +815,7 @@ export namespace service {
 	        this.endMinutes = source["endMinutes"];
 	        this.categoryId = source["categoryId"];
 	        this.note = source["note"];
+	        this.description = source["description"];
 	    }
 	}
 	export class ManualEventUpdateInput {
@@ -610,11 +826,12 @@ export namespace service {
 	    endMinutes: number;
 	    categoryId?: number;
 	    note?: string;
-	
+	    description?: string;
+
 	    static createFrom(source: any = {}) {
 	        return new ManualEventUpdateInput(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -624,6 +841,7 @@ export namespace service {
 	        this.endMinutes = source["endMinutes"];
 	        this.categoryId = source["categoryId"];
 	        this.note = source["note"];
+	        this.description = source["description"];
 	    }
 	}
 	export class Period {
@@ -635,11 +853,11 @@ export namespace service {
 	    targetHoursPerDay: number;
 	    // Go type: time
 	    lastSyncedAt?: any;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Period(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -650,7 +868,7 @@ export namespace service {
 	        this.targetHoursPerDay = source["targetHoursPerDay"];
 	        this.lastSyncedAt = this.convertValues(source["lastSyncedAt"], null);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -669,71 +887,188 @@ export namespace service {
 		    return a;
 		}
 	}
-	export class ResolveReviewItemInput {
-	    reviewItemId: number;
-	    action: string;
-	
+	export class PeriodExportModel {
+	    periodId: number;
+	    periodLabel: string;
+	    startDate: string;
+	    endDate: string;
+	    targetHoursPerDay: number;
+	    targetMinutes: number;
+	    actualMinutes: number;
+	    days: string[];
+	    entries: ExportEntry[];
+	    dailyTotals: ExportDayTotals[];
+	    periodTotals: ExportCategoryMinutes[];
+
 	    static createFrom(source: any = {}) {
-	        return new ResolveReviewItemInput(source);
+	        return new PeriodExportModel(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.reviewItemId = source["reviewItemId"];
+	        this.periodId = source["periodId"];
+	        this.periodLabel = source["periodLabel"];
+	        this.startDate = source["startDate"];
+	        this.endDate = source["endDate"];
+	        this.targetHoursPerDay = source["targetHoursPerDay"];
+	        this.targetMinutes = source["targetMinutes"];
+	        this.actualMinutes = source["actualMinutes"];
+	        this.days = source["days"];
+	        this.entries = this.convertValues(source["entries"], ExportEntry);
+	        this.dailyTotals = this.convertValues(source["dailyTotals"], ExportDayTotals);
+	        this.periodTotals = this.convertValues(source["periodTotals"], ExportCategoryMinutes);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class PeriodExportRender {
+	    filename: string;
+	    content: string;
+	    format: string;
+
+	    static createFrom(source: any = {}) {
+	        return new PeriodExportRender(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.filename = source["filename"];
+	        this.content = source["content"];
+	        this.format = source["format"];
+	    }
+	}
+	export class PreviewExportInput {
+	    periodId: number;
+	    templateKey: string;
+	    format: string;
+	    body: string;
+
+	    static createFrom(source: any = {}) {
+	        return new PreviewExportInput(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.periodId = source["periodId"];
+	        this.templateKey = source["templateKey"];
+	        this.format = source["format"];
+	        this.body = source["body"];
+	    }
+	}
+	export class ResolveReviewDecisionInput {
+	    decisionId: number;
+	    action: string;
+
+	    static createFrom(source: any = {}) {
+	        return new ResolveReviewDecisionInput(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.decisionId = source["decisionId"];
 	        this.action = source["action"];
 	    }
 	}
-	export class ResolveReviewItemResult {
+	export class ResolveReviewDecisionResult {
 	    periodId: number;
-	
+
 	    static createFrom(source: any = {}) {
-	        return new ResolveReviewItemResult(source);
+	        return new ResolveReviewDecisionResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.periodId = source["periodId"];
 	    }
 	}
-	export class ReviewItem {
+	export class ReviewDecisionAction {
+	    key: string;
+	    label: string;
+	    role: string;
+	    variant?: string;
+
+	    static createFrom(source: any = {}) {
+	        return new ReviewDecisionAction(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.label = source["label"];
+	        this.role = source["role"];
+	        this.variant = source["variant"];
+	    }
+	}
+	export class ReviewDecision {
 	    id: number;
-	    periodId: number;
 	    kind: string;
 	    eventId?: number;
-	    payload: string;
-	    status: string;
-	    conflictKey?: string;
-	    decisionAction?: string;
-	    decisionPayload?: string;
-	
+	    tag: string;
+	    title: string;
+	    description: string;
+	    actions: ReviewDecisionAction[];
+
 	    static createFrom(source: any = {}) {
-	        return new ReviewItem(source);
+	        return new ReviewDecision(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
-	        this.periodId = source["periodId"];
 	        this.kind = source["kind"];
 	        this.eventId = source["eventId"];
-	        this.payload = source["payload"];
-	        this.status = source["status"];
-	        this.conflictKey = source["conflictKey"];
-	        this.decisionAction = source["decisionAction"];
-	        this.decisionPayload = source["decisionPayload"];
+	        this.tag = source["tag"];
+	        this.title = source["title"];
+	        this.description = source["description"];
+	        this.actions = this.convertValues(source["actions"], ReviewDecisionAction);
 	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
+
 	export class SyncResult {
 	    added: number;
 	    updated: number;
 	    unchanged: number;
 	    removed: number;
 	    flagged: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new SyncResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.added = source["added"];
@@ -748,17 +1083,17 @@ export namespace service {
 	    start: any;
 	    // Go type: time
 	    end: any;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new TimeWindow(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.start = this.convertValues(source["start"], null);
 	        this.end = this.convertValues(source["end"], null);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -782,11 +1117,11 @@ export namespace service {
 	    periodId: number;
 	    effectiveFromDate: string;
 	    ianaTz: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new TzSegment(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -802,11 +1137,11 @@ export namespace service {
 	    key: string;
 	    color: string;
 	    isDefaultGap: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new UpdateCategoryInput(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -815,6 +1150,26 @@ export namespace service {
 	        this.key = source["key"];
 	        this.color = source["color"];
 	        this.isDefaultGap = source["isDefaultGap"];
+	    }
+	}
+	export class UpdateExportTemplateInput {
+	    id: number;
+	    name: string;
+	    description: string;
+	    format: string;
+	    body: string;
+
+	    static createFrom(source: any = {}) {
+	        return new UpdateExportTemplateInput(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.format = source["format"];
+	        this.body = source["body"];
 	    }
 	}
 

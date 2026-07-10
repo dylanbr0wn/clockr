@@ -16,8 +16,10 @@ const (
 	defaultHandoffTTL              = 2 * time.Minute
 	defaultDesktopHandoffURL       = "shiet://oauth/google/handoff"
 	defaultGitHubDesktopHandoffURL = "shiet://oauth/github/handoff"
+	defaultSlackDesktopHandoffURL  = "shiet://oauth/slack/handoff"
 	defaultGoogleScope             = "https://www.googleapis.com/auth/calendar.readonly"
 	defaultGitHubScope             = "repo"
+	defaultSlackScope              = "channels:history groups:history channels:read groups:read"
 )
 
 // Config holds the broker's environment-driven runtime configuration.
@@ -30,11 +32,15 @@ type Config struct {
 	GitHubClientID          string
 	GitHubClientSecret      string
 	GitHubDesktopHandoffURL string
+	SlackClientID           string
+	SlackClientSecret       string
+	SlackDesktopHandoffURL  string
 	DatastoreDSN            string
 	StateTTL                time.Duration
 	HandoffTTL              time.Duration
 	GoogleScopes            []string
 	GitHubScopes            []string
+	SlackScopes             []string
 	AuthDisabled            bool
 	RefreshDisabled         bool
 	DisabledAppVersions     []string
@@ -52,11 +58,15 @@ func LoadFromEnv() (Config, error) {
 		GitHubClientID:          os.Getenv("SHIET_BROKER_GITHUB_CLIENT_ID"),
 		GitHubClientSecret:      os.Getenv("SHIET_BROKER_GITHUB_CLIENT_SECRET"),
 		GitHubDesktopHandoffURL: getenv("SHIET_BROKER_GITHUB_DESKTOP_HANDOFF_URL", defaultGitHubDesktopHandoffURL),
+		SlackClientID:           os.Getenv("SHIET_BROKER_SLACK_CLIENT_ID"),
+		SlackClientSecret:       os.Getenv("SHIET_BROKER_SLACK_CLIENT_SECRET"),
+		SlackDesktopHandoffURL:  getenv("SHIET_BROKER_SLACK_DESKTOP_HANDOFF_URL", defaultSlackDesktopHandoffURL),
 		DatastoreDSN:            os.Getenv("SHIET_BROKER_DATASTORE_DSN"),
 		StateTTL:                defaultStateTTL,
 		HandoffTTL:              defaultHandoffTTL,
 		GoogleScopes:            splitScopes(getenv("SHIET_BROKER_GOOGLE_SCOPES", defaultGoogleScope)),
 		GitHubScopes:            splitScopes(getenv("SHIET_BROKER_GITHUB_SCOPES", defaultGitHubScope)),
+		SlackScopes:             splitScopes(getenv("SHIET_BROKER_SLACK_SCOPES", defaultSlackScope)),
 		AuthDisabled:            envTruthy("SHIET_BROKER_AUTH_DISABLED"),
 		RefreshDisabled:         envTruthy("SHIET_BROKER_REFRESH_DISABLED"),
 		DisabledAppVersions:     splitCSV(os.Getenv("SHIET_BROKER_DISABLED_APP_VERSIONS")),
@@ -113,6 +123,18 @@ func (c Config) Validate() error {
 	if githubID != "" && len(c.GitHubScopes) == 0 {
 		problems = append(problems, "SHIET_BROKER_GITHUB_SCOPES must include at least one scope")
 	}
+	slackID := strings.TrimSpace(c.SlackClientID)
+	slackSecret := strings.TrimSpace(c.SlackClientSecret)
+	if (slackID == "") != (slackSecret == "") {
+		if slackID == "" {
+			problems = append(problems, "SHIET_BROKER_SLACK_CLIENT_ID is required when Slack OAuth is configured")
+		} else {
+			problems = append(problems, "SHIET_BROKER_SLACK_CLIENT_SECRET is required when Slack OAuth is configured")
+		}
+	}
+	if slackID != "" && len(c.SlackScopes) == 0 {
+		problems = append(problems, "SHIET_BROKER_SLACK_SCOPES must include at least one scope")
+	}
 	if c.StateTTL <= 0 || c.StateTTL > 10*time.Minute {
 		problems = append(problems, "SHIET_BROKER_STATE_TTL must be greater than 0 and at most 10m")
 	}
@@ -127,6 +149,11 @@ func (c Config) Validate() error {
 	}
 	if githubID != "" {
 		if _, err := parseDesktopHandoffURL(c.GitHubDesktopHandoffURL, "SHIET_BROKER_GITHUB_DESKTOP_HANDOFF_URL"); err != nil {
+			problems = append(problems, err.Error())
+		}
+	}
+	if slackID != "" {
+		if _, err := parseDesktopHandoffURL(c.SlackDesktopHandoffURL, "SHIET_BROKER_SLACK_DESKTOP_HANDOFF_URL"); err != nil {
 			problems = append(problems, err.Error())
 		}
 	}
@@ -154,21 +181,21 @@ func (c Config) AppVersionDisabled(appVersion string) bool {
 // RedirectURI returns the Google Web OAuth redirect URI configured for this
 // broker deployment.
 func (c Config) RedirectURI() string {
-	u, err := c.publicOriginURL()
-	if err != nil {
-		return ""
-	}
-	u.Path = "/v1/google/oauth/callback"
-	return u.String()
+	return c.ProviderRedirectURI("google")
 }
 
 // GitHubRedirectURI returns the GitHub OAuth App callback URI.
 func (c Config) GitHubRedirectURI() string {
+	return c.ProviderRedirectURI("github")
+}
+
+// ProviderRedirectURI returns the broker callback URI for a registered provider.
+func (c Config) ProviderRedirectURI(provider string) string {
 	u, err := c.publicOriginURL()
 	if err != nil {
 		return ""
 	}
-	u.Path = "/v1/github/oauth/callback"
+	u.Path = "/v1/" + strings.TrimSpace(provider) + "/oauth/callback"
 	return u.String()
 }
 

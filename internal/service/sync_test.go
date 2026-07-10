@@ -146,7 +146,7 @@ func TestSync_TimeOnlyChangeKeepsCategorySilently(t *testing.T) {
 	if r.Updated != 1 || r.Flagged != 0 {
 		t.Fatalf("time-only change should update silently: %+v", r)
 	}
-	if items := openItems(t, e); len(items) != 0 {
+	if items := openDecisions(t, e); len(items) != 0 {
 		t.Fatalf("no review items expected, got %d", len(items))
 	}
 }
@@ -170,7 +170,7 @@ func TestSync_MaterialTitleChangeFlags(t *testing.T) {
 	if r.Updated != 1 || r.Flagged != 1 {
 		t.Fatalf("title change should flag: %+v", r)
 	}
-	items := openItems(t, e)
+	items := openDecisions(t, e)
 	if len(items) != 1 || items[0].Kind != "title_changed" {
 		t.Fatalf("want one title_changed item, got %+v", items)
 	}
@@ -204,7 +204,7 @@ func TestSync_NewEventInFilledGapFlags(t *testing.T) {
 	if r.Added != 1 || r.Flagged != 1 {
 		t.Fatalf("new-in-gap should add+flag: %+v", r)
 	}
-	if items := openItems(t, e); len(items) != 1 || items[0].Kind != "new_in_gap" {
+	if items := openDecisions(t, e); len(items) != 1 || items[0].Kind != "new_in_gap" {
 		t.Fatalf("want one new_in_gap item, got %+v", items)
 	}
 }
@@ -230,7 +230,7 @@ func TestSync_DisappearedEvent(t *testing.T) {
 	if r.Removed != 1 || r.Flagged != 1 {
 		t.Fatalf("want 1 removed + 1 flagged, got %+v", r)
 	}
-	items := openItems(t, e)
+	items := openDecisions(t, e)
 	if len(items) != 1 || items[0].Kind != "deleted_categorized" {
 		t.Fatalf("want one deleted_categorized item, got %+v", items)
 	}
@@ -261,7 +261,7 @@ func TestSync_AllDayAndTentativeFlags(t *testing.T) {
 		t.Fatalf("want 2 added + 2 flagged, got %+v", r)
 	}
 	kinds := map[string]int{}
-	for _, it := range openItems(t, e) {
+	for _, it := range openDecisions(t, e) {
 		kinds[it.Kind]++
 	}
 	if kinds["all_day"] != 1 || kinds["tentative"] != 1 {
@@ -310,9 +310,9 @@ func mustOverlayWithCategory(t *testing.T, e *syncEnv, gid string, categoryID in
 	}
 }
 
-func openItems(t *testing.T, e *syncEnv) []service.ReviewItem {
+func openDecisions(t *testing.T, e *syncEnv) []service.ReviewDecision {
 	t.Helper()
-	items, err := e.svc.ListOpenReviewItems(context.Background(), e.periodID)
+	items, err := e.svc.ListReviewDecisions(context.Background(), e.periodID)
 	if err != nil {
 		t.Fatal(err)
 	}

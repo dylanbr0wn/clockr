@@ -7,21 +7,21 @@ import (
 	"github.com/dylanbr0wn/shiet/internal/db/sqlc"
 )
 
-// ResolveReviewItemInput is the user decision for one review-queue item.
-type ResolveReviewItemInput struct {
-	ReviewItemID int64  `json:"reviewItemId"`
-	Action       string `json:"action"`
+// ResolveReviewDecisionInput is the user decision for one review decision.
+type ResolveReviewDecisionInput struct {
+	DecisionID int64  `json:"decisionId"`
+	Action     string `json:"action"`
 }
 
-// ResolveReviewItemResult identifies the period whose schedule data changed.
-type ResolveReviewItemResult struct {
+// ResolveReviewDecisionResult identifies the period whose schedule data changed.
+type ResolveReviewDecisionResult struct {
 	PeriodID int64 `json:"periodId"`
 }
 
-// ResolveReviewItem applies a user decision to an open review item and marks it
+// ResolveReviewDecision applies a user decision to an open review item and marks it
 // resolved or dismissed. Side effects depend on kind + action.
-func (s *Service) ResolveReviewItem(ctx context.Context, input ResolveReviewItemInput) (ResolveReviewItemResult, error) {
-	var res ResolveReviewItemResult
+func (s *Service) ResolveReviewDecision(ctx context.Context, input ResolveReviewDecisionInput) (ResolveReviewDecisionResult, error) {
+	var res ResolveReviewDecisionResult
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -30,7 +30,7 @@ func (s *Service) ResolveReviewItem(ctx context.Context, input ResolveReviewItem
 	defer func() { _ = tx.Rollback() }()
 
 	q := s.q.WithTx(tx)
-	item, err := q.GetReviewItem(ctx, input.ReviewItemID)
+	item, err := q.GetReviewItem(ctx, input.DecisionID)
 	if err != nil {
 		return res, mapErr("get review item", err)
 	}

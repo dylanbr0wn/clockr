@@ -128,3 +128,39 @@ func TestValidateAIConfig(t *testing.T) {
 		t.Fatalf("expected ok result, got %+v", result)
 	}
 }
+
+func TestSync_UsesConfiguredMaxTokens(t *testing.T) {
+	var gotMaxTokens int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			MaxTokens int `json:"max_tokens"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		gotMaxTokens = body.MaxTokens
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"choices": []map[string]any{
+				{"message": map[string]string{"content": "Meetings"}},
+			},
+		})
+	}))
+	defer server.Close()
+
+	e := newSyncEnv(t)
+	ctx := context.Background()
+
+	if err := e.svc.SaveAIConfig(ctx, server.URL+"/v1", "llama3"); err != nil {
+		t.Fatalf("SaveAIConfig: %v", err)
+	}
+	if err := e.svc.SetSetting(ctx, "ai.max_tokens", "2048"); err != nil {
+		t.Fatalf("SetSetting max_tokens: %v", err)
+	}
+
+	event := e.baseEvent()
+	event.Title = "Quarterly planning"
+	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{event}); err != nil {
+		t.Fatalf("SyncEvents: %v", err)
+	}
+	if gotMaxTokens != 2048 {
+		t.Fatalf("max_tokens = %d want 2048", gotMaxTokens)
+	}
+}

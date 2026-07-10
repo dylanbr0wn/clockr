@@ -1,0 +1,29 @@
+import { describe, expect, it } from "vitest";
+import {
+  defaultTabularSpec,
+  encodeTabularSpec,
+  fieldCatalog,
+  parseTabularSpec,
+} from "./tabular";
+
+describe("tabular export specs", () => {
+  it("round-trips default flat rollup spec", () => {
+    const spec = defaultTabularSpec("rollup", "flat");
+    const encoded = encodeTabularSpec(spec);
+    const parsed = parseTabularSpec(encoded);
+    expect(parsed).toEqual(spec);
+  });
+
+  it("exposes matrix catalog without day fields", () => {
+    const fields = fieldCatalog("rollup", "matrix").map((field) => field.field);
+    expect(fields).toContain("category_name");
+    expect(fields).toContain("total");
+    expect(fields).not.toContain("date");
+  });
+
+  it("forces detail grain to flat defaults", () => {
+    const spec = defaultTabularSpec("detail", "matrix");
+    expect(spec.layout).toBe("flat");
+    expect(spec.columns.map((column) => column.field)).toContain("start");
+  });
+});

@@ -18,6 +18,12 @@ export interface ScheduleMetadata {
   reviewKind?: string;
   isAllDay?: boolean;
   allDaySpan?: AllDaySpanPosition;
+  /** Gap-fills: drag, resize, edit, duplicate, remove. */
+  mutable?: boolean;
+  /** Calendar events/chips: exclude from period. */
+  excludable?: boolean;
+  /** Review items/chips: click opens review queue. */
+  opensReviewQueue?: boolean;
 }
 
 export interface AllDayChip {
@@ -32,6 +38,8 @@ export interface AllDayChip {
   reviewItemId?: number;
   reviewKind?: string;
   allDaySpan: AllDaySpanPosition;
+  excludable?: boolean;
+  opensReviewQueue?: boolean;
 }
 
 export interface ScheduleDayMetadata {

@@ -12,7 +12,7 @@ import (
 
 func TestClassifyEndpoint(t *testing.T) {
 	tests := []struct {
-		url      string
+		url       string
 		wantLocal bool
 	}{
 		{"http://localhost:11434/v1", true},
@@ -115,12 +115,45 @@ func TestSuggestCategory(t *testing.T) {
 		ai.EventContext{Title: "Focus block"},
 		true,
 		ai.PrivacyFields{Title: true},
+		0,
 	)
 	if err != nil {
 		t.Fatalf("SuggestCategory: %v", err)
 	}
 	if got != "deep-work" {
 		t.Fatalf("got %q want deep-work", got)
+	}
+}
+
+func TestChatCompletionSendsMaxTokens(t *testing.T) {
+	var gotMaxTokens int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			MaxTokens int `json:"max_tokens"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		gotMaxTokens = body.MaxTokens
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"choices": []map[string]any{
+				{"message": map[string]string{"content": "ok"}},
+			},
+		})
+	}))
+	defer server.Close()
+
+	client := ai.NewClient(server.URL+"/v1", "")
+	if _, err := client.ChatCompletion(context.Background(), "m", "sys", "user", 2048); err != nil {
+		t.Fatalf("ChatCompletion: %v", err)
+	}
+	if gotMaxTokens != 2048 {
+		t.Fatalf("max_tokens = %d want 2048", gotMaxTokens)
+	}
+
+	if _, err := client.ChatCompletion(context.Background(), "m", "sys", "user", 0); err != nil {
+		t.Fatalf("ChatCompletion default: %v", err)
+	}
+	if gotMaxTokens != ai.DefaultMaxTokens {
+		t.Fatalf("max_tokens = %d want default %d", gotMaxTokens, ai.DefaultMaxTokens)
 	}
 }
 

@@ -42,9 +42,10 @@ var defaultSettings = map[string]string{
 	"period.cadence":      `"bi-weekly"`,
 	"period.target_hours": `8`,
 	// Default working-window start (local time-of-day). Window length = target hours.
-	"window.start": `"09:00"`,
-	"ai.base_url":  `""`,
-	"ai.model":     `""`,
+	"window.start":  `"09:00"`,
+	"ai.base_url":   `""`,
+	"ai.model":      `""`,
+	"ai.max_tokens": `512`,
 }
 
 // Core seeds data that every install needs (categories + settings).
@@ -151,31 +152,31 @@ func seedDevEvents(ctx context.Context, q *sqlc.Queries, periodID, calendarID in
 
 	events := []struct {
 		externalID string
-		title    string
-		day      string
-		startMin int
-		endMin   int
+		title      string
+		day        string
+		startMin   int
+		endMin     int
 	}{
 		{
 			externalID: "dev-sprint-planning",
-			title:    "Sprint planning",
-			day:      "2026-06-02",
-			startMin: 8*60 + 30,
-			endMin:   10 * 60,
+			title:      "Sprint planning",
+			day:        "2026-06-02",
+			startMin:   8*60 + 30,
+			endMin:     10 * 60,
 		},
 		{
 			externalID: "dev-design-review",
-			title:    "Design review",
-			day:      "2026-06-02",
-			startMin: 9*60 + 15,
-			endMin:   10*60 + 30,
+			title:      "Design review",
+			day:        "2026-06-02",
+			startMin:   9*60 + 15,
+			endMin:     10*60 + 30,
 		},
 		{
 			externalID: "dev-vendor-call",
-			title:    "Vendor call",
-			day:      "2026-06-04",
-			startMin: 7 * 60,
-			endMin:   8 * 60,
+			title:      "Vendor call",
+			day:        "2026-06-04",
+			startMin:   7 * 60,
+			endMin:     8 * 60,
 		},
 	}
 
@@ -188,9 +189,9 @@ func seedDevEvents(ctx context.Context, q *sqlc.Queries, periodID, calendarID in
 			Provider:   "google",
 			ExternalID: event.externalID,
 			IcalUid:    event.externalID + "@shiet.dev",
-			Title:         event.title,
-			Attendees:     "[]",
-			Status:        "accepted",
+			Title:      event.title,
+			Attendees:  "[]",
+			Status:     "accepted",
 			StartUtc: sql.NullString{
 				String: start.UTC().Format(time.RFC3339),
 				Valid:  true,

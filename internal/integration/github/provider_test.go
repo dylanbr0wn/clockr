@@ -515,8 +515,11 @@ func TestFetchEvidence_CommitsAndPRs(t *testing.T) {
 	if commit.Provider != service.ProviderGitHub {
 		t.Fatalf("commit provider: %q", commit.Provider)
 	}
-	if commit.Summary != "abcdef1: fix auth middleware" {
+	if commit.Summary != "octocat/Hello-World · abcdef1: fix auth middleware" {
 		t.Fatalf("commit summary: %q", commit.Summary)
+	}
+	if commit.Source != "octocat/Hello-World" {
+		t.Fatalf("commit source: %q", commit.Source)
 	}
 	if commit.Detail != "fix auth middleware\n\nFull body stays in detail." {
 		t.Fatalf("commit detail: %q", commit.Detail)
@@ -528,8 +531,11 @@ func TestFetchEvidence_CommitsAndPRs(t *testing.T) {
 		t.Fatalf("commit start: %v", commit.Start)
 	}
 
-	if pr.Summary != "Merged PR #42: Ship gap fill" {
+	if pr.Summary != "octocat/Hello-World · Merged PR #42: Ship gap fill" {
 		t.Fatalf("pr summary: %q", pr.Summary)
+	}
+	if pr.Source != "octocat/Hello-World" {
+		t.Fatalf("pr source: %q", pr.Source)
 	}
 	if !strings.Contains(pr.Detail, "PR body text") {
 		t.Fatalf("pr detail: %q", pr.Detail)
@@ -589,8 +595,11 @@ func TestFetchEvidence_BestEffortSkipsFailingRepo(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("expected 1 item from good repo, got %#v", got)
 	}
-	if got[0].Kind != "commit" || got[0].Summary != "deadbee: good commit" {
+	if got[0].Kind != "commit" || got[0].Summary != "octocat/good · deadbee: good commit" {
 		t.Fatalf("unexpected item: %+v", got[0])
+	}
+	if got[0].Source != "octocat/good" {
+		t.Fatalf("source: %q", got[0].Source)
 	}
 }
 
@@ -649,7 +658,7 @@ func TestFetchEvidence_WindowFilterExcludesBoundaryEnd(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("expected only start-inclusive commit, got %#v", got)
 	}
-	if got[0].Summary != "atstart: at start" {
+	if got[0].Summary != "octocat/Hello-World · atstart: at start" {
 		t.Fatalf("unexpected: %+v", got[0])
 	}
 }

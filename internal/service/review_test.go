@@ -9,7 +9,7 @@ import (
 	"github.com/dylanbr0wn/shiet/internal/service"
 )
 
-func TestResolveReviewItem_DeletedCategorizedDrop(t *testing.T) {
+func TestResolveReviewDecision_DeletedCategorizedDrop(t *testing.T) {
 	e := newSyncEnv(t)
 	ctx := context.Background()
 
@@ -21,19 +21,19 @@ func TestResolveReviewItem_DeletedCategorizedDrop(t *testing.T) {
 	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{}); err != nil {
 		t.Fatal(err)
 	}
-	items := openItems(t, e)
+	items := openDecisions(t, e)
 	if len(items) != 1 {
 		t.Fatalf("want 1 review item, got %d", len(items))
 	}
 
-	if _, err := e.svc.ResolveReviewItem(ctx, service.ResolveReviewItemInput{
-		ReviewItemID: items[0].ID,
+	if _, err := e.svc.ResolveReviewDecision(ctx, service.ResolveReviewDecisionInput{
+		DecisionID: items[0].ID,
 		Action:       service.ReviewActionDropEntry,
 	}); err != nil {
 		t.Fatal(err)
 	}
 
-	if open := openItems(t, e); len(open) != 0 {
+	if open := openDecisions(t, e); len(open) != 0 {
 		t.Fatalf("item should be resolved, got %d open", len(open))
 	}
 	events, err := e.svc.ListEvents(ctx, e.periodID)
@@ -45,7 +45,7 @@ func TestResolveReviewItem_DeletedCategorizedDrop(t *testing.T) {
 	}
 }
 
-func TestResolveReviewItem_DeletedCategorizedKeep(t *testing.T) {
+func TestResolveReviewDecision_DeletedCategorizedKeep(t *testing.T) {
 	e := newSyncEnv(t)
 	ctx := context.Background()
 
@@ -56,16 +56,16 @@ func TestResolveReviewItem_DeletedCategorizedKeep(t *testing.T) {
 	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{}); err != nil {
 		t.Fatal(err)
 	}
-	items := openItems(t, e)
+	items := openDecisions(t, e)
 
-	if _, err := e.svc.ResolveReviewItem(ctx, service.ResolveReviewItemInput{
-		ReviewItemID: items[0].ID,
+	if _, err := e.svc.ResolveReviewDecision(ctx, service.ResolveReviewDecisionInput{
+		DecisionID: items[0].ID,
 		Action:       service.ReviewActionKeepEntry,
 	}); err != nil {
 		t.Fatal(err)
 	}
 
-	if open := openItems(t, e); len(open) != 0 {
+	if open := openDecisions(t, e); len(open) != 0 {
 		t.Fatalf("item should be resolved, got %d open", len(open))
 	}
 	events, err := e.svc.ListEvents(ctx, e.periodID)
@@ -99,12 +99,12 @@ func TestResolveReviewItem_DeletedCategorizedKeep(t *testing.T) {
 	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{}); err != nil {
 		t.Fatal(err)
 	}
-	if open := openItems(t, e); len(open) != 0 {
+	if open := openDecisions(t, e); len(open) != 0 {
 		t.Fatalf("resolved deleted event should not requeue, got %d open", len(open))
 	}
 }
 
-func TestResolveReviewItem_TitleChangedAccept(t *testing.T) {
+func TestResolveReviewDecision_TitleChangedAccept(t *testing.T) {
 	e := newSyncEnv(t)
 	ctx := context.Background()
 
@@ -118,21 +118,21 @@ func TestResolveReviewItem_TitleChangedAccept(t *testing.T) {
 	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{renamed}); err != nil {
 		t.Fatal(err)
 	}
-	items := openItems(t, e)
+	items := openDecisions(t, e)
 
-	if _, err := e.svc.ResolveReviewItem(ctx, service.ResolveReviewItemInput{
-		ReviewItemID: items[0].ID,
+	if _, err := e.svc.ResolveReviewDecision(ctx, service.ResolveReviewDecisionInput{
+		DecisionID: items[0].ID,
 		Action:       service.ReviewActionAccept,
 	}); err != nil {
 		t.Fatal(err)
 	}
 
-	if open := openItems(t, e); len(open) != 0 {
+	if open := openDecisions(t, e); len(open) != 0 {
 		t.Fatalf("item should be resolved, got %d open", len(open))
 	}
 }
 
-func TestResolveReviewItem_NewInGapUseEvent(t *testing.T) {
+func TestResolveReviewDecision_NewInGapUseEvent(t *testing.T) {
 	e := newSyncEnv(t)
 	ctx := context.Background()
 
@@ -154,10 +154,10 @@ func TestResolveReviewItem_NewInGapUseEvent(t *testing.T) {
 	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{inc}); err != nil {
 		t.Fatal(err)
 	}
-	items := openItems(t, e)
+	items := openDecisions(t, e)
 
-	if _, err := e.svc.ResolveReviewItem(ctx, service.ResolveReviewItemInput{
-		ReviewItemID: items[0].ID,
+	if _, err := e.svc.ResolveReviewDecision(ctx, service.ResolveReviewDecisionInput{
+		DecisionID: items[0].ID,
 		Action:       service.ReviewActionUseEvent,
 	}); err != nil {
 		t.Fatal(err)
@@ -182,7 +182,7 @@ func TestResolveReviewItem_NewInGapUseEvent(t *testing.T) {
 	}
 }
 
-func TestResolveReviewItem_NewInGapKeepGapPersistsAcrossSync(t *testing.T) {
+func TestResolveReviewDecision_NewInGapKeepGapPersistsAcrossSync(t *testing.T) {
 	e := newSyncEnv(t)
 	ctx := context.Background()
 
@@ -204,13 +204,13 @@ func TestResolveReviewItem_NewInGapKeepGapPersistsAcrossSync(t *testing.T) {
 	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{inc}); err != nil {
 		t.Fatal(err)
 	}
-	items := openItems(t, e)
+	items := openDecisions(t, e)
 	if len(items) != 1 {
 		t.Fatalf("want 1 review item, got %d", len(items))
 	}
 
-	if _, err := e.svc.ResolveReviewItem(ctx, service.ResolveReviewItemInput{
-		ReviewItemID: items[0].ID,
+	if _, err := e.svc.ResolveReviewDecision(ctx, service.ResolveReviewDecisionInput{
+		DecisionID: items[0].ID,
 		Action:       service.ReviewActionKeepGap,
 	}); err != nil {
 		t.Fatal(err)
@@ -219,7 +219,7 @@ func TestResolveReviewItem_NewInGapKeepGapPersistsAcrossSync(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if open := openItems(t, e); len(open) != 0 {
+	if open := openDecisions(t, e); len(open) != 0 {
 		t.Fatalf("resolved gap conflict should not requeue, got %d open", len(open))
 	}
 	events, err := e.svc.ListEvents(ctx, e.periodID)
@@ -231,7 +231,7 @@ func TestResolveReviewItem_NewInGapKeepGapPersistsAcrossSync(t *testing.T) {
 	}
 }
 
-func TestResolveReviewItem_AllDayExcludeKeepsEventVisible(t *testing.T) {
+func TestResolveReviewDecision_AllDayExcludeKeepsEventVisible(t *testing.T) {
 	e := newSyncEnv(t)
 	ctx := context.Background()
 
@@ -242,13 +242,13 @@ func TestResolveReviewItem_AllDayExcludeKeepsEventVisible(t *testing.T) {
 	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{allDay}); err != nil {
 		t.Fatal(err)
 	}
-	items := openItems(t, e)
+	items := openDecisions(t, e)
 	if len(items) != 1 || items[0].Kind != "all_day" {
 		t.Fatalf("want one all_day review item, got %+v", items)
 	}
 
-	if _, err := e.svc.ResolveReviewItem(ctx, service.ResolveReviewItemInput{
-		ReviewItemID: items[0].ID,
+	if _, err := e.svc.ResolveReviewDecision(ctx, service.ResolveReviewDecisionInput{
+		DecisionID: items[0].ID,
 		Action:       service.ReviewActionExclude,
 	}); err != nil {
 		t.Fatal(err)
@@ -274,7 +274,7 @@ func TestResolveReviewItem_AllDayExcludeKeepsEventVisible(t *testing.T) {
 	}
 }
 
-func TestResolveReviewItem_TentativeExclude(t *testing.T) {
+func TestResolveReviewDecision_TentativeExclude(t *testing.T) {
 	e := newSyncEnv(t)
 	ctx := context.Background()
 
@@ -284,10 +284,10 @@ func TestResolveReviewItem_TentativeExclude(t *testing.T) {
 	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{tentative}); err != nil {
 		t.Fatal(err)
 	}
-	items := openItems(t, e)
+	items := openDecisions(t, e)
 
-	if _, err := e.svc.ResolveReviewItem(ctx, service.ResolveReviewItemInput{
-		ReviewItemID: items[0].ID,
+	if _, err := e.svc.ResolveReviewDecision(ctx, service.ResolveReviewDecisionInput{
+		DecisionID: items[0].ID,
 		Action:       service.ReviewActionExclude,
 	}); err != nil {
 		t.Fatal(err)
@@ -304,7 +304,7 @@ func TestResolveReviewItem_TentativeExclude(t *testing.T) {
 	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{tentative}); err != nil {
 		t.Fatal(err)
 	}
-	if open := openItems(t, e); len(open) != 0 {
+	if open := openDecisions(t, e); len(open) != 0 {
 		t.Fatalf("resolved tentative event should not requeue, got %d open", len(open))
 	}
 	events, err = e.svc.ListEvents(ctx, e.periodID)

@@ -43,6 +43,10 @@ func TestRemovedRESTOperationsReturnNotFound(t *testing.T) {
 		"/v1/github/oauth/start",
 		"/v1/github/oauth/handoff",
 		"/v1/github/oauth/revoke",
+		"/v1/slack/oauth/start",
+		"/v1/slack/oauth/handoff",
+		"/v1/slack/oauth/refresh",
+		"/v1/slack/oauth/revoke",
 	} {
 		t.Run(path, func(t *testing.T) {
 			recorder := httptest.NewRecorder()

@@ -11,6 +11,7 @@ import (
 	"github.com/dylanbr0wn/shiet/internal/broker/codes"
 	"github.com/dylanbr0wn/shiet/internal/broker/ratelimit"
 	"github.com/dylanbr0wn/shiet/internal/broker/store"
+	"github.com/dylanbr0wn/shiet/internal/integration/oauth"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -222,7 +223,7 @@ func (s BrokerService) exchangeHandoff(ctx context.Context, req *brokerv1.Exchan
 }
 
 func (s BrokerService) refreshToken(ctx context.Context, req *brokerv1.RefreshTokenRequest, meta requestMetadata) (*brokerv1.RefreshTokenResponse, *operationError) {
-	if req.Provider == brokerv1.Provider_PROVIDER_GITHUB {
+	if req.Provider == brokerv1.Provider_PROVIDER_GITHUB || req.Provider == brokerv1.Provider_PROVIDER_SLACK {
 		return nil, opError(codes.OperationNotSupported)
 	}
 	if req.Provider != brokerv1.Provider_PROVIDER_GOOGLE {
@@ -267,7 +268,7 @@ func (s BrokerService) refreshToken(ctx context.Context, req *brokerv1.RefreshTo
 			s.Metrics.IncRateLimited(codes.SurfaceRefreshFailure)
 			return nil, opError(codes.RateLimited)
 		}
-		var googleErr *googleTokenError
+		var googleErr *providerTokenError
 		if errors.As(err, &googleErr) && googleErr.Code == codes.GoogleInvalidGrant {
 			s.Metrics.IncRefreshFailure(codes.OutcomeInvalidGrant)
 			s.Metrics.IncQuotaRisk(codes.QuotaInvalidGrant)
@@ -298,8 +299,8 @@ func (s BrokerService) revokeToken(ctx context.Context, req *brokerv1.RevokeToke
 		return nil, opError(codes.ProviderNotConfigured)
 	}
 	limitDimension := meta.ipBucket
-	if provider == "github" {
-		limitDimension = "github|" + limitDimension
+	if provider != oauth.ProviderGoogle {
+		limitDimension = provider + "|" + limitDimension
 	}
 	if !s.allow(ratelimit.Key(codes.LimitKeyRevoke, limitDimension), limitRevoke) {
 		s.Metrics.IncRateLimited(codes.SurfaceRevoke)
@@ -326,9 +327,14 @@ func (s BrokerService) revokeToken(ctx context.Context, req *brokerv1.RevokeToke
 		if accessToken == "" || req.GetRefreshToken() != "" {
 			return nil, opError(codes.AccessTokenRequired)
 		}
-		if err := s.revokeGitHubToken(ctx, accessToken); err != nil {
-			s.Metrics.IncRevokeOutcome(codes.OutcomeGitHubFailed)
-			return nil, opError(codes.GitHubRevokeFailed)
+		if provider == oauth.ProviderGitHub {
+			if err := s.revokeGitHubToken(ctx, accessToken); err != nil {
+				s.Metrics.IncRevokeOutcome(codes.OutcomeGitHubFailed)
+				return nil, opError(codes.GitHubRevokeFailed)
+			}
+		} else if err := s.revokeSlackToken(ctx, accessToken); err != nil {
+			s.Metrics.IncRevokeOutcome(codes.OutcomeSlackFailed)
+			return nil, opError(codes.SlackRevokeFailed)
 		}
 	}
 	s.Metrics.IncRevokeOK()
@@ -343,6 +349,8 @@ func providerName(provider brokerv1.Provider) (string, bool) {
 		return "google", true
 	case brokerv1.Provider_PROVIDER_GITHUB:
 		return "github", true
+	case brokerv1.Provider_PROVIDER_SLACK:
+		return "slack", true
 	default:
 		return "", false
 	}

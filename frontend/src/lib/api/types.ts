@@ -67,6 +67,15 @@ export interface GitHubRepo {
   selected: boolean;
 }
 
+export interface SlackChannel {
+  id: number;
+  accountId: string;
+  externalId: string;
+  name: string;
+  private: boolean;
+  selected: boolean;
+}
+
 export interface SyncResult {
   added: number;
   updated: number;
@@ -115,6 +124,7 @@ export interface GapFill {
   end: string;
   categoryId?: number;
   note?: string;
+  description?: string;
   source: string;
 }
 
@@ -125,6 +135,7 @@ export interface ManualEventInput {
   endMinutes: number;
   categoryId?: number;
   note?: string;
+  description?: string;
 }
 
 export interface ManualEventUpdateInput extends ManualEventInput {
@@ -141,24 +152,29 @@ export interface ManualEventResult {
   id: number;
 }
 
-export interface ReviewItem {
-  id: number;
-  periodId: number;
-  kind: string;
-  eventId?: number;
-  payload: string;
-  status: string;
-  conflictKey?: string;
-  decisionAction?: string;
-  decisionPayload?: string;
+export interface ReviewDecisionAction {
+  key: string;
+  label: string;
+  role: "primary" | "secondary";
+  variant?: "default" | "outline" | "destructive";
 }
 
-export interface ResolveReviewItemInput {
-  reviewItemId: number;
+export interface ReviewDecision {
+  id: number;
+  kind: string;
+  eventId?: number;
+  tag: string;
+  title: string;
+  description: string;
+  actions: ReviewDecisionAction[];
+}
+
+export interface ResolveReviewDecisionInput {
+  decisionId: number;
   action: string;
 }
 
-export interface ResolveReviewItemResult {
+export interface ResolveReviewDecisionResult {
   periodId: number;
 }
 
@@ -225,4 +241,49 @@ export interface GapSuggestion {
 export interface TimeWindow {
   start: string;
   end: string;
+}
+
+export interface ExportTemplate {
+  id: number;
+  key: string;
+  name: string;
+  description: string;
+  format: "csv" | "tsv" | "text" | string;
+  builtin: boolean;
+  body: string;
+}
+
+export interface CreateExportTemplateInput {
+  key?: string;
+  name: string;
+  description?: string;
+  format: "csv" | "tsv" | "text" | string;
+  body: string;
+}
+
+export interface UpdateExportTemplateInput {
+  id: number;
+  name: string;
+  description?: string;
+  format: "csv" | "tsv" | "text" | string;
+  body: string;
+}
+
+export interface PreviewExportInput {
+  periodId: number;
+  templateKey?: string;
+  format?: string;
+  body?: string;
+}
+
+export interface PeriodExportRender {
+  filename: string;
+  content: string;
+  format: string;
+}
+
+export interface ExportFieldInfo {
+  field: string;
+  label: string;
+  description: string;
 }

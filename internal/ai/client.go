@@ -11,7 +11,12 @@ import (
 	"time"
 )
 
-const defaultTimeout = 30 * time.Second
+const (
+	defaultTimeout = 30 * time.Second
+	// DefaultMaxTokens is the completion budget when none is configured.
+	// Local reasoning models often spend most of this on thinking tokens.
+	DefaultMaxTokens = 512
+)
 
 // Client talks to an OpenAI-compatible HTTP API.
 type Client struct {
@@ -69,9 +74,9 @@ func (c *Client) ListModels(ctx context.Context) ([]string, error) {
 }
 
 type chatRequest struct {
-	Model    string        `json:"model"`
-	Messages []chatMessage `json:"messages"`
-	MaxTokens int          `json:"max_tokens,omitempty"`
+	Model     string        `json:"model"`
+	Messages  []chatMessage `json:"messages"`
+	MaxTokens int           `json:"max_tokens,omitempty"`
 }
 
 type chatMessage struct {
@@ -145,14 +150,19 @@ func validationReplyOK(content string) bool {
 }
 
 // ChatCompletion sends a chat request and returns the assistant text.
-func (c *Client) ChatCompletion(ctx context.Context, model, systemPrompt, userPrompt string) (string, error) {
+// maxTokens caps completion (and, on some local runtimes, thinking) tokens;
+// values <= 0 fall back to DefaultMaxTokens.
+func (c *Client) ChatCompletion(ctx context.Context, model, systemPrompt, userPrompt string, maxTokens int) (string, error) {
+	if maxTokens <= 0 {
+		maxTokens = DefaultMaxTokens
+	}
 	body, err := json.Marshal(chatRequest{
 		Model: model,
 		Messages: []chatMessage{
 			{Role: "system", Content: systemPrompt},
 			{Role: "user", Content: userPrompt},
 		},
-		MaxTokens: 64,
+		MaxTokens: maxTokens,
 	})
 	if err != nil {
 		return "", err

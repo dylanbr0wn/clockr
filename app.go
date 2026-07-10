@@ -11,6 +11,7 @@ import (
 	"github.com/dylanbr0wn/shiet/internal/integration/connection"
 	"github.com/dylanbr0wn/shiet/internal/integration/github"
 	"github.com/dylanbr0wn/shiet/internal/integration/google"
+	"github.com/dylanbr0wn/shiet/internal/integration/slack"
 	"github.com/dylanbr0wn/shiet/internal/service"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -22,6 +23,7 @@ type App struct {
 	Svc      *service.Service
 	google   *google.Provider
 	github   *github.Provider
+	slack    *slack.Provider
 	registry *connection.Registry
 }
 
@@ -54,12 +56,13 @@ func (a *App) GetGoogleAuthStatus() GoogleAuthStatus {
 // live at bind time (Wails reflects bound instances up front).
 func NewApp(conn *sql.DB, cfg config.Config) *App {
 	svc := service.New(conn)
-	googleProvider, githubProvider, registry := wireIntegrations(conn, svc, cfg)
+	googleProvider, githubProvider, slackProvider, registry := wireIntegrations(conn, svc, cfg)
 	return &App{
 		conn:     conn,
 		Svc:      svc,
 		google:   googleProvider,
 		github:   githubProvider,
+		slack:    slackProvider,
 		registry: registry,
 	}
 }
@@ -196,6 +199,42 @@ func (a *App) RefreshGitHubRepos(accountID string) error {
 	return err
 }
 
+// ConnectSlack runs desktop OAuth for a Slack workspace.
+func (a *App) ConnectSlack() (connection.Connection, error) {
+	return a.slack.Connect(a.callContext())
+}
+
+// SlackAuthMode returns the configured connect mode for Slack OAuth.
+func (a *App) SlackAuthMode() string {
+	return a.slack.AuthMode
+}
+
+// SlackOAuthAvailable reports whether Slack browser OAuth can be started.
+func (a *App) SlackOAuthAvailable() bool {
+	return a.slack.OAuthAvailable()
+}
+
+// DisconnectSlack removes a Slack connection, tokens, and synced channels.
+func (a *App) DisconnectSlack(accountID string) error {
+	return a.slack.Disconnect(a.callContext(), accountID)
+}
+
+// ListSlackChannels returns synced Slack channels for evidence selection.
+func (a *App) ListSlackChannels() ([]service.SlackChannel, error) {
+	return a.Svc.ListSlackChannels(a.callContext())
+}
+
+// SetSlackChannelSelected toggles whether a channel is included as evidence.
+func (a *App) SetSlackChannelSelected(channelID int64, selected bool) error {
+	return a.Svc.SetSlackChannelSelected(a.callContext(), channelID, selected)
+}
+
+// RefreshSlackChannels re-lists channels for a connected Slack workspace.
+func (a *App) RefreshSlackChannels(accountID string) error {
+	_, err := a.slack.SyncChannels(a.callContext(), accountID)
+	return err
+}
+
 // ListEvents returns active events for a period.
 func (a *App) ListEvents(periodID int64) ([]service.Event, error) {
 	return a.Svc.ListEvents(a.callContext(), periodID)
@@ -206,14 +245,14 @@ func (a *App) ListGapFills(periodID int64) ([]service.GapFill, error) {
 	return a.Svc.ListGapFills(a.callContext(), periodID)
 }
 
-// ListOpenReviewItems returns unresolved review items for a period.
-func (a *App) ListOpenReviewItems(periodID int64) ([]service.ReviewItem, error) {
-	return a.Svc.ListOpenReviewItems(a.callContext(), periodID)
+// ListReviewDecisions returns user-facing review decisions for a period.
+func (a *App) ListReviewDecisions(periodID int64) ([]service.ReviewDecision, error) {
+	return a.Svc.ListReviewDecisions(a.callContext(), periodID)
 }
 
-// ResolveReviewItem applies a user decision to a review-queue item.
-func (a *App) ResolveReviewItem(input service.ResolveReviewItemInput) (service.ResolveReviewItemResult, error) {
-	return a.Svc.ResolveReviewItem(a.callContext(), input)
+// ResolveReviewDecision applies a user decision to a review decision.
+func (a *App) ResolveReviewDecision(input service.ResolveReviewDecisionInput) (service.ResolveReviewDecisionResult, error) {
+	return a.Svc.ResolveReviewDecision(a.callContext(), input)
 }
 
 // ExcludeEvent hides a synced calendar event from the schedule for a period.
@@ -316,7 +355,7 @@ func (a *App) UpdateManualEvent(input service.ManualEventUpdateInput) (ManualEve
 	return ManualEventResult{PeriodID: fill.PeriodID, ID: fill.ID}, nil
 }
 
-// DeleteManualEvent removes a scheduler-created manual block.
+// DeleteManualEvent removes a scheduler-created block (manual or gap fill).
 func (a *App) DeleteManualEvent(input service.ManualEventDeleteInput) (ManualEventResult, error) {
 	if err := a.Svc.DeleteManualEvent(a.callContext(), input); err != nil {
 		return ManualEventResult{}, err
@@ -345,6 +384,79 @@ func (a *App) SaveExportFile(defaultFilename, content string) (string, error) {
 		return "", fmt.Errorf("write export file: %w", err)
 	}
 	return path, nil
+}
+
+// ExportPeriodCSV renders a CSV/TSV export template for a period and opens the save dialog.
+// templateKey selects the preset (e.g. matrix_csv, flat_daily_csv); empty defaults to matrix_csv.
+// Returns the saved path, or an empty string when the dialog is cancelled.
+func (a *App) ExportPeriodCSV(periodID int64, templateKey string) (string, error) {
+	if templateKey == "" {
+		templateKey = service.ExportTemplateMatrixCSV
+	}
+	render, err := a.Svc.RenderPeriodExport(a.callContext(), periodID, templateKey)
+	if err != nil {
+		return "", err
+	}
+	if render.Format != "csv" && render.Format != "tsv" {
+		return "", fmt.Errorf("export template %q is not a tabular format", templateKey)
+	}
+	return a.SaveExportFile(render.Filename, render.Content)
+}
+
+// ExportPeriodText renders a text export template for a period (clipboard copy).
+// templateKey selects the preset (e.g. text_summary); empty defaults to text_summary.
+func (a *App) ExportPeriodText(periodID int64, templateKey string) (string, error) {
+	if templateKey == "" {
+		templateKey = service.ExportTemplateTextSummary
+	}
+	render, err := a.Svc.RenderPeriodExport(a.callContext(), periodID, templateKey)
+	if err != nil {
+		return "", err
+	}
+	if render.Format != "text" {
+		return "", fmt.Errorf("export template %q is not a text format", templateKey)
+	}
+	return render.Content, nil
+}
+
+// BuildPeriodExport returns the period export intermediate model.
+func (a *App) BuildPeriodExport(periodID int64) (service.PeriodExportModel, error) {
+	return a.Svc.BuildPeriodExport(a.callContext(), periodID)
+}
+
+// ListExportTemplates returns available export presets.
+func (a *App) ListExportTemplates() ([]service.ExportTemplate, error) {
+	return a.Svc.ListExportTemplates(a.callContext())
+}
+
+// CreateExportTemplate creates a user-owned export template (csv/tsv/text).
+func (a *App) CreateExportTemplate(input service.CreateExportTemplateInput) (service.ExportTemplate, error) {
+	return a.Svc.CreateExportTemplate(a.callContext(), input)
+}
+
+// UpdateExportTemplate updates a user-owned export template.
+func (a *App) UpdateExportTemplate(input service.UpdateExportTemplateInput) (service.ExportTemplate, error) {
+	return a.Svc.UpdateExportTemplate(a.callContext(), input)
+}
+
+// DeleteExportTemplate deletes a user-owned export template.
+func (a *App) DeleteExportTemplate(id int64) error {
+	return a.Svc.DeleteExportTemplate(a.callContext(), id)
+}
+
+// DuplicateExportTemplate copies any template (including builtins) as a custom row.
+func (a *App) DuplicateExportTemplate(key string) (service.ExportTemplate, error) {
+	return a.Svc.DuplicateExportTemplate(a.callContext(), key)
+}
+
+// PreviewExport renders a saved template or draft body against a period.
+func (a *App) PreviewExport(input service.PreviewExportInput) (service.PeriodExportRender, error) {
+	return a.Svc.PreviewExport(a.callContext(), input)
+}
+
+// ListExportFieldCatalog returns fields valid for a grain/layout combination.
+func (a *App) ListExportFieldCatalog(grain, layout string) ([]service.ExportFieldInfo, error) {
+	return service.ListExportFieldCatalog(grain, layout)
 }
 
 func (a *App) callContext() context.Context {

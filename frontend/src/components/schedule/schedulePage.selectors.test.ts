@@ -53,7 +53,7 @@ describe("schedulePage.selectors", () => {
         } as never,
       ],
       gapTimeline: [],
-      reviewItems: [],
+      reviewDecisions: [],
       tzSegments: [],
       draftPlacements: {},
       pendingCreate: null,

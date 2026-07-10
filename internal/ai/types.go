@@ -51,6 +51,7 @@ type EvidencePayload struct {
 	Provider string `json:"provider,omitempty"`
 	Kind     string `json:"kind"`
 	Summary  string `json:"summary"`
+	Source   string `json:"source,omitempty"`
 	Detail   string `json:"detail,omitempty"`
 	Start    string `json:"start,omitempty"`
 	End      string `json:"end,omitempty"`

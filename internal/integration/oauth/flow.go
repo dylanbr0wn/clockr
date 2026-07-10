@@ -3,6 +3,7 @@ package oauth
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -18,7 +19,6 @@ import (
 
 	"github.com/dylanbr0wn/shiet/internal/integration/secrets"
 	"github.com/pkg/browser"
-	"golang.org/x/oauth2"
 )
 
 const (
@@ -77,13 +77,33 @@ func (f *Flow) Authorize(ctx context.Context, accountID string) (Result, error) 
 		return Result{}, err
 	}
 
-	oauthCfg := f.Config.OAuth2Config(redirectURL)
-	authURL := oauthCfg.AuthCodeURL(
-		state,
-		oauth2.AccessTypeOffline,
-		oauth2.ApprovalForce,
-		oauth2.S256ChallengeOption(verifier),
-	)
+	provider, ok := Lookup(f.Config.Provider)
+	if !ok {
+		// Fall back to config endpoints when an unknown provider id is used in tests.
+		provider = Provider{
+			ID:            f.Config.Provider,
+			AuthURL:       f.Config.AuthURL,
+			TokenURL:      f.Config.TokenURL,
+			AuthStyle:     f.Config.AuthStyle,
+			DefaultScopes: append([]string(nil), f.Config.Scopes...),
+		}
+	} else {
+		// Local/BYO tests may override the token URL while keeping registry metadata.
+		if strings.TrimSpace(f.Config.TokenURL) != "" {
+			provider.TokenURL = f.Config.TokenURL
+		}
+		if strings.TrimSpace(f.Config.AuthURL) != "" {
+			provider.AuthURL = f.Config.AuthURL
+		}
+	}
+	challenge := pkceS256(verifier)
+	authURL, err := BuildAuthorizationURL(provider, ClientCredentials{
+		ClientID:     f.Config.ClientID,
+		ClientSecret: f.Config.ClientSecret,
+	}, redirectURL, state, challenge, f.Config.Scopes)
+	if err != nil {
+		return Result{}, err
+	}
 
 	codeCh := make(chan string, 1)
 	errCh := make(chan error, 1)
@@ -154,7 +174,12 @@ func (f *Flow) Authorize(ctx context.Context, accountID string) (Result, error) 
 	case code = <-codeCh:
 	}
 
-	oauthTok, err := oauthCfg.Exchange(ctx, code, oauth2.VerifierOption(verifier))
+	exchanged, err := ExchangeAuthorizationCode(ctx, provider, ClientCredentials{
+		ClientID:     f.Config.ClientID,
+		ClientSecret: f.Config.ClientSecret,
+	}, redirectURL, code, verifier, ExchangeOptions{
+		TokenURL: f.Config.TokenURL,
+	})
 	if err != nil {
 		exchangeErr := fmt.Errorf("exchange code: %w", describeExchangeError(err, f.Config.Provider))
 		sendCallbackResult(resultCh, callbackResult{
@@ -165,7 +190,12 @@ func (f *Flow) Authorize(ctx context.Context, accountID string) (Result, error) 
 		return Result{}, exchangeErr
 	}
 
-	token := secrets.TokenFromOAuth2(oauthTok)
+	token := secrets.Token{
+		AccessToken:  exchanged.AccessToken,
+		RefreshToken: exchanged.RefreshToken,
+		TokenType:    exchanged.TokenType,
+		Expiry:       exchanged.Expiry,
+	}
 	if err := f.Store.Set(f.Config.Provider, accountID, token); err != nil {
 		sendCallbackResult(resultCh, callbackResult{
 			status:  http.StatusInternalServerError,
@@ -197,9 +227,9 @@ func sendCallbackResult(ch chan<- callbackResult, result callbackResult) {
 }
 
 func describeExchangeError(err error, provider string) error {
-	var retrieveErr *oauth2.RetrieveError
-	if errors.As(err, &retrieveErr) && isDesktopClientTypeError(retrieveErr) {
-		if strings.EqualFold(strings.TrimSpace(provider), "github") {
+	var exchangeErr *ExchangeError
+	if errors.As(err, &exchangeErr) && isDesktopClientTypeExchangeError(exchangeErr) {
+		if strings.EqualFold(strings.TrimSpace(provider), ProviderGitHub) {
 			return fmt.Errorf("%w. GitHub rejected the local OAuth token exchange because the configured OAuth App credentials are incomplete. Set github.client_id and github.client_secret (github.auth_mode=local), or use github.auth_mode=broker for public builds", err)
 		}
 		return fmt.Errorf("%w. Google rejected the OAuth token exchange because the configured local/BYO client requires a client secret. Set google.client_secret or SHIET_GOOGLE_CLIENT_SECRET from the Google Desktop OAuth credential bundle (google.auth_mode=local); desktop apps cannot keep this value confidential, so treat it as a provider-required public credential rather than a security boundary. Public builds should use google.auth_mode=broker instead of shipping a shared secret", err)
@@ -207,12 +237,12 @@ func describeExchangeError(err error, provider string) error {
 	return err
 }
 
-func isDesktopClientTypeError(err *oauth2.RetrieveError) bool {
-	if err.ErrorCode == "invalid_client" {
+func isDesktopClientTypeExchangeError(err *ExchangeError) bool {
+	if err.Code == "invalid_client" {
 		return true
 	}
-	return err.ErrorCode == "invalid_request" &&
-		strings.Contains(strings.ToLower(err.ErrorDescription), "client_secret")
+	return err.Code == "invalid_request" &&
+		strings.Contains(strings.ToLower(err.Description), "client_secret")
 }
 
 func callbackPage(message string) string {
@@ -257,6 +287,11 @@ func randomString(n int) (string, error) {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+func pkceS256(verifier string) string {
+	sum := sha256.Sum256([]byte(verifier))
+	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
 
 // ParseCallback extracts the authorization code from a loopback callback URL.

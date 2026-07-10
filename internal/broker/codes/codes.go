@@ -6,6 +6,7 @@ package codes
 // Broker error identifiers returned in BrokerErrorDetail.code.
 const (
 	InvalidConfig                             = "invalid_config"
+	InvalidJSON                               = "invalid_json"
 	ProviderNotConfigured                     = "provider_not_configured"
 	DatastoreUnavailable                      = "datastore_unavailable"
 	DesktopSessionAndHandoffChallengeRequired = "desktop_session_id_and_handoff_challenge_required"
@@ -28,6 +29,7 @@ const (
 	GoogleTokenRefreshFailed                  = "google_token_refresh_failed"
 	GoogleRevokeFailed                        = "google_revoke_failed"
 	GitHubRevokeFailed                        = "github_revoke_failed"
+	SlackRevokeFailed                         = "slack_revoke_failed"
 	RateLimited                               = "rate_limited"
 	AuthDisabled                              = "auth_disabled"
 	RefreshDisabled                           = "refresh_disabled"
@@ -81,6 +83,7 @@ const (
 	OutcomeInvalidGrant       = "invalid_grant"
 	OutcomeGoogleFailed       = "google_failed"
 	OutcomeGitHubFailed       = "github_failed"
+	OutcomeSlackFailed        = "slack_failed"
 	OutcomeAlreadyRevoked     = "already_revoked"
 )
 

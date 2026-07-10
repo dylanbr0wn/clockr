@@ -6,7 +6,7 @@ interface BuildSchedulePageStatusArgs {
   eventsCount: number;
   gapFillsCount: number;
   categoriesCount: number;
-  reviewItemsCount: number;
+  reviewDecisionsCount: number;
 }
 
 export function buildSchedulePageStatus({
@@ -15,7 +15,7 @@ export function buildSchedulePageStatus({
   eventsCount,
   gapFillsCount,
   categoriesCount,
-  reviewItemsCount,
+  reviewDecisionsCount,
 }: BuildSchedulePageStatusArgs) {
   return {
     isBackendLoading: anyLoading(loadingFlags),
@@ -24,7 +24,7 @@ export function buildSchedulePageStatus({
       events: eventsCount,
       gapFills: gapFillsCount,
       categories: categoriesCount,
-      reviewItems: reviewItemsCount,
+      reviewDecisions: reviewDecisionsCount,
     },
   };
 }

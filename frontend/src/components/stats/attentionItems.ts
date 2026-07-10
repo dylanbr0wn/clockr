@@ -1,4 +1,4 @@
-import type { Event, ReviewItem } from "@/lib/api";
+import type { Event, ReviewDecision } from "@/lib/api";
 import { formatDecimalHours } from "@/lib/export/formatters";
 import type { ScheduleGapOverlay } from "@/lib/schedule";
 
@@ -12,68 +12,19 @@ export interface AttentionItem {
   actionLabel: string;
 }
 
-interface ReviewPayload {
-  title?: string;
-  from?: string;
-  to?: string;
-}
-
-function parsePayload(payload: string): ReviewPayload {
-  try {
-    return JSON.parse(payload) as ReviewPayload;
-  } catch {
-    return {};
-  }
-}
-
-function eventTitle(event: Event | undefined, payload: ReviewPayload) {
-  return event?.title || payload.title || "Untitled event";
-}
-
 function gapDurationMinutes(gap: ScheduleGapOverlay) {
   return Math.max(0, gap.endMinutes - gap.startMinutes);
 }
 
-function overlapSubtitle(items: ReviewItem[], eventsById: Map<number, Event>) {
-  const first = items[0];
-  const payload = parsePayload(first.payload);
-  const event =
-    typeof first.eventId === "number" ? eventsById.get(first.eventId) : undefined;
-  const title = eventTitle(event, payload);
-
-  if (items.length === 1) {
-    return title;
-  }
-
-  return `${title} and ${items.length - 1} more`;
-}
-
 export function buildAttentionItems({
-  reviewItems,
-  events,
+  reviewDecisions,
   visibleGaps,
 }: {
-  reviewItems: ReviewItem[];
+  reviewDecisions: ReviewDecision[];
   events: Event[];
   visibleGaps: ScheduleGapOverlay[];
 }): AttentionItem[] {
-  const eventsById = new Map(events.map((event) => [event.id, event]));
-  const openItems = reviewItems.filter((item) => item.status === "open");
   const items: AttentionItem[] = [];
-
-  const overlaps = openItems.filter((item) => item.kind === "overlap");
-  if (overlaps.length > 0) {
-    items.push({
-      id: "overlap",
-      iconTone: "amber",
-      title:
-        overlaps.length === 1
-          ? "1 overlapping event"
-          : `${overlaps.length} overlapping events`,
-      subtitle: overlapSubtitle(overlaps, eventsById),
-      actionLabel: "Resolve",
-    });
-  }
 
   if (visibleGaps.length > 0) {
     const totalGapMinutes = visibleGaps.reduce(
@@ -93,7 +44,9 @@ export function buildAttentionItems({
     });
   }
 
-  const deleted = openItems.filter((item) => item.kind === "deleted_categorized");
+  const deleted = reviewDecisions.filter(
+    (decision) => decision.kind === "deleted_categorized",
+  );
   if (deleted.length > 0) {
     items.push({
       id: "deleted",
@@ -107,11 +60,8 @@ export function buildAttentionItems({
     });
   }
 
-  const otherReview = openItems.filter(
-    (item) =>
-      item.kind !== "overlap" &&
-      item.kind !== "deleted_categorized" &&
-      item.kind !== "dedup_ambiguous",
+  const otherReview = reviewDecisions.filter(
+    (decision) => decision.kind !== "deleted_categorized",
   );
 
   if (otherReview.length > 0) {

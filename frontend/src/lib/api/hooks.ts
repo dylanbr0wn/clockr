@@ -4,6 +4,7 @@ import {
   computeGaps,
   connectGitHub,
   connectGoogle,
+  connectSlack,
   createGapFill,
   createCategory,
   createManualEvent,
@@ -11,6 +12,7 @@ import {
   deleteManualEvent,
   disconnectGitHub,
   disconnectGoogle,
+  disconnectSlack,
   discoverLocalAIEndpoints,
   ensureCurrentPeriod,
   excludeEvent,
@@ -18,6 +20,8 @@ import {
   getSetting,
   githubAuthMode,
   githubOAuthAvailable,
+  slackAuthMode,
+  slackOAuthAvailable,
   listAIModels,
   listCalendars,
   listCategories,
@@ -25,19 +29,28 @@ import {
   listEvents,
   listGapFills,
   listGitHubRepos,
+  listSlackChannels,
+  listExportTemplates,
+  createExportTemplate,
+  updateExportTemplate,
+  deleteExportTemplate,
+  duplicateExportTemplate,
+  previewExport,
   listIntegrationConnections,
-  listOpenReviewItems,
+  listReviewDecisions,
   listPeriods,
   listSelectedCalendars,
   listTzSegments,
   refreshGitHubRepos,
-  resolveReviewItem,
+  refreshSlackChannels,
+  resolveReviewDecision,
   saveAIConfig,
   saveAIEndpoint,
   saveAIModel,
   setCalendarDefaultCategory,
   setCalendarSelected,
   setGitHubRepoSelected,
+  setSlackChannelSelected,
   setSetting,
   suggestGapFill,
   syncPeriod,
@@ -63,6 +76,7 @@ export const shietQueryKeys = {
   all: ["shiet"] as const,
   calendars: () => [...shietQueryKeys.all, "calendars"] as const,
   categories: () => [...shietQueryKeys.all, "categories"] as const,
+  exportTemplates: () => [...shietQueryKeys.all, "exportTemplates"] as const,
   gapTimeline: (periodId: number) =>
     [...shietQueryKeys.period(periodId), "gapTimeline"] as const,
   period: (periodId: number) =>
@@ -76,8 +90,8 @@ export const shietQueryKeys = {
     [...shietQueryKeys.period(periodId), "eventCategoryOverlays"] as const,
   periodGapFills: (periodId: number) =>
     [...shietQueryKeys.period(periodId), "gapFills"] as const,
-  periodReviewItems: (periodId: number) =>
-    [...shietQueryKeys.period(periodId), "reviewItems"] as const,
+  periodReviewDecisions: (periodId: number) =>
+    [...shietQueryKeys.period(periodId), "reviewDecisions"] as const,
   periodTzSegments: (periodId: number) =>
     [...shietQueryKeys.period(periodId), "tzSegments"] as const,
   selectedCalendars: () =>
@@ -89,6 +103,10 @@ export const shietQueryKeys = {
   githubAuthMode: () => [...shietQueryKeys.all, "githubAuthMode"] as const,
   githubOAuthAvailable: () =>
     [...shietQueryKeys.all, "githubOAuthAvailable"] as const,
+  slackChannels: () => [...shietQueryKeys.all, "slackChannels"] as const,
+  slackAuthMode: () => [...shietQueryKeys.all, "slackAuthMode"] as const,
+  slackOAuthAvailable: () =>
+    [...shietQueryKeys.all, "slackOAuthAvailable"] as const,
   setting: (key: string) => [...shietQueryKeys.all, "settings", key] as const,
   aiDiscovery: () => [...shietQueryKeys.all, "ai", "discovery"] as const,
   aiClassification: (baseURL: string) =>
@@ -117,6 +135,93 @@ export function useCategories() {
   return useQuery({
     queryKey: shietQueryKeys.categories(),
     queryFn: listCategories,
+  });
+}
+
+export function useExportTemplates() {
+  return useQuery({
+    queryKey: shietQueryKeys.exportTemplates(),
+    queryFn: listExportTemplates,
+  });
+}
+
+function invalidateExportTemplateQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+) {
+  void queryClient.invalidateQueries({
+    queryKey: shietQueryKeys.exportTemplates(),
+  });
+}
+
+export function useCreateExportTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createExportTemplate,
+    onSuccess: () => {
+      invalidateExportTemplateQueries(queryClient);
+    },
+  });
+}
+
+export function useUpdateExportTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateExportTemplate,
+    onSuccess: () => {
+      invalidateExportTemplateQueries(queryClient);
+    },
+  });
+}
+
+export function useDeleteExportTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteExportTemplate,
+    onSuccess: () => {
+      invalidateExportTemplateQueries(queryClient);
+    },
+  });
+}
+
+export function useDuplicateExportTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: duplicateExportTemplate,
+    onSuccess: () => {
+      invalidateExportTemplateQueries(queryClient);
+    },
+  });
+}
+
+export function usePreviewExport(
+  input: {
+    periodId: number | null | undefined;
+    templateKey?: string;
+    format?: string;
+    body?: string;
+  },
+  enabled = true,
+) {
+  return useQuery({
+    enabled:
+      enabled &&
+      typeof input.periodId === "number" &&
+      (Boolean(input.body?.trim()) || Boolean(input.templateKey)),
+    queryKey: [
+      ...shietQueryKeys.exportTemplates(),
+      "preview",
+      input.periodId,
+      input.templateKey ?? "",
+      input.format ?? "",
+      input.body ?? "",
+    ],
+    queryFn: () =>
+      previewExport({
+        periodId: input.periodId as number,
+        templateKey: input.templateKey,
+        format: input.format,
+        body: input.body,
+      }),
   });
 }
 
@@ -295,23 +400,23 @@ export function useDeleteManualEvent() {
   });
 }
 
-export function useOpenReviewItems(periodId: number | null | undefined) {
+export function useReviewDecisions(periodId: number | null | undefined) {
   return useQuery({
     enabled: typeof periodId === "number",
-    queryKey: shietQueryKeys.periodReviewItems(periodId ?? 0),
-    queryFn: () => listOpenReviewItems(periodId as number),
+    queryKey: shietQueryKeys.periodReviewDecisions(periodId ?? 0),
+    queryFn: () => listReviewDecisions(periodId as number),
   });
 }
 
-export function useResolveReviewItem() {
+export function useResolveReviewDecision() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: resolveReviewItem,
+    mutationFn: resolveReviewDecision,
     onSuccess: (result) => {
       const periodId = result.periodId;
       void queryClient.invalidateQueries({
-        queryKey: shietQueryKeys.periodReviewItems(periodId),
+        queryKey: shietQueryKeys.periodReviewDecisions(periodId),
       });
       void queryClient.invalidateQueries({
         queryKey: shietQueryKeys.periodEvents(periodId),
@@ -337,7 +442,7 @@ export function useExcludeEvent() {
         queryKey: shietQueryKeys.periodEvents(periodId),
       });
       void queryClient.invalidateQueries({
-        queryKey: shietQueryKeys.periodReviewItems(periodId),
+        queryKey: shietQueryKeys.periodReviewDecisions(periodId),
       });
       void queryClient.invalidateQueries({
         queryKey: shietQueryKeys.periodEventCategoryOverlays(periodId),
@@ -723,6 +828,92 @@ export function useRefreshGitHubRepos() {
   });
 }
 
+export function useSlackChannels() {
+  return useQuery({
+    queryKey: shietQueryKeys.slackChannels(),
+    queryFn: listSlackChannels,
+  });
+}
+
+export function useSlackAuthMode() {
+  return useQuery({
+    queryKey: shietQueryKeys.slackAuthMode(),
+    queryFn: slackAuthMode,
+  });
+}
+
+export function useSlackOAuthAvailable() {
+  return useQuery({
+    queryKey: shietQueryKeys.slackOAuthAvailable(),
+    queryFn: slackOAuthAvailable,
+  });
+}
+
+export function useConnectSlack() {
+  const queryClient = useQueryClient();
+  const refreshSlackQueries = () => {
+    void queryClient.invalidateQueries({
+      queryKey: shietQueryKeys.connections(),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: shietQueryKeys.slackChannels(),
+    });
+  };
+
+  return useMutation({
+    mutationFn: () => connectSlack(),
+    onSettled: refreshSlackQueries,
+  });
+}
+
+export function useDisconnectSlack() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (accountID: string) => disconnectSlack(accountID),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.connections(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.slackChannels(),
+      });
+    },
+  });
+}
+
+export function useSetSlackChannelSelected() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      channelID,
+      selected,
+    }: {
+      channelID: number;
+      selected: boolean;
+    }) => setSlackChannelSelected(channelID, selected),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.slackChannels(),
+      });
+    },
+  });
+}
+
+export function useRefreshSlackChannels() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (accountID: string) => refreshSlackChannels(accountID),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.slackChannels(),
+      });
+    },
+  });
+}
+
 export function useSetCalendarDefaultCategory() {
   const queryClient = useQueryClient();
 
@@ -764,7 +955,7 @@ export function useSyncPeriod() {
         queryKey: shietQueryKeys.periodEventCategoryOverlays(periodID),
       });
       void queryClient.invalidateQueries({
-        queryKey: shietQueryKeys.periodReviewItems(periodID),
+        queryKey: shietQueryKeys.periodReviewDecisions(periodID),
       });
       void queryClient.invalidateQueries({
         queryKey: shietQueryKeys.gapTimeline(periodID),

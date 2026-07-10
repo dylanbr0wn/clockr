@@ -94,7 +94,7 @@ func (p *Provider) fetchCommits(ctx context.Context, accountID, fullName string,
 			if len(out) >= maxCommitsPerRepo {
 				break
 			}
-			ev, ok := mapCommit(item, start, end)
+			ev, ok := mapCommit(item, fullName, start, end)
 			if !ok {
 				continue
 			}
@@ -132,7 +132,7 @@ func (p *Provider) fetchMergedPRs(ctx context.Context, accountID, fullName strin
 		if len(out) >= maxPRsPerRepo {
 			break
 		}
-		ev, ok := mapMergedPR(item, start, end)
+		ev, ok := mapMergedPR(item, fullName, start, end)
 		if !ok {
 			continue
 		}
@@ -141,7 +141,7 @@ func (p *Provider) fetchMergedPRs(ctx context.Context, accountID, fullName strin
 	return out, nil
 }
 
-func mapCommit(item commitItem, start, end time.Time) (service.ActivityEvidence, bool) {
+func mapCommit(item commitItem, fullName string, start, end time.Time) (service.ActivityEvidence, bool) {
 	ts, ok := parseCommitTime(item)
 	if !ok || !inWindow(ts, start, end) {
 		return service.ActivityEvidence{}, false
@@ -162,6 +162,7 @@ func mapCommit(item commitItem, start, end time.Time) (service.ActivityEvidence,
 			summary = short + ": " + firstLine
 		}
 	}
+	summary = prefixEvidenceSummary(fullName, summary)
 
 	return service.ActivityEvidence{
 		Provider: providerGitHub,
@@ -169,19 +170,20 @@ func mapCommit(item commitItem, start, end time.Time) (service.ActivityEvidence,
 		Start:    ts,
 		End:      ts.Add(time.Second),
 		Summary:  summary,
+		Source:   fullName,
 		Detail:   message,
 		URL:      strings.TrimSpace(item.HTMLURL),
 	}, true
 }
 
-func mapMergedPR(item searchIssueItem, start, end time.Time) (service.ActivityEvidence, bool) {
+func mapMergedPR(item searchIssueItem, fullName string, start, end time.Time) (service.ActivityEvidence, bool) {
 	ts, ok := parsePRTime(item)
 	if !ok || !inWindow(ts, start, end) {
 		return service.ActivityEvidence{}, false
 	}
 
 	title := strings.TrimSpace(item.Title)
-	summary := fmt.Sprintf("Merged PR #%d: %s", item.Number, title)
+	summary := prefixEvidenceSummary(fullName, fmt.Sprintf("Merged PR #%d: %s", item.Number, title))
 	detail := title
 	body := strings.TrimSpace(item.Body)
 	if body != "" {
@@ -194,6 +196,7 @@ func mapMergedPR(item searchIssueItem, start, end time.Time) (service.ActivityEv
 		Start:    ts,
 		End:      ts.Add(time.Second),
 		Summary:  summary,
+		Source:   fullName,
 		Detail:   detail,
 		URL:      strings.TrimSpace(item.HTMLURL),
 	}, true
@@ -242,6 +245,18 @@ func firstLine(message string) string {
 		return strings.TrimSpace(message[:i])
 	}
 	return message
+}
+
+func prefixEvidenceSummary(source, summary string) string {
+	source = strings.TrimSpace(source)
+	summary = strings.TrimSpace(summary)
+	if source == "" {
+		return summary
+	}
+	if summary == "" {
+		return source
+	}
+	return source + " · " + summary
 }
 
 type commitItem struct {

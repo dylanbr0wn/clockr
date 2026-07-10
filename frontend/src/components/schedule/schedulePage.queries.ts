@@ -11,7 +11,7 @@ import {
   useEvents,
   useGapFills,
   useGapTimeline,
-  useOpenReviewItems,
+  useReviewDecisions,
   usePeriods,
   useSuggestGapFill,
   useTzSegments,
@@ -53,7 +53,7 @@ export function useSchedulePagePeriodQueries(activePeriodId: number | undefined)
   const eventCategoryOverlaysQuery = useEventCategoryOverlays(activePeriodId);
   const gapFillsQuery = useGapFills(activePeriodId);
   const gapTimelineQuery = useGapTimeline(activePeriodId);
-  const reviewItemsQuery = useOpenReviewItems(activePeriodId);
+  const reviewDecisionsQuery = useReviewDecisions(activePeriodId);
   const tzSegmentsQuery = useTzSegments(activePeriodId);
 
   return {
@@ -61,7 +61,7 @@ export function useSchedulePagePeriodQueries(activePeriodId: number | undefined)
     eventCategoryOverlaysQuery,
     gapFillsQuery,
     gapTimelineQuery,
-    reviewItemsQuery,
+    reviewDecisionsQuery,
     tzSegmentsQuery,
   };
 }

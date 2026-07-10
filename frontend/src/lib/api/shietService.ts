@@ -21,13 +21,20 @@ import type {
   ManualEventResult,
   ManualEventUpdateInput,
   Period,
-  ReviewItem,
-  ResolveReviewItemInput,
-  ResolveReviewItemResult,
+  ReviewDecision,
+  ResolveReviewDecisionInput,
+  ResolveReviewDecisionResult,
+  SlackChannel,
   SyncResult,
   TimeWindow,
   TzSegment,
   UpdateCategoryInput,
+  ExportTemplate,
+  CreateExportTemplateInput,
+  UpdateExportTemplateInput,
+  PreviewExportInput,
+  PeriodExportRender,
+  ExportFieldInfo,
 } from "./types";
 import { ensureCurrentPeriodRPC, listPeriodsRPC } from "./periodRpc";
 
@@ -36,6 +43,7 @@ interface ShietApp {
   ComputeGaps(periodId: number): Promise<DayTimeline[]>;
   ConnectGitHub(pat: string): Promise<IntegrationConnection>;
   ConnectGoogle(accountID: string, accountLabel: string): Promise<IntegrationConnection>;
+  ConnectSlack(): Promise<IntegrationConnection>;
   CreateCategory(input: CreateCategoryInput): Promise<Category>;
   CreateGapFill(input: ManualEventInput): Promise<ManualEventResult>;
   CreateManualEvent(input: ManualEventInput): Promise<ManualEventResult>;
@@ -43,6 +51,7 @@ interface ShietApp {
   DeleteCategory(id: number): Promise<void>;
   DisconnectGitHub(accountID: string): Promise<void>;
   DisconnectGoogle(accountID: string): Promise<void>;
+  DisconnectSlack(accountID: string): Promise<void>;
   DiscoverLocalAIEndpoints(): Promise<AIEndpoint[]>;
   EnsureCurrentPeriod(today: string, ianaTz: string): Promise<Period>;
   ExcludeEvent(input: ExcludeEventInput): Promise<ExcludeEventResult>;
@@ -57,22 +66,36 @@ interface ShietApp {
   ListEvents(periodId: number): Promise<Event[]>;
   ListGapFills(periodId: number): Promise<GapFill[]>;
   ListGitHubRepos(): Promise<GitHubRepo[]>;
+  ListSlackChannels(): Promise<SlackChannel[]>;
   ListIntegrationConnections(): Promise<IntegrationConnection[]>;
-  ListOpenReviewItems(periodId: number): Promise<ReviewItem[]>;
-  ResolveReviewItem(
-    input: ResolveReviewItemInput,
-  ): Promise<ResolveReviewItemResult>;
+  ListReviewDecisions(periodId: number): Promise<ReviewDecision[]>;
+  ResolveReviewDecision(
+    input: ResolveReviewDecisionInput,
+  ): Promise<ResolveReviewDecisionResult>;
   ListPeriods(): Promise<Period[]>;
   ListSelectedCalendars(): Promise<Calendar[]>;
   ListTzSegments(periodId: number): Promise<TzSegment[]>;
   RefreshGitHubRepos(accountID: string): Promise<void>;
+  RefreshSlackChannels(accountID: string): Promise<void>;
+  SlackAuthMode(): Promise<string>;
+  SlackOAuthAvailable(): Promise<boolean>;
   SaveAIConfig(baseURL: string, model: string): Promise<void>;
   SaveAIEndpoint(baseURL: string): Promise<void>;
   SaveAIModel(model: string): Promise<void>;
   SaveExportFile(defaultFilename: string, content: string): Promise<string>;
+  ExportPeriodCSV(periodId: number, templateKey: string): Promise<string>;
+  ExportPeriodText(periodId: number, templateKey: string): Promise<string>;
+  ListExportTemplates(): Promise<ExportTemplate[]>;
+  CreateExportTemplate(input: CreateExportTemplateInput): Promise<ExportTemplate>;
+  UpdateExportTemplate(input: UpdateExportTemplateInput): Promise<ExportTemplate>;
+  DeleteExportTemplate(id: number): Promise<void>;
+  DuplicateExportTemplate(key: string): Promise<ExportTemplate>;
+  PreviewExport(input: PreviewExportInput): Promise<PeriodExportRender>;
+  ListExportFieldCatalog(grain: string, layout: string): Promise<ExportFieldInfo[]>;
   SetCalendarDefaultCategory(calendarID: number, categoryID: number | null): Promise<void>;
   SetCalendarSelected(calendarID: number, selected: boolean): Promise<void>;
   SetGitHubRepoSelected(repoID: number, selected: boolean): Promise<void>;
+  SetSlackChannelSelected(channelID: number, selected: boolean): Promise<void>;
   SetSetting(key: string, value: string): Promise<void>;
   SuggestGapFill(window: TimeWindow): Promise<GapSuggestion>;
   SyncPeriod(periodID: number): Promise<SyncResult>;
@@ -210,14 +233,14 @@ export function deleteManualEvent(input: ManualEventDeleteInput) {
   );
 }
 
-export function listOpenReviewItems(periodId: number) {
-  return readFromBackend<ReviewItem[]>([], () =>
-    appBackend.ListOpenReviewItems(periodId),
+export function listReviewDecisions(periodId: number) {
+  return readFromBackend<ReviewDecision[]>([], () =>
+    appBackend.ListReviewDecisions(periodId),
   );
 }
 
-export function resolveReviewItem(input: ResolveReviewItemInput) {
-  return writeToBackend(() => appBackend.ResolveReviewItem(input));
+export function resolveReviewDecision(input: ResolveReviewDecisionInput) {
+  return writeToBackend(() => appBackend.ResolveReviewDecision(input));
 }
 
 export function excludeEvent(input: ExcludeEventInput) {
@@ -319,6 +342,53 @@ export function saveExportFile(defaultFilename: string, content: string) {
   );
 }
 
+export function exportPeriodCSV(periodId: number, templateKey = "matrix_csv") {
+  return writeToBackend(() =>
+    appBackend.ExportPeriodCSV(periodId, templateKey),
+  );
+}
+
+export function exportPeriodText(
+  periodId: number,
+  templateKey = "text_summary",
+) {
+  return writeToBackend(() =>
+    appBackend.ExportPeriodText(periodId, templateKey),
+  );
+}
+
+export function listExportTemplates() {
+  return readFromBackend<ExportTemplate[]>([], () =>
+    appBackend.ListExportTemplates(),
+  );
+}
+
+export function createExportTemplate(input: CreateExportTemplateInput) {
+  return writeToBackend(() => appBackend.CreateExportTemplate(input));
+}
+
+export function updateExportTemplate(input: UpdateExportTemplateInput) {
+  return writeToBackend(() => appBackend.UpdateExportTemplate(input));
+}
+
+export function deleteExportTemplate(id: number) {
+  return writeToBackend(() => appBackend.DeleteExportTemplate(id));
+}
+
+export function duplicateExportTemplate(key: string) {
+  return writeToBackend(() => appBackend.DuplicateExportTemplate(key));
+}
+
+export function previewExport(input: PreviewExportInput) {
+  return writeToBackend(() => appBackend.PreviewExport(input));
+}
+
+export function listExportFieldCatalog(grain: string, layout: string) {
+  return readFromBackend<ExportFieldInfo[]>([], () =>
+    appBackend.ListExportFieldCatalog(grain, layout),
+  );
+}
+
 export function listIntegrationConnections() {
   return readFromBackend<IntegrationConnection[]>([], () =>
     appBackend.ListIntegrationConnections(),
@@ -370,6 +440,36 @@ export function setGitHubRepoSelected(repoID: number, selected: boolean) {
 
 export function refreshGitHubRepos(accountID: string) {
   return writeToBackend(() => appBackend.RefreshGitHubRepos(accountID));
+}
+
+export function connectSlack() {
+  return writeToBackend(() => appBackend.ConnectSlack());
+}
+
+export function slackAuthMode() {
+  return readFromBackend<string>("broker", () => appBackend.SlackAuthMode());
+}
+
+export function slackOAuthAvailable() {
+  return readFromBackend<boolean>(true, () => appBackend.SlackOAuthAvailable());
+}
+
+export function disconnectSlack(accountID: string) {
+  return writeToBackend(() => appBackend.DisconnectSlack(accountID));
+}
+
+export function listSlackChannels() {
+  return readFromBackend<SlackChannel[]>([], () => appBackend.ListSlackChannels());
+}
+
+export function setSlackChannelSelected(channelID: number, selected: boolean) {
+  return writeToBackend(() =>
+    appBackend.SetSlackChannelSelected(channelID, selected),
+  );
+}
+
+export function refreshSlackChannels(accountID: string) {
+  return writeToBackend(() => appBackend.RefreshSlackChannels(accountID));
 }
 
 export function setCalendarSelected(calendarID: number, selected: boolean) {

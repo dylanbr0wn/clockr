@@ -17,6 +17,7 @@ func SuggestGapFill(
 	gap GapContext,
 	evidence []EvidencePayload,
 	local bool,
+	maxTokens int,
 ) (categoryKey string, description string, err error) {
 	if len(categories) == 0 {
 		return "", "", fmt.Errorf("no categories configured")
@@ -40,7 +41,7 @@ func SuggestGapFill(
 		return "", "", err
 	}
 
-	systemPrompt := "You suggest timesheet entries for uncovered work intervals. Reply with JSON only: {\"key\":\"<one category key from the list>\",\"description\":\"<short note>\"}."
+	systemPrompt := "You suggest timesheet entries for uncovered work intervals. When activity evidence is clearly tied to a project or repository, and a category in the list corresponds to that project (key, name, or description), prefer that category. Do not invent categories; pick from the provided list only. Reply with JSON only: {\"key\":\"<one category key from the list>\",\"description\":\"<short note>\"}."
 	userPrompt := fmt.Sprintf(
 		"Categories: %s\nGap: %s\nActivity evidence: %s\nJSON:",
 		string(categoriesJSON),
@@ -48,7 +49,7 @@ func SuggestGapFill(
 		string(evidenceJSON),
 	)
 
-	reply, err := client.ChatCompletion(ctx, model, systemPrompt, userPrompt)
+	reply, err := client.ChatCompletion(ctx, model, systemPrompt, userPrompt, maxTokens)
 	if err != nil {
 		return "", "", err
 	}
@@ -86,6 +87,7 @@ func minimizeEvidence(items []EvidencePayload) []EvidencePayload {
 			Provider: item.Provider,
 			Kind:     item.Kind,
 			Summary:  item.Summary,
+			Source:   item.Source,
 		})
 	}
 	return out

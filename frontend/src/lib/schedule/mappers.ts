@@ -26,6 +26,11 @@ import type {
   ScheduleItem,
   SchedulePlacement,
 } from "./types";
+import {
+  allDayChipId,
+  eventItemId,
+  gapFillItemId,
+} from "./ids";
 
 export interface EventReviewState {
   reviewItemId: number;
@@ -117,24 +122,28 @@ export function eventToSchedulerItem(
   reviewState?: EventReviewState,
 ): ScheduleItem | null {
   const resolvedCategoryId = reviewState ? undefined : categoryId;
+  const isReview = Boolean(reviewState);
   const metadata = {
     title: event.title || "Untitled event",
-    category: reviewState
+    category: isReview
       ? "Needs review"
       : categoryName(resolvedCategoryId, categoriesById),
     categoryId: resolvedCategoryId,
-    categoryColor: reviewState
+    categoryColor: isReview
       ? undefined
       : resolveCategoryColor(resolvedCategoryId, categoriesById),
-    kind: reviewState ? "review" : "calendar",
+    kind: isReview ? "review" : "calendar",
     reviewItemId: reviewState?.reviewItemId,
     reviewKind: reviewState?.kind,
+    mutable: false,
+    excludable: !isReview,
+    opensReviewQueue: isReview,
   } as const;
 
   if (event.allDay && event.startDate) {
     return applyPlacement(
       {
-        id: `event-${event.id}`,
+        id: eventItemId(event.id),
         day: event.startDate,
         startMinutes: SCHEDULE_START_MINUTES,
         endMinutes: SCHEDULE_END_MINUTES,
@@ -160,7 +169,7 @@ export function eventToSchedulerItem(
 
   return applyPlacement(
     {
-      id: `event-${event.id}`,
+      id: eventItemId(event.id),
       day: start.day,
       startMinutes: start.minutes,
       endMinutes: Math.max(start.minutes + 15, endMinutes),
@@ -223,14 +232,15 @@ export function buildAllDayChipsByDay(
     const reviewState = reviewByEventId.get(event.id);
     const spanDays = expandAllDayEventDays(event);
     const title = event.title || "Untitled event";
-    const kind = reviewState ? "review" : "calendar";
-    const categoryId = reviewState
+    const isReview = Boolean(reviewState);
+    const kind = isReview ? "review" : "calendar";
+    const categoryId = isReview
       ? undefined
       : resolveEventCategoryId(event, overlaysByKey);
-    const category = reviewState
+    const category = isReview
       ? "Needs review"
       : categoryName(categoryId, categoriesById);
-    const categoryColorValue = reviewState
+    const categoryColorValue = isReview
       ? undefined
       : resolveCategoryColor(categoryId, categoriesById);
 
@@ -240,7 +250,7 @@ export function buildAllDayChipsByDay(
       }
 
       const chip: AllDayChip = {
-        id: `event-${event.id}@${day}`,
+        id: allDayChipId(event.id, day),
         eventId: event.id,
         day,
         title,
@@ -251,6 +261,8 @@ export function buildAllDayChipsByDay(
         reviewItemId: reviewState?.reviewItemId,
         reviewKind: reviewState?.kind,
         allDaySpan: allDaySpanPosition(day, spanDays),
+        excludable: true,
+        opensReviewQueue: isReview,
       };
       const dayChips = chipsByDay.get(day) ?? [];
       dayChips.push(chip);
@@ -285,7 +297,7 @@ export function gapFillToSchedulerItem(
 
   return applyPlacement(
     {
-      id: `gap-fill-${gapFill.id}`,
+      id: gapFillItemId(gapFill.id),
       day: gapFill.day || start.day,
       startMinutes,
       endMinutes: Math.max(startMinutes + 15, endMinutes),
@@ -295,6 +307,9 @@ export function gapFillToSchedulerItem(
         categoryId: gapFill.categoryId,
         categoryColor: resolveCategoryColor(gapFill.categoryId, categoriesById),
         kind,
+        mutable: true,
+        excludable: false,
+        opensReviewQueue: false,
       },
     },
     placement,

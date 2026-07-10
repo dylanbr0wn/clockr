@@ -11,9 +11,10 @@ import (
 )
 
 const (
-	settingAIBaseURL = "ai.base_url"
-	settingAIModel   = "ai.model"
-	settingPrivacy   = "privacy.fields"
+	settingAIBaseURL   = "ai.base_url"
+	settingAIModel     = "ai.model"
+	settingAIMaxTokens = "ai.max_tokens"
+	settingPrivacy     = "privacy.fields"
 )
 
 // DiscoverLocalAIEndpoints probes known local model runtimes.
@@ -109,6 +110,18 @@ func (s *Service) loadAIConfig(ctx context.Context) (baseURL, model string, ok b
 		return "", "", false
 	}
 	return baseURL, model, true
+}
+
+func (s *Service) loadAIMaxTokens(ctx context.Context) int {
+	raw, err := s.GetSetting(ctx, settingAIMaxTokens)
+	if err != nil {
+		return ai.DefaultMaxTokens
+	}
+	var value int
+	if err := json.Unmarshal([]byte(raw), &value); err != nil || value <= 0 {
+		return ai.DefaultMaxTokens
+	}
+	return value
 }
 
 func (s *Service) readStringSetting(ctx context.Context, key string) (string, error) {

@@ -11,7 +11,7 @@ import {
   ItemDescription,
 } from "@/components/ui/item";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { Category, Event, Period, ReviewItem } from "@/lib/api";
+import type { Category, Event, Period, ReviewDecision } from "@/lib/api";
 import { buildPeriodExportSummary } from "@/lib/export";
 import { errorMessage, localDateKey, type ScheduleGapOverlay } from "@/lib/schedule";
 import type { ScheduleItem } from "@/lib/schedule/types";
@@ -21,7 +21,7 @@ interface ScheduleSidebarProps {
   categories: Category[];
   items: ScheduleItem[];
   events: Event[];
-  reviewItems: ReviewItem[];
+  reviewDecisions: ReviewDecision[];
   visibleGaps: ScheduleGapOverlay[];
   onOpenReviewQueue?: () => void;
   isBackendLoading: boolean;
@@ -33,7 +33,7 @@ export function ScheduleSidebar({
   categories,
   items,
   events,
-  reviewItems,
+  reviewDecisions,
   visibleGaps,
   onOpenReviewQueue,
   isBackendLoading,
@@ -54,7 +54,7 @@ export function ScheduleSidebar({
         <PeriodProgressCard summary={exportSummary} today={today} />
         <CategoryTotalsCard summary={exportSummary} />
         <NeedsAttentionCard
-          reviewItems={reviewItems}
+          reviewDecisions={reviewDecisions}
           events={events}
           visibleGaps={visibleGaps}
           onOpenReviewQueue={onOpenReviewQueue}
@@ -83,6 +83,8 @@ export function ScheduleSidebar({
           ) : null}
           <ExportActions
             summary={exportSummary}
+            items={items}
+            periodId={activePeriod?.id}
             disabled={!activePeriod || isBackendLoading}
             layout="stacked"
           />

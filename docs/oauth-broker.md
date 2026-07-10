@@ -23,6 +23,10 @@ Required:
   enable GitHub routes).
 - `SHIET_BROKER_GITHUB_CLIENT_SECRET`: GitHub OAuth App client secret (required
   with the GitHub client id).
+- `SHIET_BROKER_SLACK_CLIENT_ID`: Slack app client id (required to enable Slack
+  routes).
+- `SHIET_BROKER_SLACK_CLIENT_SECRET`: Slack app client secret (required with the
+  Slack client id).
 - `SHIET_BROKER_DATASTORE_DSN`: SQLite DSN for the broker datastore.
 
 Optional:
@@ -39,6 +43,10 @@ Optional:
   default `shiet://oauth/github/handoff`.
 - `SHIET_BROKER_GITHUB_SCOPES`: space- or comma-separated GitHub OAuth App
   scopes, default `repo`.
+- `SHIET_BROKER_SLACK_DESKTOP_HANDOFF_URL`: Slack desktop handoff URL, default
+  `shiet://oauth/slack/handoff`.
+- `SHIET_BROKER_SLACK_SCOPES`: space- or comma-separated Slack user scopes,
+  default `channels:history groups:history channels:read groups:read`.
 - `SHIET_BROKER_AUTH_DISABLED`: when `true`/`1`/`yes`/`on`, reject start,
   callback, and handoff with `auth_disabled`. RPCs use Connect
   `FailedPrecondition`; callbacks return an HTTP 403 page. Revoke stays enabled.
@@ -251,3 +259,15 @@ user reconnects. GitHub documents the web authorization-code exchange and PKCE
 parameters in [Authorizing OAuth apps](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps),
 and the server-authenticated single-token revocation operation in
 [REST API endpoints for OAuth authorizations](https://docs.github.com/en/rest/apps/oauth-applications).
+
+## Extending to another provider
+
+Provider protocol metadata lives in `internal/integration/oauth` as a static
+descriptor (endpoints, scopes, auth URL validation, capabilities). Runtime
+credentials stay in broker env / desktop BYO config and are injected at call
+time. Shared helpers `BuildAuthorizationURL` and `ExchangeAuthorizationCode`
+are used by both local/BYO desktop OAuth and the broker callback exchange.
+Desktop broker connect uses the provider-neutral `oauth.BrokerFlow`; refresh
+and revoke stay as thin provider adapters when the provider supports them.
+
+See ADR-0001 "Provider extension boundary (DYL-97)" for the full checklist.

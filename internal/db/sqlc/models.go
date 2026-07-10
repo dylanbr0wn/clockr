@@ -62,17 +62,29 @@ type Event struct {
 	UpdatedAt        string         `json:"updated_at"`
 }
 
+type ExportTemplate struct {
+	ID          int64  `json:"id"`
+	Key         string `json:"key"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Format      string `json:"format"`
+	Builtin     int64  `json:"builtin"`
+	Body        string `json:"body"`
+	CreatedAt   string `json:"created_at"`
+}
+
 type GapFill struct {
-	ID         int64         `json:"id"`
-	PeriodID   int64         `json:"period_id"`
-	Day        string        `json:"day"`
-	StartUtc   string        `json:"start_utc"`
-	EndUtc     string        `json:"end_utc"`
-	CategoryID sql.NullInt64 `json:"category_id"`
-	Note       string        `json:"note"`
-	Source     string        `json:"source"`
-	CreatedAt  string        `json:"created_at"`
-	UpdatedAt  string        `json:"updated_at"`
+	ID          int64         `json:"id"`
+	PeriodID    int64         `json:"period_id"`
+	Day         string        `json:"day"`
+	StartUtc    string        `json:"start_utc"`
+	EndUtc      string        `json:"end_utc"`
+	CategoryID  sql.NullInt64 `json:"category_id"`
+	Note        string        `json:"note"`
+	Source      string        `json:"source"`
+	CreatedAt   string        `json:"created_at"`
+	UpdatedAt   string        `json:"updated_at"`
+	Description string        `json:"description"`
 }
 
 type GithubRepo struct {
@@ -141,6 +153,16 @@ type ReviewItem struct {
 	ConflictKey     string         `json:"conflict_key"`
 	DecisionAction  string         `json:"decision_action"`
 	DecisionPayload string         `json:"decision_payload"`
+}
+
+type SlackChannel struct {
+	ID         int64  `json:"id"`
+	AccountID  string `json:"account_id"`
+	ExternalID string `json:"external_id"`
+	Name       string `json:"name"`
+	IsPrivate  int64  `json:"is_private"`
+	Selected   int64  `json:"selected"`
+	CreatedAt  string `json:"created_at"`
 }
 
 type Submission struct {

@@ -7,6 +7,14 @@ import type {
   ScheduleItem,
   SchedulePlacement,
 } from "@/lib/schedule";
+import {
+  buildGapFillsByItemId,
+  buildResettableDays,
+  gapFillItemId,
+  isEventItemId,
+  isGapFillItemId,
+  parseEventItemId,
+} from "@/lib/schedule";
 import type { ScheduleEventEditValues } from "./schedulePage.types";
 
 interface Mutations {
@@ -19,6 +27,7 @@ interface Mutations {
         endMinutes: number;
         categoryId?: number;
         note: string;
+        description: string;
       },
       options?: { onSuccess?: () => void },
     ) => void;
@@ -33,6 +42,7 @@ interface Mutations {
         endMinutes: number;
         categoryId?: number;
         note: string;
+        description: string;
       },
       options?: { onSuccess?: () => void; onSettled?: () => void },
     ) => void;
@@ -57,12 +67,7 @@ interface UseSchedulePageEditorParams extends Mutations {
 }
 
 function eventIdFromScheduleItemId(itemId: string): number | null {
-  const match = /^event-(\d+)$/.exec(itemId);
-  if (!match) {
-    return null;
-  }
-  const eventId = Number(match[1]);
-  return Number.isFinite(eventId) ? eventId : null;
+  return parseEventItemId(itemId);
 }
 
 export function useSchedulePageEditor({
@@ -78,7 +83,7 @@ export function useSchedulePageEditor({
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [pendingCreate, setPendingCreate] = useState<SchedulerCreateRequest | null>(null);
   const gapFillsByItemId = useMemo(
-    () => new Map(gapFills.map((gapFill) => [`gap-fill-${gapFill.id}`, gapFill])),
+    () => buildGapFillsByItemId(gapFills),
     [gapFills],
   );
 
@@ -98,7 +103,7 @@ export function useSchedulePageEditor({
   };
 
   const handleCommit = (change: ScheduleChange) => {
-    if (change.itemId.startsWith("gap-fill-")) {
+    if (isGapFillItemId(change.itemId)) {
       const gapFill = gapFillsByItemId.get(change.itemId);
       if (gapFill) {
         setDraftPlacements((current) => ({
@@ -118,6 +123,7 @@ export function useSchedulePageEditor({
             endMinutes: change.endMinutes,
             categoryId: gapFill.categoryId,
             note: gapFill.note ?? "",
+            description: gapFill.description ?? "",
           },
           {
             onSettled: () => {
@@ -134,7 +140,7 @@ export function useSchedulePageEditor({
       return;
     }
 
-    if (change.itemId.startsWith("event-")) {
+    if (isEventItemId(change.itemId)) {
       setPreview(null);
       return;
     }
@@ -142,7 +148,7 @@ export function useSchedulePageEditor({
   };
 
   const handleOpenEventEditor = (item: ScheduleItem) => {
-    if (!item.id.startsWith("gap-fill-") || !gapFillsByItemId.has(item.id)) {
+    if (!item.metadata?.mutable || !gapFillsByItemId.has(item.id)) {
       return;
     }
     setPendingCreate(null);
@@ -161,6 +167,7 @@ export function useSchedulePageEditor({
       endMinutes: item.endMinutes,
       categoryId: gapFill.categoryId,
       note: gapFill.note ?? item.metadata?.title ?? "",
+      description: gapFill.description ?? "",
     });
   };
 
@@ -180,7 +187,7 @@ export function useSchedulePageEditor({
   };
 
   const handleExcludeEvent = (item: ScheduleItem) => {
-    if (item.metadata?.kind !== "calendar" || !activePeriodId) {
+    if (item.metadata?.excludable === false || !activePeriodId) {
       return;
     }
     const eventId = eventIdFromScheduleItemId(item.id);
@@ -191,7 +198,7 @@ export function useSchedulePageEditor({
   };
 
   const handleExcludeAllDayChip = (chip: AllDayChip) => {
-    if (!activePeriodId) {
+    if (chip.excludable === false || !activePeriodId) {
       return;
     }
     excludeEventMutation.mutate({
@@ -201,14 +208,15 @@ export function useSchedulePageEditor({
   };
 
   const handleResetDay = (day: string) => {
-    const manualGapFills = gapFills.filter(
-      (gapFill) => gapFill.day === day && gapFill.source === "manual",
-    );
-    if (manualGapFills.length === 0) {
+    if (!buildResettableDays(gapFills).has(day)) {
       return;
     }
 
-    const deletedItemIds = new Set(manualGapFills.map((gapFill) => `gap-fill-${gapFill.id}`));
+    const manualGapFills = gapFills.filter(
+      (gapFill) => gapFill.day === day && gapFill.source === "manual",
+    );
+
+    const deletedItemIds = new Set(manualGapFills.map((gapFill) => gapFillItemId(gapFill.id)));
     setEditingItemId((current) =>
       current && deletedItemIds.has(current) ? null : current,
     );
@@ -236,6 +244,7 @@ export function useSchedulePageEditor({
           endMinutes: values.endMinutes,
           categoryId: values.categoryId,
           note: values.note,
+          description: values.description,
         },
         { onSuccess: () => setPendingCreate(null) },
       );
@@ -270,6 +279,7 @@ export function useSchedulePageEditor({
         endMinutes: values.endMinutes,
         categoryId: values.categoryId,
         note: values.note,
+        description: values.description,
       },
       {
         onSuccess: () => setEditingItemId(null),
