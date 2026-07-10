@@ -246,3 +246,15 @@ user reconnects. GitHub documents the web authorization-code exchange and PKCE
 parameters in [Authorizing OAuth apps](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps),
 and the server-authenticated single-token revocation operation in
 [REST API endpoints for OAuth authorizations](https://docs.github.com/en/rest/apps/oauth-applications).
+
+## Extending to another provider
+
+Provider protocol metadata lives in `internal/integration/oauth` as a static
+descriptor (endpoints, scopes, auth URL validation, capabilities). Runtime
+credentials stay in broker env / desktop BYO config and are injected at call
+time. Shared helpers `BuildAuthorizationURL` and `ExchangeAuthorizationCode`
+are used by both local/BYO desktop OAuth and the broker callback exchange.
+Desktop broker connect uses the provider-neutral `oauth.BrokerFlow`; refresh
+and revoke stay as thin provider adapters when the provider supports them.
+
+See ADR-0001 "Provider extension boundary (DYL-97)" for the full checklist.

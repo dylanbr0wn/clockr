@@ -6,14 +6,11 @@ import (
 	"github.com/dylanbr0wn/shiet/internal/config"
 	"github.com/dylanbr0wn/shiet/internal/integration/oauth"
 	"github.com/dylanbr0wn/shiet/internal/service"
-	"golang.org/x/oauth2"
 )
 
 const (
 	apiBaseURL        = "https://www.googleapis.com/calendar/v3"
 	scopeCalendarRead = "https://www.googleapis.com/auth/calendar.readonly"
-	authURL           = "https://accounts.google.com/o/oauth2/v2/auth"
-	tokenURL          = "https://oauth2.googleapis.com/token"
 	calendarListPath  = "/users/me/calendarList"
 	eventsListPath    = "/calendars/%s/events"
 
@@ -82,13 +79,11 @@ func OAuthConfig(clientID, clientSecret string) oauth.ProviderConfig {
 	if clientSecret == "" {
 		clientSecret = defaultDesktopClientSecret
 	}
-	return oauth.ProviderConfig{
-		Provider:     service.ProviderGoogle,
+	desc := oauth.MustLookup(oauth.ProviderGoogle)
+	cfg := desc.ProviderConfig(oauth.ClientCredentials{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
-		AuthURL:      authURL,
-		TokenURL:     tokenURL,
-		AuthStyle:    oauth2.AuthStyleInParams,
-		Scopes:       []string{scopeCalendarRead},
-	}
+	})
+	cfg.Provider = service.ProviderGoogle
+	return cfg
 }

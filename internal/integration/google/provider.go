@@ -21,12 +21,6 @@ import (
 
 var (
 	errCancelled = errors.New("cancelled event")
-
-	// ErrBrokerUnavailable is returned when broker-mode Google auth cannot proceed
-	// (broker down, unreachable, or connect flow not ready). Distinct from
-	// config.ErrBrokerConfig (bad/missing broker settings) and
-	// config.ErrLocalCredentials (missing BYO desktop credentials).
-	ErrBrokerUnavailable = errors.New("Google OAuth broker is unavailable")
 )
 
 // Authorizer runs desktop OAuth and persists tokens.

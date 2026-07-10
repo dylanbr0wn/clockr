@@ -23,16 +23,10 @@ import (
 	"github.com/dylanbr0wn/shiet/internal/broker/observe"
 	"github.com/dylanbr0wn/shiet/internal/broker/ratelimit"
 	"github.com/dylanbr0wn/shiet/internal/broker/store"
+	"github.com/dylanbr0wn/shiet/internal/integration/oauth"
 )
 
 const (
-	googleAuthURL       = "https://accounts.google.com/o/oauth2/v2/auth"
-	githubAuthURL       = "https://github.com/login/oauth/authorize"
-	defaultGoogleToken  = "https://oauth2.googleapis.com/token"
-	defaultGoogleRevoke = "https://oauth2.googleapis.com/revoke"
-	defaultGitHubToken  = "https://github.com/login/oauth/access_token"
-	defaultGitHubRevoke = "https://api.github.com"
-
 	limitStart          = 10
 	limitCallback       = 30
 	limitHandoff        = 20
@@ -69,69 +63,18 @@ type Server struct {
 	Logger          *slog.Logger
 }
 
-type startRequest struct {
-	DesktopSessionID       string `json:"desktop_session_id"`
-	HandoffChallenge       string `json:"handoff_challenge"`
-	AppVersion             string `json:"app_version"`
-	Platform               string `json:"platform"`
-	DesktopHandoffRedirect string `json:"desktop_handoff_redirect,omitempty"`
-}
-
-type startResponse struct {
-	AuthURL     string    `json:"auth_url"`
-	BrokerState string    `json:"broker_state"`
-	ExpiresAt   time.Time `json:"expires_at"`
-}
-
-type handoffRequest struct {
-	DesktopSessionID string `json:"desktop_session_id"`
-	BrokerState      string `json:"broker_state"`
-	HandoffCode      string `json:"handoff_code"`
-	HandoffVerifier  string `json:"handoff_verifier"`
-}
-
-type handoffResponse struct {
-	Provider    string   `json:"provider"`
-	AccountHint string   `json:"account_hint"`
-	Scope       []string `json:"scope"`
-	Token       struct {
-		AccessToken  string    `json:"access_token"`
-		RefreshToken string    `json:"refresh_token,omitempty"`
-		TokenType    string    `json:"token_type"`
-		Expiry       time.Time `json:"expiry"`
-	} `json:"token"`
-}
-
-type refreshRequest struct {
-	RefreshToken string   `json:"refresh_token"`
-	Scope        []string `json:"scope,omitempty"`
-	AppVersion   string   `json:"app_version,omitempty"`
-	Platform     string   `json:"platform,omitempty"`
-}
-
-type refreshResponse struct {
-	AccessToken  string    `json:"access_token"`
-	RefreshToken string    `json:"refresh_token,omitempty"`
-	TokenType    string    `json:"token_type"`
-	Expiry       time.Time `json:"expiry"`
-}
+type startRequest = oauth.BrokerStartRequest
+type startResponse = oauth.BrokerStartResponse
+type handoffRequest = oauth.BrokerHandoffRequest
+type handoffResponse = oauth.BrokerHandoffResponse
+type refreshRequest = oauth.BrokerRefreshRequest
+type refreshResponse = oauth.BrokerRefreshResponse
+type revokeRequest = oauth.BrokerRevokeRequest
+type revokeResponse = oauth.BrokerRevokeResponse
+type errorResponse = oauth.BrokerErrorResponse
 
 type statusResponse struct {
 	Status string `json:"status"`
-}
-
-type revokeRequest struct {
-	RefreshToken string `json:"refresh_token"`
-	AccessToken  string `json:"access_token"`
-	Reason       string `json:"reason,omitempty"`
-}
-
-type revokeResponse struct {
-	Revoked bool `json:"revoked"`
-}
-
-type errorResponse struct {
-	Error string `json:"error"`
 }
 
 type providerTokenResponse struct {
@@ -149,16 +92,42 @@ func (s Server) Handler() http.Handler {
 	mux.HandleFunc("GET /healthz", s.health)
 	mux.HandleFunc("GET /readyz", s.ready)
 	mux.HandleFunc("GET /metrics", s.metrics)
-	mux.HandleFunc("POST /v1/google/oauth/start", s.startGoogleOAuth)
-	mux.HandleFunc("GET /v1/google/oauth/callback", s.googleCallback)
-	mux.HandleFunc("POST /v1/google/oauth/handoff", s.exchangeHandoff)
-	mux.HandleFunc("POST /v1/google/oauth/refresh", s.refreshGoogleOAuth)
-	mux.HandleFunc("POST /v1/google/oauth/revoke", s.revokeGoogleOAuth)
-	mux.HandleFunc("POST /v1/github/oauth/start", s.startGitHubOAuth)
-	mux.HandleFunc("GET /v1/github/oauth/callback", s.githubCallback)
-	mux.HandleFunc("POST /v1/github/oauth/handoff", s.exchangeGitHubHandoff)
-	mux.HandleFunc("POST /v1/github/oauth/revoke", s.revokeGitHubOAuth)
+	for _, provider := range oauth.All() {
+		id := provider.ID
+		mux.HandleFunc("POST /v1/"+id+"/oauth/start", s.startHandler(id))
+		mux.HandleFunc("GET /v1/"+id+"/oauth/callback", s.callbackHandler(id))
+		mux.HandleFunc("POST /v1/"+id+"/oauth/handoff", s.handoffHandler(id))
+		if provider.Capabilities.Refresh {
+			mux.HandleFunc("POST /v1/"+id+"/oauth/refresh", s.refreshGoogleOAuth)
+		}
+		if provider.Capabilities.Revoke {
+			switch id {
+			case oauth.ProviderGoogle:
+				mux.HandleFunc("POST /v1/"+id+"/oauth/revoke", s.revokeGoogleOAuth)
+			case oauth.ProviderGitHub:
+				mux.HandleFunc("POST /v1/"+id+"/oauth/revoke", s.revokeGitHubOAuth)
+			}
+		}
+	}
 	return mux
+}
+
+func (s Server) startHandler(provider string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.startOAuth(w, r, provider)
+	}
+}
+
+func (s Server) callbackHandler(provider string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.oauthCallback(w, r, provider)
+	}
+}
+
+func (s Server) handoffHandler(provider string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.exchangeProviderHandoff(w, r, provider)
+	}
 }
 
 func (s Server) metrics(w http.ResponseWriter, r *http.Request) {
@@ -190,14 +159,6 @@ func (s Server) ready(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, statusResponse{Status: "ready"})
-}
-
-func (s Server) startGoogleOAuth(w http.ResponseWriter, r *http.Request) {
-	s.startOAuth(w, r, "google")
-}
-
-func (s Server) startGitHubOAuth(w http.ResponseWriter, r *http.Request) {
-	s.startOAuth(w, r, "github")
 }
 
 func (s Server) startOAuth(w http.ResponseWriter, r *http.Request, provider string) {
@@ -294,18 +255,11 @@ func (s Server) startOAuth(w http.ResponseWriter, r *http.Request, provider stri
 	})
 }
 
-func (s Server) googleCallback(w http.ResponseWriter, r *http.Request) {
-	s.oauthCallback(w, r, "google")
-}
-
-func (s Server) githubCallback(w http.ResponseWriter, r *http.Request) {
-	s.oauthCallback(w, r, "github")
-}
-
 func (s Server) oauthCallback(w http.ResponseWriter, r *http.Request, provider string) {
-	providerName := "Google"
-	if provider == "github" {
-		providerName = "GitHub"
+	desc, ok := oauth.Lookup(provider)
+	providerName := provider
+	if ok {
+		providerName = desc.DisplayName
 	}
 	if s.Store == nil {
 		writeHTMLError(w, http.StatusServiceUnavailable, "Broker datastore unavailable. Return to shiet and retry.")
@@ -336,9 +290,9 @@ func (s Server) oauthCallback(w http.ResponseWriter, r *http.Request, provider s
 		if desc != "" {
 			msg = providerName + " authorization failed: " + desc
 		}
-		outcome := codes.OutcomeGoogleError
-		if provider != "google" {
-			outcome = codes.OutcomeProviderError
+		outcome := codes.OutcomeProviderError
+		if provider == oauth.ProviderGoogle {
+			outcome = codes.OutcomeGoogleError
 		}
 		s.Metrics.IncCallback(outcome)
 		s.logInfo(codes.EventCallback, "provider", provider, "outcome", outcome)
@@ -442,14 +396,6 @@ func (s Server) oauthCallback(w http.ResponseWriter, r *http.Request, provider s
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, _ = io.WriteString(w, callbackSuccessPage(providerName, handoffURL))
-}
-
-func (s Server) exchangeHandoff(w http.ResponseWriter, r *http.Request) {
-	s.exchangeProviderHandoff(w, r, "google")
-}
-
-func (s Server) exchangeGitHubHandoff(w http.ResponseWriter, r *http.Request) {
-	s.exchangeProviderHandoff(w, r, "github")
 }
 
 func (s Server) exchangeProviderHandoff(w http.ResponseWriter, r *http.Request, provider string) {
@@ -595,7 +541,7 @@ func (s Server) refreshGoogleOAuth(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusTooManyRequests, errorResponse{Error: codes.RateLimited})
 			return
 		}
-		var ge *googleTokenError
+		var ge *providerTokenError
 		if errors.As(err, &ge) && ge.Code == codes.GoogleInvalidGrant {
 			s.Metrics.IncRefreshFailure(codes.OutcomeInvalidGrant)
 			s.Metrics.IncQuotaRisk(codes.QuotaInvalidGrant)
@@ -621,16 +567,16 @@ func (s Server) refreshGoogleOAuth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-type googleTokenError struct {
+type providerTokenError struct {
 	Code string
 	Desc string
 }
 
-func (e *googleTokenError) Error() string {
+func (e *providerTokenError) Error() string {
 	if e.Desc != "" {
-		return fmt.Sprintf("google token error %s: %s", e.Code, e.Desc)
+		return fmt.Sprintf("provider token error %s: %s", e.Code, e.Desc)
 	}
-	return fmt.Sprintf("google token error %s", e.Code)
+	return fmt.Sprintf("provider token error %s", e.Code)
 }
 
 // revokeGoogleOAuth asks Google to revoke a refresh token supplied by the
@@ -675,12 +621,12 @@ func (s Server) revokeGoogleOAuth(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) revokeGitHubOAuth(w http.ResponseWriter, r *http.Request) {
-	if !s.providerConfigured("github") {
+	if !s.providerConfigured(oauth.ProviderGitHub) {
 		writeJSON(w, http.StatusServiceUnavailable, errorResponse{Error: codes.ProviderNotConfigured})
 		return
 	}
 	ipBucket := sourceIPBucket(r.RemoteAddr)
-	if s.rejectRateLimited(w, codes.SurfaceRevoke, ratelimit.Key(codes.LimitKeyRevoke, "github|"+ipBucket), limitRevoke) {
+	if s.rejectRateLimited(w, codes.SurfaceRevoke, ratelimit.Key(codes.LimitKeyRevoke, oauth.ProviderGitHub+"|"+ipBucket), limitRevoke) {
 		return
 	}
 	var req revokeRequest
@@ -696,31 +642,36 @@ func (s Server) revokeGitHubOAuth(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := s.revokeGitHubToken(r.Context(), req.AccessToken); err != nil {
 		s.Metrics.IncRevokeOutcome(codes.OutcomeGitHubFailed)
-		s.logInfo(codes.EventRevoke, "provider", "github", "outcome", codes.OutcomeGitHubFailed, "reason", req.Reason, "ip_bucket", ipBucket)
+		s.logInfo(codes.EventRevoke, "provider", oauth.ProviderGitHub, "outcome", codes.OutcomeGitHubFailed, "reason", req.Reason, "ip_bucket", ipBucket)
 		writeJSON(w, http.StatusBadGateway, errorResponse{Error: codes.GitHubRevokeFailed})
 		return
 	}
 	s.Metrics.IncRevokeOK()
 	s.Metrics.IncRevokeOutcome(codes.OutcomeOK)
-	s.logInfo(codes.EventRevoke, "provider", "github", "outcome", codes.OutcomeOK, "reason", req.Reason, "ip_bucket", ipBucket)
+	s.logInfo(codes.EventRevoke, "provider", oauth.ProviderGitHub, "outcome", codes.OutcomeOK, "reason", req.Reason, "ip_bucket", ipBucket)
 	writeJSON(w, http.StatusOK, revokeResponse{Revoked: true})
 }
 
 func (s Server) revokeGitHubToken(ctx context.Context, accessToken string) error {
+	desc := oauth.MustLookup(oauth.ProviderGitHub)
 	base := strings.TrimRight(strings.TrimSpace(s.GitHubRevokeURL), "/")
 	if base == "" {
-		base = defaultGitHubRevoke
+		base = strings.TrimRight(desc.RevokeURL, "/")
 	}
 	body, err := json.Marshal(map[string]string{"access_token": accessToken})
 	if err != nil {
 		return err
 	}
-	revokeURL := base + "/applications/" + url.PathEscape(s.Config.GitHubClientID) + "/token"
+	creds, ok := s.providerCredentials(oauth.ProviderGitHub)
+	if !ok {
+		return errors.New("github credentials not configured")
+	}
+	revokeURL := base + "/applications/" + url.PathEscape(creds.ClientID) + "/token"
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, revokeURL, strings.NewReader(string(body)))
 	if err != nil {
 		return err
 	}
-	req.SetBasicAuth(s.Config.GitHubClientID, s.Config.GitHubClientSecret)
+	req.SetBasicAuth(creds.ClientID, creds.ClientSecret)
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
@@ -746,9 +697,10 @@ func (s Server) revokeGoogleToken(ctx context.Context, refreshToken string) erro
 	form := url.Values{}
 	form.Set("token", refreshToken)
 
+	desc := oauth.MustLookup(oauth.ProviderGoogle)
 	revokeURL := s.GoogleRevokeURL
 	if revokeURL == "" {
-		revokeURL = defaultGoogleRevoke
+		revokeURL = desc.RevokeURL
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, revokeURL, strings.NewReader(form.Encode()))
 	if err != nil {
@@ -794,77 +746,44 @@ func isGoogleInvalidToken(status int, body []byte) bool {
 	return strings.Contains(strings.ToLower(string(body)), "invalid_token")
 }
 
-func (s Server) exchangeGoogleCode(ctx context.Context, code, pkceVerifier string) (providerTokenResponse, error) {
-	form := url.Values{}
-	form.Set("grant_type", "authorization_code")
-	form.Set("code", code)
-	form.Set("client_id", s.Config.GoogleClientID)
-	form.Set("client_secret", s.Config.GoogleClientSecret)
-	form.Set("redirect_uri", s.Config.RedirectURI())
-	form.Set("code_verifier", pkceVerifier)
-
-	tok, err := s.postGoogleToken(ctx, form)
-	if err != nil {
-		return providerTokenResponse{}, fmt.Errorf("google token exchange failed")
-	}
-	return tok, nil
-}
-
 func (s Server) exchangeProviderCode(ctx context.Context, provider, code, pkceVerifier string) (providerTokenResponse, error) {
-	if provider == "github" {
-		return s.exchangeGitHubCode(ctx, code, pkceVerifier)
+	desc, ok := oauth.Lookup(provider)
+	if !ok {
+		return providerTokenResponse{}, fmt.Errorf("unknown provider %q", provider)
 	}
-	return s.exchangeGoogleCode(ctx, code, pkceVerifier)
-}
-
-func (s Server) exchangeGitHubCode(ctx context.Context, code, pkceVerifier string) (providerTokenResponse, error) {
-	form := url.Values{}
-	form.Set("code", code)
-	form.Set("client_id", s.Config.GitHubClientID)
-	form.Set("client_secret", s.Config.GitHubClientSecret)
-	form.Set("redirect_uri", s.Config.GitHubRedirectURI())
-	form.Set("code_verifier", pkceVerifier)
-
-	tokenURL := s.GitHubTokenURL
-	if tokenURL == "" {
-		tokenURL = defaultGitHubToken
+	creds, ok := s.providerCredentials(provider)
+	if !ok {
+		return providerTokenResponse{}, fmt.Errorf("%s credentials not configured", provider)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, strings.NewReader(form.Encode()))
+	tok, err := oauth.ExchangeAuthorizationCode(ctx, desc, creds, s.providerRedirectURI(provider), code, pkceVerifier, oauth.ExchangeOptions{
+		HTTPClient: s.HTTPClient,
+		TokenURL:   s.providerTokenURL(desc),
+	})
 	if err != nil {
+		var ee *oauth.ExchangeError
+		if errors.As(err, &ee) {
+			return providerTokenResponse{}, &providerTokenError{Code: ee.Code, Desc: ee.Description}
+		}
 		return providerTokenResponse{}, err
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Accept", "application/json")
-	client := s.HTTPClient
-	if client == nil {
-		client = http.DefaultClient
+	out := providerTokenResponse{
+		AccessToken:  tok.AccessToken,
+		RefreshToken: tok.RefreshToken,
+		TokenType:    tok.TokenType,
+		ExpiresIn:    tok.ExpiresIn,
+		Scope:        tok.Scope,
 	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return providerTokenResponse{}, err
+	if out.ExpiresIn <= 0 && provider == oauth.ProviderGoogle {
+		out.ExpiresIn = 3600
 	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err != nil {
-		return providerTokenResponse{}, err
-	}
-	var tok providerTokenResponse
-	if err := json.Unmarshal(body, &tok); err != nil {
-		return providerTokenResponse{}, err
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 || tok.AccessToken == "" || tok.Error != "" {
-		return providerTokenResponse{}, fmt.Errorf("github token exchange failed")
-	}
-	if tok.TokenType == "" {
-		tok.TokenType = "Bearer"
-	}
-	return tok, nil
+	return out, nil
 }
 
 func (s Server) postGoogleToken(ctx context.Context, form url.Values) (providerTokenResponse, error) {
+	desc := oauth.MustLookup(oauth.ProviderGoogle)
 	tokenURL := s.GoogleTokenURL
 	if tokenURL == "" {
-		tokenURL = defaultGoogleToken
+		tokenURL = desc.TokenURL
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, strings.NewReader(form.Encode()))
 	if err != nil {
@@ -894,7 +813,7 @@ func (s Server) postGoogleToken(ctx context.Context, form url.Values) (providerT
 		if code == "" {
 			code = "token_request_failed"
 		}
-		return providerTokenResponse{}, &googleTokenError{Code: code, Desc: tok.ErrorDesc}
+		return providerTokenResponse{}, &providerTokenError{Code: code, Desc: tok.ErrorDesc}
 	}
 	if tok.TokenType == "" {
 		tok.TokenType = "Bearer"
@@ -908,7 +827,7 @@ func (s Server) postGoogleToken(ctx context.Context, form url.Values) (providerT
 func (s Server) buildHandoffURL(state store.OAuthState, handoffCode string) (string, error) {
 	base := strings.TrimSpace(state.DesktopHandoffRedirect)
 	if base == "" {
-		if providerOrGoogle(state.Provider) == "github" {
+		if providerOrGoogle(state.Provider) == oauth.ProviderGitHub {
 			base = strings.TrimSpace(s.Config.GitHubDesktopHandoffURL)
 		} else {
 			base = strings.TrimSpace(s.Config.DesktopHandoffURL)
@@ -926,71 +845,100 @@ func (s Server) buildHandoffURL(state store.OAuthState, handoffCode string) (str
 }
 
 func (s Server) authURL(provider, state, codeChallenge string) (string, error) {
-	redirectURI := s.Config.RedirectURI()
-	providerAuthURL := googleAuthURL
-	clientID := s.Config.GoogleClientID
-	if provider == "github" {
-		redirectURI = s.Config.GitHubRedirectURI()
-		providerAuthURL = githubAuthURL
-		clientID = s.Config.GitHubClientID
+	desc, ok := oauth.Lookup(provider)
+	if !ok {
+		return "", fmt.Errorf("unknown provider %q", provider)
 	}
-	if redirectURI == "" {
-		return "", errors.New("missing redirect uri")
+	creds, ok := s.providerCredentials(provider)
+	if !ok {
+		return "", fmt.Errorf("%s credentials not configured", provider)
 	}
-	u, err := url.Parse(providerAuthURL)
-	if err != nil {
-		return "", err
-	}
-	q := u.Query()
-	q.Set("client_id", clientID)
-	q.Set("redirect_uri", redirectURI)
-	q.Set("response_type", "code")
-	q.Set("scope", strings.Join(s.providerScopes(provider), " "))
-	q.Set("state", state)
-	if provider == "google" {
-		q.Set("access_type", "offline")
-		q.Set("prompt", "consent")
-	}
-	q.Set("code_challenge", codeChallenge)
-	q.Set("code_challenge_method", "S256")
-	u.RawQuery = q.Encode()
-	return u.String(), nil
+	return oauth.BuildAuthorizationURL(desc, creds, s.providerRedirectURI(provider), state, codeChallenge, s.providerScopes(provider))
 }
 
 func (s Server) providerScopes(provider string) []string {
-	if provider == "github" {
-		return s.Config.GitHubScopes
+	switch provider {
+	case oauth.ProviderGitHub:
+		if len(s.Config.GitHubScopes) > 0 {
+			return s.Config.GitHubScopes
+		}
+	case oauth.ProviderGoogle:
+		if len(s.Config.GoogleScopes) > 0 {
+			return s.Config.GoogleScopes
+		}
 	}
-	return s.Config.GoogleScopes
+	if desc, ok := oauth.Lookup(provider); ok {
+		return append([]string(nil), desc.DefaultScopes...)
+	}
+	return nil
+}
+
+func (s Server) providerCredentials(provider string) (oauth.ClientCredentials, bool) {
+	switch provider {
+	case oauth.ProviderGitHub:
+		id := strings.TrimSpace(s.Config.GitHubClientID)
+		secret := strings.TrimSpace(s.Config.GitHubClientSecret)
+		if id == "" || secret == "" {
+			return oauth.ClientCredentials{}, false
+		}
+		return oauth.ClientCredentials{ClientID: id, ClientSecret: secret}, true
+	case oauth.ProviderGoogle:
+		id := strings.TrimSpace(s.Config.GoogleClientID)
+		secret := strings.TrimSpace(s.Config.GoogleClientSecret)
+		if id == "" || secret == "" {
+			return oauth.ClientCredentials{}, false
+		}
+		return oauth.ClientCredentials{ClientID: id, ClientSecret: secret}, true
+	default:
+		return oauth.ClientCredentials{}, false
+	}
 }
 
 func (s Server) providerClientSecret(provider string) string {
-	if provider == "github" {
-		return s.Config.GitHubClientSecret
+	creds, ok := s.providerCredentials(provider)
+	if !ok {
+		return ""
 	}
-	return s.Config.GoogleClientSecret
+	return creds.ClientSecret
 }
 
 func (s Server) providerConfigured(provider string) bool {
-	if provider == "github" {
-		return strings.TrimSpace(s.Config.GitHubClientID) != "" && strings.TrimSpace(s.Config.GitHubClientSecret) != ""
+	_, ok := s.providerCredentials(provider)
+	return ok
+}
+
+func (s Server) providerRedirectURI(provider string) string {
+	return s.Config.ProviderRedirectURI(provider)
+}
+
+func (s Server) providerTokenURL(desc oauth.Provider) string {
+	switch desc.ID {
+	case oauth.ProviderGoogle:
+		if strings.TrimSpace(s.GoogleTokenURL) != "" {
+			return s.GoogleTokenURL
+		}
+	case oauth.ProviderGitHub:
+		if strings.TrimSpace(s.GitHubTokenURL) != "" {
+			return s.GitHubTokenURL
+		}
 	}
-	return strings.TrimSpace(s.Config.GoogleClientID) != "" && strings.TrimSpace(s.Config.GoogleClientSecret) != ""
+	return desc.TokenURL
 }
 
 func providerOrGoogle(provider string) string {
 	provider = strings.TrimSpace(provider)
 	if provider == "" {
-		return "google"
+		return oauth.ProviderGoogle
 	}
 	return provider
 }
 
 func splitProviderScopes(provider, raw string) []string {
-	if provider == "github" {
-		return strings.FieldsFunc(raw, func(r rune) bool { return r == ',' || r == ' ' })
+	desc, ok := oauth.Lookup(provider)
+	if !ok {
+		return strings.Fields(raw)
 	}
-	return strings.Fields(raw)
+	return desc.SplitScopes(raw)
 }
 
 func tokenExpiry(now time.Time, expiresIn int64) time.Time {
