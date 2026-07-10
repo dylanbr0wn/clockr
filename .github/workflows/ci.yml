@@ -20,8 +20,8 @@ jobs:
       - name: Run Go tests
         run: go test ./internal/...
 
-      - name: Public Google OAuth packaging checks
-        run: ./scripts/release-oauth-check.sh
+      - name: Google OAuth pre-build checks
+        run: ./scripts/prebuild-oauth-check.sh
 
   frontend-test:
     name: Frontend tests
