@@ -88,6 +88,20 @@ export namespace main {
 	        this.verdict = source["verdict"];
 	    }
 	}
+	export class GoogleAuthStatus {
+	    mode: string;
+	    brokerBaseUrl: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new GoogleAuthStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mode = source["mode"];
+	        this.brokerBaseUrl = source["brokerBaseUrl"];
+	    }
+	}
 	export class ManualEventResult {
 	    periodId: number;
 	    id: number;

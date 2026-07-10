@@ -34,13 +34,36 @@ import {
   useCategories,
   useConnectGoogle,
   useDisconnectGoogle,
+  useGoogleAuthStatus,
   useIntegrationConnections,
   useSetCalendarDefaultCategory,
   useSetCalendarSelected,
 } from "@/lib/api";
+import type { GoogleAuthStatus } from "@/lib/api";
 import { SettingBlock } from "./SettingBlock";
 
 const NONE_CATEGORY = "__none__";
+
+function googleAuthDescription(status: GoogleAuthStatus | undefined) {
+  const keychain =
+    "OAuth opens in your browser; tokens stay in the OS keychain.";
+  if (!status) {
+    return `Connect a Google account to import calendars. ${keychain}`;
+  }
+  if (status.mode === "local") {
+    return `Auth: local / BYO credentials. Connect a Google account to import calendars. ${keychain}`;
+  }
+  const host = status.brokerBaseUrl
+    ? (() => {
+        try {
+          return new URL(status.brokerBaseUrl).host;
+        } catch {
+          return status.brokerBaseUrl;
+        }
+      })()
+    : "auth broker";
+  return `Auth: broker (${host}). Connect a Google account to import calendars. ${keychain}`;
+}
 
 function connectionStatusLabel(status: string) {
   switch (status) {
@@ -83,6 +106,7 @@ function ConnectionStatusBadge({ status }: { status: string }) {
 
 export function CalendarSettings() {
   const connectionsQuery = useIntegrationConnections();
+  const googleAuthQuery = useGoogleAuthStatus();
   const calendarsQuery = useCalendars();
   const categoriesQuery = useCategories();
   const connectGoogle = useConnectGoogle();
@@ -110,6 +134,7 @@ export function CalendarSettings() {
   );
 
   const categories = categoriesQuery.data ?? [];
+  const authDescription = googleAuthDescription(googleAuthQuery.data);
 
   const isBusy =
     connectGoogle.isPending ||
@@ -165,7 +190,7 @@ export function CalendarSettings() {
     <div className="mx-auto max-w-2xl space-y-6">
       <SettingBlock
         title="Google Calendar"
-        description="Connect a Google account to import calendars. OAuth opens in your browser; tokens stay in the OS keychain."
+        description={authDescription}
       >
         <div className="space-y-3">
           {googleConnections.length > 0 ? (

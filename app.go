@@ -30,6 +30,25 @@ type ManualEventResult struct {
 	ID       int64 `json:"id"`
 }
 
+// GoogleAuthStatus is the read-only Google OAuth mode shown in Settings.
+// It never includes client secrets or token material.
+type GoogleAuthStatus struct {
+	Mode          string `json:"mode"`          // "broker" | "local"
+	BrokerBaseURL string `json:"brokerBaseUrl"` // set in broker mode
+}
+
+// GetGoogleAuthStatus returns the active Google Calendar auth mode for Settings.
+func (a *App) GetGoogleAuthStatus() GoogleAuthStatus {
+	status := (*google.Provider)(nil).Status()
+	if a != nil && a.google != nil {
+		status = a.google.Status()
+	}
+	return GoogleAuthStatus{
+		Mode:          status.Mode,
+		BrokerBaseURL: status.BrokerBaseURL,
+	}
+}
+
 // NewApp creates a new App over an already-open database connection. The
 // connection is opened, migrated, and seeded in main before binding, so Svc is
 // live at bind time (Wails reflects bound instances up front).

@@ -81,6 +81,42 @@ func TestAuthSettingsFromConfig_localKeepsCredentials(t *testing.T) {
 	}
 }
 
+func TestProviderStatus_broker(t *testing.T) {
+	p := &google.Provider{
+		AuthMode:      config.AuthModeBroker,
+		BrokerBaseURL: "https://auth.shiet.app",
+	}
+	got := p.Status()
+	if got.Mode != config.AuthModeBroker {
+		t.Fatalf("mode: got %q want %q", got.Mode, config.AuthModeBroker)
+	}
+	if got.BrokerBaseURL != "https://auth.shiet.app" {
+		t.Fatalf("broker url: %q", got.BrokerBaseURL)
+	}
+}
+
+func TestProviderStatus_localOmitsBrokerURL(t *testing.T) {
+	p := &google.Provider{
+		AuthMode:      config.AuthModeLocal,
+		BrokerBaseURL: "https://auth.shiet.app",
+	}
+	got := p.Status()
+	if got.Mode != config.AuthModeLocal {
+		t.Fatalf("mode: got %q want %q", got.Mode, config.AuthModeLocal)
+	}
+	if got.BrokerBaseURL != "" {
+		t.Fatalf("local mode must omit broker url, got %q", got.BrokerBaseURL)
+	}
+}
+
+func TestProviderStatus_nilDefaultsBroker(t *testing.T) {
+	var p *google.Provider
+	got := p.Status()
+	if got.Mode != config.AuthModeBroker {
+		t.Fatalf("mode: got %q want %q", got.Mode, config.AuthModeBroker)
+	}
+}
+
 func TestConnect_brokerModeReportsUnavailable(t *testing.T) {
 	p, _, _ := newProviderEnv(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)

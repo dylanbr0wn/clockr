@@ -1,6 +1,8 @@
 package google
 
 import (
+	"strings"
+
 	"github.com/dylanbr0wn/shiet/internal/config"
 	"github.com/dylanbr0wn/shiet/internal/integration/oauth"
 	"github.com/dylanbr0wn/shiet/internal/service"
@@ -30,6 +32,13 @@ type AuthSettings struct {
 	ClientSecret  string
 }
 
+// AuthStatus is the read-only view of Google auth mode for Settings UI.
+// It never includes client secrets or token material.
+type AuthStatus struct {
+	Mode          string `json:"mode"`          // "broker" | "local"
+	BrokerBaseURL string `json:"brokerBaseUrl"` // set in broker mode
+}
+
 // AuthSettingsFromConfig maps runtime config into provider auth settings.
 // In broker mode the desktop client_secret is intentionally not copied.
 func AuthSettingsFromConfig(cfg config.Config) AuthSettings {
@@ -43,6 +52,23 @@ func AuthSettingsFromConfig(cfg config.Config) AuthSettings {
 	}
 	settings.ClientSecret = cfg.Google.ClientSecret
 	return settings
+}
+
+// Status returns the active Google auth mode for display. Nil-safe: defaults to
+// broker when the provider is unset.
+func (p *Provider) Status() AuthStatus {
+	if p == nil {
+		return AuthStatus{Mode: config.AuthModeBroker}
+	}
+	mode := strings.ToLower(strings.TrimSpace(p.AuthMode))
+	if mode == "" {
+		mode = config.AuthModeBroker
+	}
+	status := AuthStatus{Mode: mode}
+	if strings.EqualFold(mode, config.AuthModeBroker) {
+		status.BrokerBaseURL = strings.TrimSpace(p.BrokerBaseURL)
+	}
+	return status
 }
 
 // OAuthConfig builds reusable Google OAuth settings for local/BYO desktop OAuth.
