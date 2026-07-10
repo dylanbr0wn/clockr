@@ -3,51 +3,21 @@ package observe
 import (
 	"bytes"
 	"fmt"
-	"log/slog"
 	"strings"
 	"testing"
 
 	"github.com/dylanbr0wn/shiet/internal/broker/codes"
 )
 
-// Smoke: slog RedactAttrs still delegates to shared internal/log rules.
-// Primary redaction coverage lives in internal/log.
-func TestRedactAttrsScrubsTokensAndSecrets(t *testing.T) {
-	attrs := []slog.Attr{
-		slog.String("event", "refresh_failed"),
-		slog.String("refresh_token", "1//secret-refresh-token-value"),
-		slog.String("client_secret", "super-secret-value"),
-		slog.String("handoff_code", "abc123handoff"),
-		slog.String("access_token", "ya29.a0AfH6SMB-example-token"),
-		slog.String("reason", codes.OutcomeInvalidGrant),
-	}
-	out := RedactAttrs(attrs)
-	byKey := map[string]string{}
-	for _, a := range out {
-		byKey[a.Key] = a.Value.String()
-	}
-	if byKey["event"] != "refresh_failed" {
-		t.Fatalf("event: %q", byKey["event"])
-	}
-	if byKey["reason"] != codes.OutcomeInvalidGrant {
-		t.Fatalf("reason: %q", byKey["reason"])
-	}
-	for _, key := range []string{"refresh_token", "client_secret", "handoff_code", "access_token"} {
-		if byKey[key] != "[redacted]" {
-			t.Fatalf("%s: got %q want [redacted]", key, byKey[key])
-		}
-	}
-}
-
 func TestLoggerRedactsInJSONOutput(t *testing.T) {
 	var buf bytes.Buffer
 	log := NewLogger(&buf)
-	log.Info("broker_event",
-		"surface", "refresh",
-		"refresh_token", "1//should-not-appear-in-logs",
-		"client_secret", "google-client-secret",
-		"outcome", "failure",
-	)
+	log.Info().
+		Str("surface", "refresh").
+		Str("refresh_token", "1//should-not-appear-in-logs").
+		Str("client_secret", "google-client-secret").
+		Str("outcome", "failure").
+		Msg("broker_event")
 	got := buf.String()
 	if strings.Contains(got, "1//should-not-appear") {
 		t.Fatalf("refresh token leaked: %s", got)

@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"html"
 	"io"
-	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -25,6 +24,7 @@ import (
 	"github.com/dylanbr0wn/shiet/internal/broker/ratelimit"
 	"github.com/dylanbr0wn/shiet/internal/broker/store"
 	"github.com/dylanbr0wn/shiet/internal/integration/oauth"
+	"github.com/rs/zerolog"
 )
 
 const (
@@ -61,7 +61,7 @@ type Server struct {
 	GitHubRevokeURL string // override for tests
 	Limiter         Limiter
 	Metrics         *observe.Metrics
-	Logger          *slog.Logger
+	Logger          zerolog.Logger
 }
 
 type startRequest = oauth.BrokerStartRequest
@@ -1166,8 +1166,17 @@ func (s Server) rejectAppVersionDisabled(w http.ResponseWriter, surface, appVers
 }
 
 func (s Server) logInfo(msg string, args ...any) {
-	if s.Logger == nil {
-		return
+	e := s.Logger.Info()
+	for i := 0; i+1 < len(args); i += 2 {
+		key, _ := args[i].(string)
+		switch v := args[i+1].(type) {
+		case string:
+			e = e.Str(key, v)
+		case fmt.Stringer:
+			e = e.Str(key, v.String())
+		default:
+			e = e.Interface(key, v)
+		}
 	}
-	s.Logger.Info(msg, args...)
+	e.Msg(msg)
 }

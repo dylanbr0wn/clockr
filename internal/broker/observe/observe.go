@@ -3,10 +3,8 @@
 package observe
 
 import (
-	"context"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"sort"
 	"strings"
@@ -14,6 +12,7 @@ import (
 	"sync/atomic"
 
 	applog "github.com/dylanbr0wn/shiet/internal/log"
+	"github.com/rs/zerolog"
 )
 
 // Metrics holds Prometheus-style counters for broker abuse signals.
@@ -216,56 +215,8 @@ func (m *Metrics) Handler() http.HandlerFunc {
 	}
 }
 
-// RedactAttrs drops or replaces attributes that may contain secrets/tokens.
-// Rules live in internal/log (ADR-0001); this keeps the slog broker path
-// until DYL-120 migrates the broker to zerolog.
-func RedactAttrs(attrs []slog.Attr) []slog.Attr {
-	out := make([]slog.Attr, 0, len(attrs))
-	for _, attr := range attrs {
-		if applog.SensitiveKey(attr.Key) {
-			out = append(out, slog.String(attr.Key, applog.Redacted))
-			continue
-		}
-		if attr.Value.Kind() == slog.KindString && applog.LooksLikeSecret(attr.Value.String()) {
-			out = append(out, slog.String(attr.Key, applog.Redacted))
-			continue
-		}
-		out = append(out, attr)
-	}
-	return out
-}
-
-// RedactingHandler wraps a slog.Handler and redacts sensitive attrs.
-type RedactingHandler struct {
-	inner slog.Handler
-}
-
-// NewLogger returns a JSON slog logger that redacts secrets/tokens.
-func NewLogger(w io.Writer) *slog.Logger {
-	h := &RedactingHandler{inner: slog.NewJSONHandler(w, &slog.HandlerOptions{Level: slog.LevelInfo})}
-	return slog.New(h)
-}
-
-func (h *RedactingHandler) Enabled(ctx context.Context, level slog.Level) bool {
-	return h.inner.Enabled(ctx, level)
-}
-
-func (h *RedactingHandler) Handle(ctx context.Context, r slog.Record) error {
-	attrs := make([]slog.Attr, 0, r.NumAttrs())
-	r.Attrs(func(a slog.Attr) bool {
-		attrs = append(attrs, a)
-		return true
-	})
-	attrs = RedactAttrs(attrs)
-	nr := slog.NewRecord(r.Time, r.Level, r.Message, r.PC)
-	nr.AddAttrs(attrs...)
-	return h.inner.Handle(ctx, nr)
-}
-
-func (h *RedactingHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return &RedactingHandler{inner: h.inner.WithAttrs(RedactAttrs(attrs))}
-}
-
-func (h *RedactingHandler) WithGroup(name string) slog.Handler {
-	return &RedactingHandler{inner: h.inner.WithGroup(name)}
+// NewLogger returns a JSON zerolog logger with ADR-0001 secret redaction
+// (shared internal/log package).
+func NewLogger(w io.Writer) zerolog.Logger {
+	return applog.New(w)
 }
