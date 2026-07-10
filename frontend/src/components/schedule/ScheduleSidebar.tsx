@@ -83,6 +83,8 @@ export function ScheduleSidebar({
           ) : null}
           <ExportActions
             summary={exportSummary}
+            items={items}
+            periodId={activePeriod?.id}
             disabled={!activePeriod || isBackendLoading}
             layout="stacked"
           />

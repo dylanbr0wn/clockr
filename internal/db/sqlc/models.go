@@ -62,6 +62,17 @@ type Event struct {
 	UpdatedAt        string         `json:"updated_at"`
 }
 
+type ExportTemplate struct {
+	ID          int64  `json:"id"`
+	Key         string `json:"key"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Format      string `json:"format"`
+	Builtin     int64  `json:"builtin"`
+	Body        string `json:"body"`
+	CreatedAt   string `json:"created_at"`
+}
+
 type GapFill struct {
 	ID         int64         `json:"id"`
 	PeriodID   int64         `json:"period_id"`

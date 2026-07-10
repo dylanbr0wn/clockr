@@ -347,6 +347,79 @@ func (a *App) SaveExportFile(defaultFilename, content string) (string, error) {
 	return path, nil
 }
 
+// ExportPeriodCSV renders a CSV/TSV export template for a period and opens the save dialog.
+// templateKey selects the preset (e.g. matrix_csv, flat_daily_csv); empty defaults to matrix_csv.
+// Returns the saved path, or an empty string when the dialog is cancelled.
+func (a *App) ExportPeriodCSV(periodID int64, templateKey string) (string, error) {
+	if templateKey == "" {
+		templateKey = service.ExportTemplateMatrixCSV
+	}
+	render, err := a.Svc.RenderPeriodExport(a.callContext(), periodID, templateKey)
+	if err != nil {
+		return "", err
+	}
+	if render.Format != "csv" && render.Format != "tsv" {
+		return "", fmt.Errorf("export template %q is not a tabular format", templateKey)
+	}
+	return a.SaveExportFile(render.Filename, render.Content)
+}
+
+// ExportPeriodText renders a text export template for a period (clipboard copy).
+// templateKey selects the preset (e.g. text_summary); empty defaults to text_summary.
+func (a *App) ExportPeriodText(periodID int64, templateKey string) (string, error) {
+	if templateKey == "" {
+		templateKey = service.ExportTemplateTextSummary
+	}
+	render, err := a.Svc.RenderPeriodExport(a.callContext(), periodID, templateKey)
+	if err != nil {
+		return "", err
+	}
+	if render.Format != "text" {
+		return "", fmt.Errorf("export template %q is not a text format", templateKey)
+	}
+	return render.Content, nil
+}
+
+// BuildPeriodExport returns the period export intermediate model.
+func (a *App) BuildPeriodExport(periodID int64) (service.PeriodExportModel, error) {
+	return a.Svc.BuildPeriodExport(a.callContext(), periodID)
+}
+
+// ListExportTemplates returns available export presets.
+func (a *App) ListExportTemplates() ([]service.ExportTemplate, error) {
+	return a.Svc.ListExportTemplates(a.callContext())
+}
+
+// CreateExportTemplate creates a user-owned export template (csv/tsv/text).
+func (a *App) CreateExportTemplate(input service.CreateExportTemplateInput) (service.ExportTemplate, error) {
+	return a.Svc.CreateExportTemplate(a.callContext(), input)
+}
+
+// UpdateExportTemplate updates a user-owned export template.
+func (a *App) UpdateExportTemplate(input service.UpdateExportTemplateInput) (service.ExportTemplate, error) {
+	return a.Svc.UpdateExportTemplate(a.callContext(), input)
+}
+
+// DeleteExportTemplate deletes a user-owned export template.
+func (a *App) DeleteExportTemplate(id int64) error {
+	return a.Svc.DeleteExportTemplate(a.callContext(), id)
+}
+
+// DuplicateExportTemplate copies any template (including builtins) as a custom row.
+func (a *App) DuplicateExportTemplate(key string) (service.ExportTemplate, error) {
+	return a.Svc.DuplicateExportTemplate(a.callContext(), key)
+}
+
+// PreviewExport renders a saved template or draft body against a period.
+func (a *App) PreviewExport(input service.PreviewExportInput) (service.PeriodExportRender, error) {
+	return a.Svc.PreviewExport(a.callContext(), input)
+}
+
+// ListExportFieldCatalog returns fields valid for a grain/layout combination.
+func (a *App) ListExportFieldCatalog(grain, layout string) ([]service.ExportFieldInfo, error) {
+	return service.ListExportFieldCatalog(grain, layout)
+}
+
 func (a *App) callContext() context.Context {
 	if a.ctx != nil {
 		return a.ctx

@@ -231,3 +231,49 @@ export interface TimeWindow {
   start: string;
   end: string;
 }
+
+export interface ExportTemplate {
+  id: number;
+  key: string;
+  name: string;
+  description: string;
+  format: "csv" | "tsv" | "text" | string;
+  builtin: boolean;
+  body: string;
+}
+
+export interface CreateExportTemplateInput {
+  key?: string;
+  name: string;
+  description?: string;
+  format: "csv" | "tsv" | "text" | string;
+  body: string;
+}
+
+export interface UpdateExportTemplateInput {
+  id: number;
+  name: string;
+  description?: string;
+  format: "csv" | "tsv" | "text" | string;
+  body: string;
+}
+
+export interface PreviewExportInput {
+  periodId: number;
+  templateKey?: string;
+  format?: string;
+  body?: string;
+}
+
+export interface PeriodExportRender {
+  filename: string;
+  content: string;
+  format: string;
+}
+
+export interface ExportFieldInfo {
+  field: string;
+  label: string;
+  description: string;
+}
+

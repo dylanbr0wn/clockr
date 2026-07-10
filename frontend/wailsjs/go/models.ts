@@ -221,6 +221,26 @@ export namespace service {
 	        this.isDefaultGap = source["isDefaultGap"];
 	    }
 	}
+	export class CreateExportTemplateInput {
+	    key: string;
+	    name: string;
+	    description: string;
+	    format: string;
+	    body: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CreateExportTemplateInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.format = source["format"];
+	        this.body = source["body"];
+	    }
+	}
 	export class Interval {
 	    // Go type: time
 	    start: any;
@@ -431,6 +451,176 @@ export namespace service {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.periodId = source["periodId"];
 	        this.eventId = source["eventId"];
+	    }
+	}
+	export class ExportCategory {
+	    id?: number;
+	    name: string;
+	    key: string;
+	    color?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExportCategory(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.key = source["key"];
+	        this.color = source["color"];
+	    }
+	}
+	export class ExportCategoryMinutes {
+	    category: ExportCategory;
+	    minutes: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExportCategoryMinutes(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category = this.convertValues(source["category"], ExportCategory);
+	        this.minutes = source["minutes"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ExportDayTotals {
+	    date: string;
+	    categories: ExportCategoryMinutes[];
+	    actualMinutes: number;
+	    targetMinutes: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExportDayTotals(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.date = source["date"];
+	        this.categories = this.convertValues(source["categories"], ExportCategoryMinutes);
+	        this.actualMinutes = source["actualMinutes"];
+	        this.targetMinutes = source["targetMinutes"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ExportEntry {
+	    source: string;
+	    sourceId: number;
+	    day: string;
+	    startMinutes: number;
+	    endMinutes: number;
+	    minutes: number;
+	    title: string;
+	    category: ExportCategory;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExportEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.source = source["source"];
+	        this.sourceId = source["sourceId"];
+	        this.day = source["day"];
+	        this.startMinutes = source["startMinutes"];
+	        this.endMinutes = source["endMinutes"];
+	        this.minutes = source["minutes"];
+	        this.title = source["title"];
+	        this.category = this.convertValues(source["category"], ExportCategory);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ExportFieldInfo {
+	    field: string;
+	    label: string;
+	    description: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExportFieldInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.field = source["field"];
+	        this.label = source["label"];
+	        this.description = source["description"];
+	    }
+	}
+	export class ExportTemplate {
+	    id: number;
+	    key: string;
+	    name: string;
+	    description: string;
+	    format: string;
+	    builtin: boolean;
+	    body: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExportTemplate(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.key = source["key"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.format = source["format"];
+	        this.builtin = source["builtin"];
+	        this.body = source["body"];
 	    }
 	}
 	export class GapFill {
@@ -669,6 +859,90 @@ export namespace service {
 		    return a;
 		}
 	}
+	export class PeriodExportModel {
+	    periodId: number;
+	    periodLabel: string;
+	    startDate: string;
+	    endDate: string;
+	    targetHoursPerDay: number;
+	    targetMinutes: number;
+	    actualMinutes: number;
+	    days: string[];
+	    entries: ExportEntry[];
+	    dailyTotals: ExportDayTotals[];
+	    periodTotals: ExportCategoryMinutes[];
+	
+	    static createFrom(source: any = {}) {
+	        return new PeriodExportModel(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.periodId = source["periodId"];
+	        this.periodLabel = source["periodLabel"];
+	        this.startDate = source["startDate"];
+	        this.endDate = source["endDate"];
+	        this.targetHoursPerDay = source["targetHoursPerDay"];
+	        this.targetMinutes = source["targetMinutes"];
+	        this.actualMinutes = source["actualMinutes"];
+	        this.days = source["days"];
+	        this.entries = this.convertValues(source["entries"], ExportEntry);
+	        this.dailyTotals = this.convertValues(source["dailyTotals"], ExportDayTotals);
+	        this.periodTotals = this.convertValues(source["periodTotals"], ExportCategoryMinutes);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class PeriodExportRender {
+	    filename: string;
+	    content: string;
+	    format: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PeriodExportRender(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.filename = source["filename"];
+	        this.content = source["content"];
+	        this.format = source["format"];
+	    }
+	}
+	export class PreviewExportInput {
+	    periodId: number;
+	    templateKey: string;
+	    format: string;
+	    body: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PreviewExportInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.periodId = source["periodId"];
+	        this.templateKey = source["templateKey"];
+	        this.format = source["format"];
+	        this.body = source["body"];
+	    }
+	}
 	export class ResolveReviewDecisionInput {
 	    decisionId: number;
 	    action: string;
@@ -848,6 +1122,26 @@ export namespace service {
 	        this.key = source["key"];
 	        this.color = source["color"];
 	        this.isDefaultGap = source["isDefaultGap"];
+	    }
+	}
+	export class UpdateExportTemplateInput {
+	    id: number;
+	    name: string;
+	    description: string;
+	    format: string;
+	    body: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateExportTemplateInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.format = source["format"];
+	        this.body = source["body"];
 	    }
 	}
 

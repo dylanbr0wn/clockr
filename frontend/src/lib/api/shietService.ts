@@ -28,6 +28,12 @@ import type {
   TimeWindow,
   TzSegment,
   UpdateCategoryInput,
+  ExportTemplate,
+  CreateExportTemplateInput,
+  UpdateExportTemplateInput,
+  PreviewExportInput,
+  PeriodExportRender,
+  ExportFieldInfo,
 } from "./types";
 
 interface ShietApp {
@@ -69,6 +75,15 @@ interface ShietApp {
   SaveAIEndpoint(baseURL: string): Promise<void>;
   SaveAIModel(model: string): Promise<void>;
   SaveExportFile(defaultFilename: string, content: string): Promise<string>;
+  ExportPeriodCSV(periodId: number, templateKey: string): Promise<string>;
+  ExportPeriodText(periodId: number, templateKey: string): Promise<string>;
+  ListExportTemplates(): Promise<ExportTemplate[]>;
+  CreateExportTemplate(input: CreateExportTemplateInput): Promise<ExportTemplate>;
+  UpdateExportTemplate(input: UpdateExportTemplateInput): Promise<ExportTemplate>;
+  DeleteExportTemplate(id: number): Promise<void>;
+  DuplicateExportTemplate(key: string): Promise<ExportTemplate>;
+  PreviewExport(input: PreviewExportInput): Promise<PeriodExportRender>;
+  ListExportFieldCatalog(grain: string, layout: string): Promise<ExportFieldInfo[]>;
   SetCalendarDefaultCategory(calendarID: number, categoryID: number | null): Promise<void>;
   SetCalendarSelected(calendarID: number, selected: boolean): Promise<void>;
   SetGitHubRepoSelected(repoID: number, selected: boolean): Promise<void>;
@@ -305,6 +320,53 @@ export function saveExportFile(defaultFilename: string, content: string) {
 
   return writeToBackend(() =>
     appBackend.SaveExportFile(defaultFilename, content),
+  );
+}
+
+export function exportPeriodCSV(periodId: number, templateKey = "matrix_csv") {
+  return writeToBackend(() =>
+    appBackend.ExportPeriodCSV(periodId, templateKey),
+  );
+}
+
+export function exportPeriodText(
+  periodId: number,
+  templateKey = "text_summary",
+) {
+  return writeToBackend(() =>
+    appBackend.ExportPeriodText(periodId, templateKey),
+  );
+}
+
+export function listExportTemplates() {
+  return readFromBackend<ExportTemplate[]>([], () =>
+    appBackend.ListExportTemplates(),
+  );
+}
+
+export function createExportTemplate(input: CreateExportTemplateInput) {
+  return writeToBackend(() => appBackend.CreateExportTemplate(input));
+}
+
+export function updateExportTemplate(input: UpdateExportTemplateInput) {
+  return writeToBackend(() => appBackend.UpdateExportTemplate(input));
+}
+
+export function deleteExportTemplate(id: number) {
+  return writeToBackend(() => appBackend.DeleteExportTemplate(id));
+}
+
+export function duplicateExportTemplate(key: string) {
+  return writeToBackend(() => appBackend.DuplicateExportTemplate(key));
+}
+
+export function previewExport(input: PreviewExportInput) {
+  return writeToBackend(() => appBackend.PreviewExport(input));
+}
+
+export function listExportFieldCatalog(grain: string, layout: string) {
+  return readFromBackend<ExportFieldInfo[]>([], () =>
+    appBackend.ListExportFieldCatalog(grain, layout),
   );
 }
 

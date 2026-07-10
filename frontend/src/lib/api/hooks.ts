@@ -25,6 +25,12 @@ import {
   listEvents,
   listGapFills,
   listGitHubRepos,
+  listExportTemplates,
+  createExportTemplate,
+  updateExportTemplate,
+  deleteExportTemplate,
+  duplicateExportTemplate,
+  previewExport,
   listIntegrationConnections,
   listReviewDecisions,
   listPeriods,
@@ -63,6 +69,7 @@ export const shietQueryKeys = {
   all: ["shiet"] as const,
   calendars: () => [...shietQueryKeys.all, "calendars"] as const,
   categories: () => [...shietQueryKeys.all, "categories"] as const,
+  exportTemplates: () => [...shietQueryKeys.all, "exportTemplates"] as const,
   gapTimeline: (periodId: number) =>
     [...shietQueryKeys.period(periodId), "gapTimeline"] as const,
   period: (periodId: number) =>
@@ -117,6 +124,93 @@ export function useCategories() {
   return useQuery({
     queryKey: shietQueryKeys.categories(),
     queryFn: listCategories,
+  });
+}
+
+export function useExportTemplates() {
+  return useQuery({
+    queryKey: shietQueryKeys.exportTemplates(),
+    queryFn: listExportTemplates,
+  });
+}
+
+function invalidateExportTemplateQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+) {
+  void queryClient.invalidateQueries({
+    queryKey: shietQueryKeys.exportTemplates(),
+  });
+}
+
+export function useCreateExportTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createExportTemplate,
+    onSuccess: () => {
+      invalidateExportTemplateQueries(queryClient);
+    },
+  });
+}
+
+export function useUpdateExportTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateExportTemplate,
+    onSuccess: () => {
+      invalidateExportTemplateQueries(queryClient);
+    },
+  });
+}
+
+export function useDeleteExportTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteExportTemplate,
+    onSuccess: () => {
+      invalidateExportTemplateQueries(queryClient);
+    },
+  });
+}
+
+export function useDuplicateExportTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: duplicateExportTemplate,
+    onSuccess: () => {
+      invalidateExportTemplateQueries(queryClient);
+    },
+  });
+}
+
+export function usePreviewExport(
+  input: {
+    periodId: number | null | undefined;
+    templateKey?: string;
+    format?: string;
+    body?: string;
+  },
+  enabled = true,
+) {
+  return useQuery({
+    enabled:
+      enabled &&
+      typeof input.periodId === "number" &&
+      (Boolean(input.body?.trim()) || Boolean(input.templateKey)),
+    queryKey: [
+      ...shietQueryKeys.exportTemplates(),
+      "preview",
+      input.periodId,
+      input.templateKey ?? "",
+      input.format ?? "",
+      input.body ?? "",
+    ],
+    queryFn: () =>
+      previewExport({
+        periodId: input.periodId as number,
+        templateKey: input.templateKey,
+        format: input.format,
+        body: input.body,
+      }),
   });
 }
 

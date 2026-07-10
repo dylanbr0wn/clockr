@@ -4,11 +4,15 @@ import {context} from '../models';
 import {service} from '../models';
 import {ai} from '../models';
 
+export function BuildPeriodExport(arg1:context.Context,arg2:number):Promise<service.PeriodExportModel>;
+
 export function ClassifyAIEndpoint(arg1:string):Promise<boolean|string>;
 
 export function ComputeGaps(arg1:context.Context,arg2:number):Promise<Array<service.DayTimeline>>;
 
 export function CreateCategory(arg1:context.Context,arg2:service.CreateCategoryInput):Promise<service.Category>;
+
+export function CreateExportTemplate(arg1:context.Context,arg2:service.CreateExportTemplateInput):Promise<service.ExportTemplate>;
 
 export function CreateGapFill(arg1:context.Context,arg2:service.ManualEventInput):Promise<service.GapFill>;
 
@@ -16,9 +20,13 @@ export function CreateManualEvent(arg1:context.Context,arg2:service.ManualEventI
 
 export function DeleteCategory(arg1:context.Context,arg2:number):Promise<void>;
 
+export function DeleteExportTemplate(arg1:context.Context,arg2:number):Promise<void>;
+
 export function DeleteManualEvent(arg1:context.Context,arg2:service.ManualEventDeleteInput):Promise<void>;
 
 export function DiscoverLocalAIEndpoints(arg1:context.Context):Promise<Array<ai.Endpoint>>;
+
+export function DuplicateExportTemplate(arg1:context.Context,arg2:string):Promise<service.ExportTemplate>;
 
 export function EnsureCurrentPeriod(arg1:context.Context,arg2:string,arg3:string):Promise<service.Period>;
 
@@ -27,6 +35,8 @@ export function ExcludeEvent(arg1:context.Context,arg2:service.ExcludeEventInput
 export function GetCategory(arg1:context.Context,arg2:number):Promise<service.Category>;
 
 export function GetEvent(arg1:context.Context,arg2:number):Promise<service.Event>;
+
+export function GetExportTemplate(arg1:context.Context,arg2:string):Promise<service.ExportTemplate>;
 
 export function GetPeriod(arg1:context.Context,arg2:number):Promise<service.Period>;
 
@@ -44,6 +54,8 @@ export function ListEventCategoryOverlays(arg1:context.Context,arg2:number):Prom
 
 export function ListEvents(arg1:context.Context,arg2:number):Promise<Array<service.Event>>;
 
+export function ListExportTemplates(arg1:context.Context):Promise<Array<service.ExportTemplate>>;
+
 export function ListGapFills(arg1:context.Context,arg2:number):Promise<Array<service.GapFill>>;
 
 export function ListGitHubRepos(arg1:context.Context):Promise<Array<service.GitHubRepo>>;
@@ -55,6 +67,10 @@ export function ListReviewDecisions(arg1:context.Context,arg2:number):Promise<Ar
 export function ListSelectedCalendars(arg1:context.Context):Promise<Array<service.Calendar>>;
 
 export function ListTzSegments(arg1:context.Context,arg2:number):Promise<Array<service.TzSegment>>;
+
+export function PreviewExport(arg1:context.Context,arg2:service.PreviewExportInput):Promise<service.PeriodExportRender>;
+
+export function RenderPeriodExport(arg1:context.Context,arg2:number,arg3:string):Promise<service.PeriodExportRender>;
 
 export function ResolveReviewDecision(arg1:context.Context,arg2:service.ResolveReviewDecisionInput):Promise<service.ResolveReviewDecisionResult>;
 
@@ -83,6 +99,8 @@ export function SyncEvents(arg1:context.Context,arg2:number,arg3:Array<service.I
 export function SyncPeriod(arg1:context.Context,arg2:number):Promise<service.SyncResult>;
 
 export function UpdateCategory(arg1:context.Context,arg2:service.UpdateCategoryInput):Promise<service.Category>;
+
+export function UpdateExportTemplate(arg1:context.Context,arg2:service.UpdateExportTemplateInput):Promise<service.ExportTemplate>;
 
 export function UpdateManualEvent(arg1:context.Context,arg2:service.ManualEventUpdateInput):Promise<service.GapFill>;
 
