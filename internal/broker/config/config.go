@@ -154,21 +154,21 @@ func (c Config) AppVersionDisabled(appVersion string) bool {
 // RedirectURI returns the Google Web OAuth redirect URI configured for this
 // broker deployment.
 func (c Config) RedirectURI() string {
-	u, err := c.publicOriginURL()
-	if err != nil {
-		return ""
-	}
-	u.Path = "/v1/google/oauth/callback"
-	return u.String()
+	return c.ProviderRedirectURI("google")
 }
 
 // GitHubRedirectURI returns the GitHub OAuth App callback URI.
 func (c Config) GitHubRedirectURI() string {
+	return c.ProviderRedirectURI("github")
+}
+
+// ProviderRedirectURI returns the broker callback URI for a registered provider.
+func (c Config) ProviderRedirectURI(provider string) string {
 	u, err := c.publicOriginURL()
 	if err != nil {
 		return ""
 	}
-	u.Path = "/v1/github/oauth/callback"
+	u.Path = "/v1/" + strings.TrimSpace(provider) + "/oauth/callback"
 	return u.String()
 }
 

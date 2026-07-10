@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-07-08
-- Linear: DYL-74, DYL-95
+- Linear: DYL-74, DYL-95, DYL-97
 
 ## Context
 
@@ -88,6 +88,29 @@ locally configured OAuth App credentials. The PAT path introduced by DYL-56 is
 also retained in either mode as an explicit advanced-user escape hatch. Public
 builds default to `github.auth_mode: broker` and clear any loaded desktop GitHub
 `client_secret` before runtime wiring.
+
+### Provider extension boundary (DYL-97)
+
+Adding another OAuth provider should be a small adapter change, not a copy of
+the desktop broker loop or new branches throughout the HTTP server:
+
+1. Register a static `oauth.Provider` descriptor in
+   `internal/integration/oauth` (id, display name, endpoints, scopes, auth URL
+   validation, auth-style, authorization params, refresh/revoke capabilities).
+   Descriptors contain no client secrets or deployment credentials.
+2. Inject runtime `oauth.ClientCredentials` from desktop BYO config or broker
+   environment variables.
+3. Call shared `oauth.BuildAuthorizationURL` and
+   `oauth.ExchangeAuthorizationCode` from both local/BYO `oauth.Flow` and the
+   broker callback exchange.
+4. Wire desktop connect through the shared `oauth.BrokerFlow` engine; keep
+   provider-specific refresh/revoke adapters only when the provider supports
+   them (Google refresh+revoke; GitHub revoke-only / no refresh).
+5. Reuse shared broker↔desktop JSON contract types in `oauth` protocol structs.
+
+Local/BYO OAuth and brokered OAuth remain separate trust boundaries: local is a
+direct desktop-to-provider code exchange; broker is a server-side confidential
+exchange plus a short-lived one-time desktop handoff.
 
 ## Options Considered
 

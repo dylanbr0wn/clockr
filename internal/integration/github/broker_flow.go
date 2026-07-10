@@ -39,12 +39,11 @@ func (f *BrokerFlow) Authorize(ctx context.Context, accountID string) (oauth.Res
 	if base == "" {
 		return oauth.Result{}, fmt.Errorf("%w: set github.broker_base_url or SHIET_GITHUB_BROKER_BASE_URL", config.ErrGitHubBrokerConfig)
 	}
+	desc := oauth.MustLookup(oauth.ProviderGitHub)
 	flow := oauth.BrokerFlow{
 		Provider:      service.ProviderGitHub,
 		BaseURL:       base,
-		AuthURLHost:   "github.com",
-		AuthURLPaths:  []string{"/login/oauth/authorize"},
-		DefaultScopes: []string{"repo"},
+		DefaultScopes: append([]string(nil), desc.DefaultScopes...),
 		HTTPClient:    f.HTTPClient,
 		OpenURL:       f.OpenURL,
 		AppVersion:    f.AppVersion,
@@ -62,7 +61,10 @@ func (f *BrokerFlow) Revoke(ctx context.Context, accessToken string) error {
 	if base == "" {
 		return fmt.Errorf("%w: set github.broker_base_url or SHIET_GITHUB_BROKER_BASE_URL", config.ErrGitHubBrokerConfig)
 	}
-	body, _ := json.Marshal(map[string]string{"access_token": accessToken, "reason": "user_disconnect"})
+	body, _ := json.Marshal(oauth.BrokerRevokeRequest{
+		AccessToken: accessToken,
+		Reason:      "user_disconnect",
+	})
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/github/oauth/revoke", strings.NewReader(string(body)))
 	if err != nil {
 		return err
@@ -81,9 +83,7 @@ func (f *BrokerFlow) Revoke(ctx context.Context, accessToken string) error {
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("%w: broker revoke returned %d: %s", ErrBrokerRejected, resp.StatusCode, strings.TrimSpace(string(raw)))
 	}
-	var out struct {
-		Revoked bool `json:"revoked"`
-	}
+	var out oauth.BrokerRevokeResponse
 	if err := json.Unmarshal(raw, &out); err != nil || !out.Revoked {
 		return fmt.Errorf("%w: invalid revoke response", ErrBrokerRejected)
 	}

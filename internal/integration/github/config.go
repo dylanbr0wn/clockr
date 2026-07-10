@@ -4,12 +4,6 @@ import (
 	"github.com/dylanbr0wn/shiet/internal/config"
 	"github.com/dylanbr0wn/shiet/internal/integration/oauth"
 	"github.com/dylanbr0wn/shiet/internal/service"
-	"golang.org/x/oauth2"
-)
-
-const (
-	githubAuthURL  = "https://github.com/login/oauth/authorize"
-	githubTokenURL = "https://github.com/login/oauth/access_token"
 )
 
 // AuthSettings carries GitHub auth mode into the provider. Broker mode never
@@ -22,15 +16,13 @@ type AuthSettings struct {
 }
 
 func OAuthConfig(clientID, clientSecret string) oauth.ProviderConfig {
-	return oauth.ProviderConfig{
-		Provider:     service.ProviderGitHub,
+	desc := oauth.MustLookup(oauth.ProviderGitHub)
+	cfg := desc.ProviderConfig(oauth.ClientCredentials{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
-		AuthURL:      githubAuthURL,
-		TokenURL:     githubTokenURL,
-		AuthStyle:    oauth2.AuthStyleInParams,
-		Scopes:       []string{"repo"},
-	}
+	})
+	cfg.Provider = service.ProviderGitHub
+	return cfg
 }
 
 func AuthSettingsFromConfig(cfg config.Config) AuthSettings {

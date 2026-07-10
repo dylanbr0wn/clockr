@@ -151,30 +151,28 @@ func load(configFiles []string) (Config, error) {
 	return cfg, nil
 }
 
+// resolveAuthMode applies the public-build default: broker when unset, unless
+// local/BYO credentials (client_id) are already present.
+func resolveAuthMode(explicitMode, clientID string) string {
+	if strings.TrimSpace(explicitMode) != "" {
+		return strings.ToLower(strings.TrimSpace(explicitMode))
+	}
+	if strings.TrimSpace(clientID) != "" {
+		return AuthModeLocal
+	}
+	return AuthModeBroker
+}
+
 // resolveGoogleAuthMode applies public-build defaults: broker when unset, unless
 // local/BYO credentials are already present (dev/advanced-user escape hatch).
 func (c *Config) resolveGoogleAuthMode() {
-	if c.Google.AuthMode != "" {
-		return
-	}
-	if c.Google.ClientID != "" {
-		c.Google.AuthMode = AuthModeLocal
-		return
-	}
-	c.Google.AuthMode = AuthModeBroker
+	c.Google.AuthMode = resolveAuthMode(c.Google.AuthMode, c.Google.ClientID)
 }
 
 // resolveGitHubAuthMode applies the public-build default. Explicit local mode
 // keeps PAT and BYO credentials available for development and advanced users.
 func (c *Config) resolveGitHubAuthMode() {
-	if c.GitHub.AuthMode != "" {
-		return
-	}
-	if c.GitHub.ClientID != "" {
-		c.GitHub.AuthMode = AuthModeLocal
-		return
-	}
-	c.GitHub.AuthMode = AuthModeBroker
+	c.GitHub.AuthMode = resolveAuthMode(c.GitHub.AuthMode, c.GitHub.ClientID)
 }
 
 // Validate checks Google auth mode settings. Broker mode requires an HTTPS
