@@ -88,8 +88,11 @@ this document is the operator runbook.
 
 ## Observability
 
-Structured JSON logs go to stdout via the shared redacting zerolog logger
-(`internal/log`, ADR-0001). Never log:
+Structured JSON logs go to **stdout** via the shared redacting zerolog logger
+(`internal/log`). Same stack as the desktop app; see
+[logging.md](logging.md) for the shared overview and desktop file path.
+Redaction rules follow [ADR-0001](adr/0001-secret-only-google-oauth-broker.md).
+Never log:
 
 - Google or GitHub authorization codes
 - handoff codes / verifiers

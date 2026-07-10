@@ -53,10 +53,15 @@ database.
   a provider adds a catalog entry and kind config adapter — not a new top-level
   settings tab. See
   [ADR-0002](docs/adr/0002-standardized-integrations-settings-surface.md).
+- Desktop and OAuth broker share one **zerolog** logging stack (`internal/log`)
+  with ADR-0001 secret redaction. Desktop default log file:
+  `<UserConfigDir>/shiet/shiet.log` (`log.path` / `SHIET_LOG_*`). Broker logs
+  JSON to stdout. See [docs/logging.md](docs/logging.md).
 
 ## Related docs
 
 - [DESIGN.md](DESIGN.md) — product shape, core loop, schema intent, roadmap
 - [docs/adr/0002-standardized-integrations-settings-surface.md](docs/adr/0002-standardized-integrations-settings-surface.md) — Integrations settings IA and API contract
+- [docs/logging.md](docs/logging.md) — desktop + broker logging (paths, config, redaction)
 - [docs/oauth-broker.md](docs/oauth-broker.md) — broker operator runbook
 - [README.md](README.md) — setup, build, config
