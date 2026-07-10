@@ -23,6 +23,10 @@ Required:
   enable GitHub routes).
 - `SHIET_BROKER_GITHUB_CLIENT_SECRET`: GitHub OAuth App client secret (required
   with the GitHub client id).
+- `SHIET_BROKER_SLACK_CLIENT_ID`: Slack app client id (required to enable Slack
+  routes).
+- `SHIET_BROKER_SLACK_CLIENT_SECRET`: Slack app client secret (required with the
+  Slack client id).
 - `SHIET_BROKER_DATASTORE_DSN`: SQLite DSN for the broker datastore.
 
 Optional:
@@ -39,6 +43,10 @@ Optional:
   default `shiet://oauth/github/handoff`.
 - `SHIET_BROKER_GITHUB_SCOPES`: space- or comma-separated GitHub OAuth App
   scopes, default `repo`.
+- `SHIET_BROKER_SLACK_DESKTOP_HANDOFF_URL`: Slack desktop handoff URL, default
+  `shiet://oauth/slack/handoff`.
+- `SHIET_BROKER_SLACK_SCOPES`: space- or comma-separated Slack user scopes,
+  default `channels:history groups:history channels:read groups:read`.
 - `SHIET_BROKER_AUTH_DISABLED`: when `true`/`1`/`yes`/`on`, reject start,
   callback, and handoff with `auth_disabled` (HTTP 403). Revoke stays enabled.
 - `SHIET_BROKER_REFRESH_DISABLED`: when truthy, reject refresh with

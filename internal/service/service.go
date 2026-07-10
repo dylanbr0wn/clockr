@@ -171,6 +171,34 @@ func (s *Service) SetGitHubRepoSelected(ctx context.Context, repoID int64, selec
 	return nil
 }
 
+// ListSlackChannels returns synced Slack channels for evidence selection.
+func (s *Service) ListSlackChannels(ctx context.Context) ([]SlackChannel, error) {
+	rows, err := s.q.ListSlackChannels(ctx)
+	if err != nil {
+		return nil, mapErr("list slack channels", err)
+	}
+	out := make([]SlackChannel, len(rows))
+	for i, r := range rows {
+		out[i] = toSlackChannel(r)
+	}
+	return out, nil
+}
+
+// SetSlackChannelSelected toggles whether a channel is included as an evidence source.
+func (s *Service) SetSlackChannelSelected(ctx context.Context, channelID int64, selected bool) error {
+	sel := int64(0)
+	if selected {
+		sel = 1
+	}
+	if err := s.q.SetSlackChannelSelected(ctx, sqlc.SetSlackChannelSelectedParams{
+		Selected: sel,
+		ID:       channelID,
+	}); err != nil {
+		return mapErr("set slack channel selected", err)
+	}
+	return nil
+}
+
 func (s *Service) ListSelectedCalendars(ctx context.Context) ([]Calendar, error) {
 	rows, err := s.q.ListSelectedCalendars(ctx)
 	if err != nil {

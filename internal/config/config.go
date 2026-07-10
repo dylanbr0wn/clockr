@@ -31,6 +31,8 @@ var (
 	ErrBrokerConfig           = errors.New("Google OAuth broker is not configured")
 	ErrGitHubBrokerConfig     = errors.New("GitHub OAuth broker is not configured")
 	ErrGitHubLocalCredentials = errors.New("local GitHub OAuth credentials are not configured")
+	ErrSlackBrokerConfig      = errors.New("Slack OAuth broker is not configured")
+	ErrSlackLocalCredentials  = errors.New("local Slack OAuth credentials are not configured")
 )
 
 // Config holds typed app/runtime settings. User preferences (window start, AI
@@ -51,6 +53,12 @@ type Config struct {
 		ClientID      string `koanf:"client_id"`
 		ClientSecret  string `koanf:"client_secret"`
 	} `koanf:"github"`
+	Slack struct {
+		AuthMode      string `koanf:"auth_mode"`
+		BrokerBaseURL string `koanf:"broker_base_url"`
+		ClientID      string `koanf:"client_id"`
+		ClientSecret  string `koanf:"client_secret"`
+	} `koanf:"slack"`
 }
 
 // envKeyMap maps legacy SHIET_* env vars to koanf dotted keys.
@@ -64,6 +72,10 @@ var envKeyMap = map[string]string{
 	"SHIET_GITHUB_BROKER_BASE_URL": "github.broker_base_url",
 	"SHIET_GITHUB_CLIENT_ID":       "github.client_id",
 	"SHIET_GITHUB_CLIENT_SECRET":   "github.client_secret",
+	"SHIET_SLACK_AUTH_MODE":        "slack.auth_mode",
+	"SHIET_SLACK_BROKER_BASE_URL":  "slack.broker_base_url",
+	"SHIET_SLACK_CLIENT_ID":        "slack.client_id",
+	"SHIET_SLACK_CLIENT_SECRET":    "slack.client_secret",
 }
 
 // Load reads configuration using the standard discovery order:
@@ -101,6 +113,9 @@ func load(configFiles []string) (Config, error) {
 		"github": map[string]any{
 			"broker_base_url": defaultBrokerBaseURL,
 		},
+		"slack": map[string]any{
+			"broker_base_url": defaultBrokerBaseURL,
+		},
 	}, "."), nil); err != nil {
 		return Config{}, fmt.Errorf("load defaults: %w", err)
 	}
@@ -132,9 +147,14 @@ func load(configFiles []string) (Config, error) {
 	cfg.GitHub.BrokerBaseURL = strings.TrimSpace(cfg.GitHub.BrokerBaseURL)
 	cfg.GitHub.ClientID = strings.TrimSpace(cfg.GitHub.ClientID)
 	cfg.GitHub.ClientSecret = strings.TrimSpace(cfg.GitHub.ClientSecret)
+	cfg.Slack.AuthMode = strings.ToLower(strings.TrimSpace(cfg.Slack.AuthMode))
+	cfg.Slack.BrokerBaseURL = strings.TrimSpace(cfg.Slack.BrokerBaseURL)
+	cfg.Slack.ClientID = strings.TrimSpace(cfg.Slack.ClientID)
+	cfg.Slack.ClientSecret = strings.TrimSpace(cfg.Slack.ClientSecret)
 
 	cfg.resolveGoogleAuthMode()
 	cfg.resolveGitHubAuthMode()
+	cfg.resolveSlackAuthMode()
 
 	// Broker mode must not carry a desktop Google client_secret into runtime.
 	if cfg.UsesBrokerAuth() {
@@ -142,6 +162,9 @@ func load(configFiles []string) (Config, error) {
 	}
 	if cfg.UsesGitHubBrokerAuth() {
 		cfg.GitHub.ClientSecret = ""
+	}
+	if cfg.UsesSlackBrokerAuth() {
+		cfg.Slack.ClientSecret = ""
 	}
 
 	if err := cfg.Validate(); err != nil {
@@ -175,6 +198,10 @@ func (c *Config) resolveGitHubAuthMode() {
 	c.GitHub.AuthMode = resolveAuthMode(c.GitHub.AuthMode, c.GitHub.ClientID)
 }
 
+func (c *Config) resolveSlackAuthMode() {
+	c.Slack.AuthMode = resolveAuthMode(c.Slack.AuthMode, c.Slack.ClientID)
+}
+
 // Validate checks Google auth mode settings. Broker mode requires an HTTPS
 // broker base URL and must not depend on a desktop Google client_secret.
 // Local/BYO mode requires a desktop client_id and preserves existing OAuth
@@ -195,7 +222,34 @@ func (c Config) Validate() error {
 	if err != nil {
 		return err
 	}
-	return c.validateGitHubAuth()
+	if err := c.validateGitHubAuth(); err != nil {
+		return err
+	}
+	return c.validateSlackAuth()
+}
+
+func (c Config) validateSlackAuth() error {
+	switch strings.ToLower(strings.TrimSpace(c.Slack.AuthMode)) {
+	case AuthModeBroker:
+		if err := validateBrokerURL(c.Slack.BrokerBaseURL, "slack.broker_base_url", "SHIET_SLACK_BROKER_BASE_URL"); err != nil {
+			return fmt.Errorf("%w: %v", ErrSlackBrokerConfig, err)
+		}
+		return nil
+	case AuthModeLocal:
+		clientID := strings.TrimSpace(c.Slack.ClientID)
+		clientSecret := strings.TrimSpace(c.Slack.ClientSecret)
+		if clientID == "" {
+			return fmt.Errorf("%w: set slack.client_id or SHIET_SLACK_CLIENT_ID", ErrSlackLocalCredentials)
+		}
+		if clientSecret == "" {
+			return fmt.Errorf("%w: set slack.client_secret or SHIET_SLACK_CLIENT_SECRET for local/BYO Slack OAuth; desktop apps cannot keep it confidential, so public builds must use broker mode", ErrSlackLocalCredentials)
+		}
+		return nil
+	case "":
+		return nil
+	default:
+		return fmt.Errorf("slack.auth_mode %q is invalid (use %q or %q)", c.Slack.AuthMode, AuthModeBroker, AuthModeLocal)
+	}
 }
 
 // UsesBrokerAuth reports whether Google Calendar auth should go through the
@@ -208,6 +262,12 @@ func (c Config) UsesBrokerAuth() bool {
 // secret-only OAuth broker. Local mode retains PAT/BYO access.
 func (c Config) UsesGitHubBrokerAuth() bool {
 	return strings.EqualFold(strings.TrimSpace(c.GitHub.AuthMode), AuthModeBroker)
+}
+
+// UsesSlackBrokerAuth reports whether Slack connect should use the hosted
+// secret-only OAuth broker.
+func (c Config) UsesSlackBrokerAuth() bool {
+	return strings.EqualFold(strings.TrimSpace(c.Slack.AuthMode), AuthModeBroker)
 }
 
 func (c Config) validateGitHubAuth() error {

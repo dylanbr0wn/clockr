@@ -51,7 +51,10 @@ type Provider struct {
 	AcceptJSON bool
 	// ScopeSplitComma treats commas as scope separators when parsing token scope.
 	ScopeSplitComma bool
-	Capabilities    Capabilities
+	// ScopeParam names the authorization URL query key for requested scopes.
+	// Empty defaults to "scope"; Slack uses "user_scope".
+	ScopeParam string
+	Capabilities Capabilities
 }
 
 // ProviderConfig builds the local/BYO oauth.Flow config from static metadata

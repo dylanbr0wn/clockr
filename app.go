@@ -11,6 +11,7 @@ import (
 	"github.com/dylanbr0wn/shiet/internal/integration/connection"
 	"github.com/dylanbr0wn/shiet/internal/integration/github"
 	"github.com/dylanbr0wn/shiet/internal/integration/google"
+	"github.com/dylanbr0wn/shiet/internal/integration/slack"
 	"github.com/dylanbr0wn/shiet/internal/service"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -22,6 +23,7 @@ type App struct {
 	Svc      *service.Service
 	google   *google.Provider
 	github   *github.Provider
+	slack    *slack.Provider
 	registry *connection.Registry
 }
 
@@ -54,12 +56,13 @@ func (a *App) GetGoogleAuthStatus() GoogleAuthStatus {
 // live at bind time (Wails reflects bound instances up front).
 func NewApp(conn *sql.DB, cfg config.Config) *App {
 	svc := service.New(conn)
-	googleProvider, githubProvider, registry := wireIntegrations(conn, svc, cfg)
+	googleProvider, githubProvider, slackProvider, registry := wireIntegrations(conn, svc, cfg)
 	return &App{
 		conn:     conn,
 		Svc:      svc,
 		google:   googleProvider,
 		github:   githubProvider,
+		slack:    slackProvider,
 		registry: registry,
 	}
 }
@@ -193,6 +196,42 @@ func (a *App) SetGitHubRepoSelected(repoID int64, selected bool) error {
 // RefreshGitHubRepos re-lists repos for a connected GitHub account.
 func (a *App) RefreshGitHubRepos(accountID string) error {
 	_, err := a.github.SyncRepos(a.callContext(), accountID)
+	return err
+}
+
+// ConnectSlack runs desktop OAuth for a Slack workspace.
+func (a *App) ConnectSlack() (connection.Connection, error) {
+	return a.slack.Connect(a.callContext())
+}
+
+// SlackAuthMode returns the configured connect mode for Slack OAuth.
+func (a *App) SlackAuthMode() string {
+	return a.slack.AuthMode
+}
+
+// SlackOAuthAvailable reports whether Slack browser OAuth can be started.
+func (a *App) SlackOAuthAvailable() bool {
+	return a.slack.OAuthAvailable()
+}
+
+// DisconnectSlack removes a Slack connection, tokens, and synced channels.
+func (a *App) DisconnectSlack(accountID string) error {
+	return a.slack.Disconnect(a.callContext(), accountID)
+}
+
+// ListSlackChannels returns synced Slack channels for evidence selection.
+func (a *App) ListSlackChannels() ([]service.SlackChannel, error) {
+	return a.Svc.ListSlackChannels(a.callContext())
+}
+
+// SetSlackChannelSelected toggles whether a channel is included as evidence.
+func (a *App) SetSlackChannelSelected(channelID int64, selected bool) error {
+	return a.Svc.SetSlackChannelSelected(a.callContext(), channelID, selected)
+}
+
+// RefreshSlackChannels re-lists channels for a connected Slack workspace.
+func (a *App) RefreshSlackChannels(accountID string) error {
+	_, err := a.slack.SyncChannels(a.callContext(), accountID)
 	return err
 }
 

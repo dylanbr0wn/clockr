@@ -691,6 +691,28 @@ export namespace service {
 	        this.selected = source["selected"];
 	    }
 	}
+	export class SlackChannel {
+	    id: number;
+	    accountId: string;
+	    externalId: string;
+	    name: string;
+	    private: boolean;
+	    selected: boolean;
+
+	    static createFrom(source: any = {}) {
+	        return new SlackChannel(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.accountId = source["accountId"];
+	        this.externalId = source["externalId"];
+	        this.name = source["name"];
+	        this.private = source["private"];
+	        this.selected = source["selected"];
+	    }
+	}
 	export class IncomingEvent {
 	    CalendarID: number;
 	    Provider: string;

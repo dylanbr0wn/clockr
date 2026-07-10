@@ -106,6 +106,8 @@ func (s Server) Handler() http.Handler {
 				mux.HandleFunc("POST /v1/"+id+"/oauth/revoke", s.revokeGoogleOAuth)
 			case oauth.ProviderGitHub:
 				mux.HandleFunc("POST /v1/"+id+"/oauth/revoke", s.revokeGitHubOAuth)
+			case oauth.ProviderSlack:
+				mux.HandleFunc("POST /v1/"+id+"/oauth/revoke", s.revokeSlackOAuth)
 			}
 		}
 	}
@@ -652,6 +654,77 @@ func (s Server) revokeGitHubOAuth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, revokeResponse{Revoked: true})
 }
 
+func (s Server) revokeSlackOAuth(w http.ResponseWriter, r *http.Request) {
+	if !s.providerConfigured(oauth.ProviderSlack) {
+		writeJSON(w, http.StatusServiceUnavailable, errorResponse{Error: codes.ProviderNotConfigured})
+		return
+	}
+	ipBucket := sourceIPBucket(r.RemoteAddr)
+	if s.rejectRateLimited(w, codes.SurfaceRevoke, ratelimit.Key(codes.LimitKeyRevoke, oauth.ProviderSlack+"|"+ipBucket), limitRevoke) {
+		return
+	}
+	var req revokeRequest
+	if err := decodeJSON(r.Body, &req); err != nil {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: codes.InvalidJSON})
+		return
+	}
+	req.AccessToken = strings.TrimSpace(req.AccessToken)
+	req.Reason = strings.TrimSpace(req.Reason)
+	if req.AccessToken == "" {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: codes.AccessTokenRequired})
+		return
+	}
+	if err := s.revokeSlackToken(r.Context(), req.AccessToken); err != nil {
+		s.Metrics.IncRevokeOutcome(codes.OutcomeSlackFailed)
+		s.logInfo(codes.EventRevoke, "provider", oauth.ProviderSlack, "outcome", codes.OutcomeSlackFailed, "reason", req.Reason, "ip_bucket", ipBucket)
+		writeJSON(w, http.StatusBadGateway, errorResponse{Error: codes.SlackRevokeFailed})
+		return
+	}
+	s.Metrics.IncRevokeOK()
+	s.Metrics.IncRevokeOutcome(codes.OutcomeOK)
+	s.logInfo(codes.EventRevoke, "provider", oauth.ProviderSlack, "outcome", codes.OutcomeOK, "reason", req.Reason, "ip_bucket", ipBucket)
+	writeJSON(w, http.StatusOK, revokeResponse{Revoked: true})
+}
+
+func (s Server) revokeSlackToken(ctx context.Context, accessToken string) error {
+	desc := oauth.MustLookup(oauth.ProviderSlack)
+	revokeURL := strings.TrimRight(desc.RevokeURL, "/")
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, revokeURL, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Accept", "application/json")
+	client := s.HTTPClient
+	if client == nil {
+		client = http.DefaultClient
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return err
+	}
+	var out struct {
+		OK      bool   `json:"ok"`
+		Revoked bool   `json:"revoked"`
+		Error   string `json:"error"`
+	}
+	if err := json.Unmarshal(body, &out); err != nil {
+		return err
+	}
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 && out.OK && out.Revoked {
+		return nil
+	}
+	if out.Error != "" {
+		return fmt.Errorf("slack revoke failed: %s", out.Error)
+	}
+	return fmt.Errorf("slack revoke failed: status %d", resp.StatusCode)
+}
+
 func (s Server) revokeGitHubToken(ctx context.Context, accessToken string) error {
 	desc := oauth.MustLookup(oauth.ProviderGitHub)
 	base := strings.TrimRight(strings.TrimSpace(s.GitHubRevokeURL), "/")
@@ -827,11 +900,7 @@ func (s Server) postGoogleToken(ctx context.Context, form url.Values) (providerT
 func (s Server) buildHandoffURL(state store.OAuthState, handoffCode string) (string, error) {
 	base := strings.TrimSpace(state.DesktopHandoffRedirect)
 	if base == "" {
-		if providerOrGoogle(state.Provider) == oauth.ProviderGitHub {
-			base = strings.TrimSpace(s.Config.GitHubDesktopHandoffURL)
-		} else {
-			base = strings.TrimSpace(s.Config.DesktopHandoffURL)
-		}
+		base = s.desktopHandoffURLForProvider(state.Provider)
 	}
 	u, err := url.Parse(base)
 	if err != nil {
@@ -862,6 +931,10 @@ func (s Server) providerScopes(provider string) []string {
 		if len(s.Config.GitHubScopes) > 0 {
 			return s.Config.GitHubScopes
 		}
+	case oauth.ProviderSlack:
+		if len(s.Config.SlackScopes) > 0 {
+			return s.Config.SlackScopes
+		}
 	case oauth.ProviderGoogle:
 		if len(s.Config.GoogleScopes) > 0 {
 			return s.Config.GoogleScopes
@@ -878,6 +951,13 @@ func (s Server) providerCredentials(provider string) (oauth.ClientCredentials, b
 	case oauth.ProviderGitHub:
 		id := strings.TrimSpace(s.Config.GitHubClientID)
 		secret := strings.TrimSpace(s.Config.GitHubClientSecret)
+		if id == "" || secret == "" {
+			return oauth.ClientCredentials{}, false
+		}
+		return oauth.ClientCredentials{ClientID: id, ClientSecret: secret}, true
+	case oauth.ProviderSlack:
+		id := strings.TrimSpace(s.Config.SlackClientID)
+		secret := strings.TrimSpace(s.Config.SlackClientSecret)
 		if id == "" || secret == "" {
 			return oauth.ClientCredentials{}, false
 		}
@@ -931,6 +1011,17 @@ func providerOrGoogle(provider string) string {
 		return oauth.ProviderGoogle
 	}
 	return provider
+}
+
+func (s Server) desktopHandoffURLForProvider(provider string) string {
+	switch providerOrGoogle(provider) {
+	case oauth.ProviderGitHub:
+		return strings.TrimSpace(s.Config.GitHubDesktopHandoffURL)
+	case oauth.ProviderSlack:
+		return strings.TrimSpace(s.Config.SlackDesktopHandoffURL)
+	default:
+		return strings.TrimSpace(s.Config.DesktopHandoffURL)
+	}
 }
 
 func splitProviderScopes(provider, raw string) []string {

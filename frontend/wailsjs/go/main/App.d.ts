@@ -15,6 +15,8 @@ export function ConnectGitHub(arg1:string):Promise<connection.Connection>;
 
 export function ConnectGoogle(arg1:string,arg2:string):Promise<connection.Connection>;
 
+export function ConnectSlack():Promise<connection.Connection>;
+
 export function CreateCategory(arg1:service.CreateCategoryInput):Promise<service.Category>;
 
 export function CreateExportTemplate(arg1:service.CreateExportTemplateInput):Promise<service.ExportTemplate>;
@@ -32,6 +34,8 @@ export function DeleteManualEvent(arg1:service.ManualEventDeleteInput):Promise<m
 export function DisconnectGitHub(arg1:string):Promise<void>;
 
 export function DisconnectGoogle(arg1:string):Promise<void>;
+
+export function DisconnectSlack(arg1:string):Promise<void>;
 
 export function DiscoverLocalAIEndpoints():Promise<Array<ai.Endpoint>>;
 
@@ -73,6 +77,8 @@ export function ListGapFills(arg1:number):Promise<Array<service.GapFill>>;
 
 export function ListGitHubRepos():Promise<Array<service.GitHubRepo>>;
 
+export function ListSlackChannels():Promise<Array<service.SlackChannel>>;
+
 export function ListIntegrationConnections():Promise<Array<connection.Connection>>;
 
 export function ListPeriods():Promise<Array<service.Period>>;
@@ -86,6 +92,8 @@ export function ListTzSegments(arg1:number):Promise<Array<service.TzSegment>>;
 export function PreviewExport(arg1:service.PreviewExportInput):Promise<service.PeriodExportRender>;
 
 export function RefreshGitHubRepos(arg1:string):Promise<void>;
+
+export function RefreshSlackChannels(arg1:string):Promise<void>;
 
 export function ResolveReviewDecision(arg1:service.ResolveReviewDecisionInput):Promise<service.ResolveReviewDecisionResult>;
 
@@ -102,6 +110,12 @@ export function SetCalendarDefaultCategory(arg1:number,arg2:any):Promise<void>;
 export function SetCalendarSelected(arg1:number,arg2:boolean):Promise<void>;
 
 export function SetGitHubRepoSelected(arg1:number,arg2:boolean):Promise<void>;
+
+export function SetSlackChannelSelected(arg1:number,arg2:boolean):Promise<void>;
+
+export function SlackAuthMode():Promise<string>;
+
+export function SlackOAuthAvailable():Promise<boolean>;
 
 export function SetSetting(arg1:string,arg2:string):Promise<void>;
 

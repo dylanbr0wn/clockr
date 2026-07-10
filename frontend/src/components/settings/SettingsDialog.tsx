@@ -2,6 +2,7 @@ import {
   CalendarDays,
   Download,
   Github,
+  MessagesSquare,
   Monitor,
   Moon,
   Settings,
@@ -45,6 +46,7 @@ import { CalendarSettings } from "./CalendarSettings";
 import { CategorySettings } from "./CategorySettings";
 import { ExportSettings } from "./ExportSettings";
 import { GitHubSettings } from "./GitHubSettings";
+import { SlackSettings } from "./SlackSettings";
 import { SettingBlock } from "./SettingBlock";
 
 type ThemeSetting = "system" | "light" | "dark";
@@ -64,6 +66,7 @@ const sections: Array<{
   { id: "general", label: "General", icon: Settings, ready: true },
   { id: "calendars", label: "Calendars", icon: CalendarDays, ready: true },
   { id: "github", label: "GitHub", icon: Github, ready: true },
+  { id: "slack", label: "Slack", icon: MessagesSquare, ready: true },
   { id: "categories", label: "Categories", icon: Tags, ready: true },
   { id: "ai", label: "AI Model", icon: Sparkles, ready: true },
   { id: "privacy", label: "Privacy", icon: Shield, ready: false },
@@ -408,6 +411,9 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
             </TabsContent>
             <TabsContent value="github" className="min-h-0 overflow-auto p-5">
               <GitHubSettings />
+            </TabsContent>
+            <TabsContent value="slack" className="min-h-0 overflow-auto p-5">
+              <SlackSettings />
             </TabsContent>
             <TabsContent value="categories" className="min-h-0 overflow-auto p-5">
               <CategorySettings />

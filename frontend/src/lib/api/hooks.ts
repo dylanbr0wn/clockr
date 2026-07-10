@@ -4,6 +4,7 @@ import {
   computeGaps,
   connectGitHub,
   connectGoogle,
+  connectSlack,
   createGapFill,
   createCategory,
   createManualEvent,
@@ -11,6 +12,7 @@ import {
   deleteManualEvent,
   disconnectGitHub,
   disconnectGoogle,
+  disconnectSlack,
   discoverLocalAIEndpoints,
   ensureCurrentPeriod,
   excludeEvent,
@@ -18,6 +20,8 @@ import {
   getSetting,
   githubAuthMode,
   githubOAuthAvailable,
+  slackAuthMode,
+  slackOAuthAvailable,
   listAIModels,
   listCalendars,
   listCategories,
@@ -25,6 +29,7 @@ import {
   listEvents,
   listGapFills,
   listGitHubRepos,
+  listSlackChannels,
   listExportTemplates,
   createExportTemplate,
   updateExportTemplate,
@@ -37,6 +42,7 @@ import {
   listSelectedCalendars,
   listTzSegments,
   refreshGitHubRepos,
+  refreshSlackChannels,
   resolveReviewDecision,
   saveAIConfig,
   saveAIEndpoint,
@@ -44,6 +50,7 @@ import {
   setCalendarDefaultCategory,
   setCalendarSelected,
   setGitHubRepoSelected,
+  setSlackChannelSelected,
   setSetting,
   suggestGapFill,
   syncPeriod,
@@ -96,6 +103,10 @@ export const shietQueryKeys = {
   githubAuthMode: () => [...shietQueryKeys.all, "githubAuthMode"] as const,
   githubOAuthAvailable: () =>
     [...shietQueryKeys.all, "githubOAuthAvailable"] as const,
+  slackChannels: () => [...shietQueryKeys.all, "slackChannels"] as const,
+  slackAuthMode: () => [...shietQueryKeys.all, "slackAuthMode"] as const,
+  slackOAuthAvailable: () =>
+    [...shietQueryKeys.all, "slackOAuthAvailable"] as const,
   setting: (key: string) => [...shietQueryKeys.all, "settings", key] as const,
   aiDiscovery: () => [...shietQueryKeys.all, "ai", "discovery"] as const,
   aiClassification: (baseURL: string) =>
@@ -812,6 +823,92 @@ export function useRefreshGitHubRepos() {
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: shietQueryKeys.githubRepos(),
+      });
+    },
+  });
+}
+
+export function useSlackChannels() {
+  return useQuery({
+    queryKey: shietQueryKeys.slackChannels(),
+    queryFn: listSlackChannels,
+  });
+}
+
+export function useSlackAuthMode() {
+  return useQuery({
+    queryKey: shietQueryKeys.slackAuthMode(),
+    queryFn: slackAuthMode,
+  });
+}
+
+export function useSlackOAuthAvailable() {
+  return useQuery({
+    queryKey: shietQueryKeys.slackOAuthAvailable(),
+    queryFn: slackOAuthAvailable,
+  });
+}
+
+export function useConnectSlack() {
+  const queryClient = useQueryClient();
+  const refreshSlackQueries = () => {
+    void queryClient.invalidateQueries({
+      queryKey: shietQueryKeys.connections(),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: shietQueryKeys.slackChannels(),
+    });
+  };
+
+  return useMutation({
+    mutationFn: () => connectSlack(),
+    onSettled: refreshSlackQueries,
+  });
+}
+
+export function useDisconnectSlack() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (accountID: string) => disconnectSlack(accountID),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.connections(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.slackChannels(),
+      });
+    },
+  });
+}
+
+export function useSetSlackChannelSelected() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      channelID,
+      selected,
+    }: {
+      channelID: number;
+      selected: boolean;
+    }) => setSlackChannelSelected(channelID, selected),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.slackChannels(),
+      });
+    },
+  });
+}
+
+export function useRefreshSlackChannels() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (accountID: string) => refreshSlackChannels(accountID),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.slackChannels(),
       });
     },
   });

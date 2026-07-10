@@ -14,6 +14,10 @@
 #   SHIET_GITHUB_BROKER_BASE_URL   -> github.broker_base_url
 #   SHIET_GITHUB_CLIENT_ID         -> github.client_id
 #   SHIET_GITHUB_CLIENT_SECRET     -> github.client_secret
+#   SHIET_SLACK_AUTH_MODE          -> slack.auth_mode
+#   SHIET_SLACK_BROKER_BASE_URL    -> slack.broker_base_url
+#   SHIET_SLACK_CLIENT_ID          -> slack.client_id
+#   SHIET_SLACK_CLIENT_SECRET      -> slack.client_secret
 #
 # google.auth_mode:
 #   - broker (public default when no local client_id is set): secret-only OAuth broker;
@@ -32,6 +36,10 @@
 #     Register http://127.0.0.1/oauth/callback; GitHub permits the desktop flow
 #     to supply the runtime loopback port.
 # A personal access token can be entered from GitHub settings in either mode.
+#
+# slack.auth_mode mirrors GitHub (OAuth only; no PAT path):
+#   - broker (public default): the hosted broker owns the shared Slack app secret
+#   - local: BYO Slack app credentials when both client_id and client_secret are set
 
 db:
   path: ~/.config/shiet/shiet.db
@@ -43,6 +51,12 @@ google:
   client_secret: ""
 
 github:
+  auth_mode: broker
+  broker_base_url: https://auth.shiet.app
+  client_id: ""
+  client_secret: ""
+
+slack:
   auth_mode: broker
   broker_base_url: https://auth.shiet.app
   client_id: ""
