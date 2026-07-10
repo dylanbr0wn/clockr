@@ -49,20 +49,10 @@ type SyncResult struct {
 	Flagged   int `json:"flagged"`
 }
 
-// review_item.kind values (must match the schema CHECK constraint).
+// overlay.kind for a category / status decision.
 const (
-	reviewNewInGap         = "new_in_gap"
-	reviewTitleChanged     = "title_changed"
-	reviewDeletedCategoriz = "deleted_categorized"
-	reviewTentative        = "tentative"
-	reviewAllDay           = "all_day"
-)
-
-// overlay.kind for a category decision.
-const (
-	overlayKindCategory  = "category"
-	overlayKindStatus    = "status"
-	overlayStatusExclude = "excluded"
+	overlayKindCategory = "category"
+	overlayKindStatus   = "status"
 )
 
 // SyncEvents runs the 3-way merge for a period (DESIGN.md "Re-sync"):
@@ -134,11 +124,12 @@ func (s *Service) SyncEvents(ctx context.Context, periodID int64, incoming []Inc
 	}
 
 	// Events that vanished from the pull.
+	policy := s.review()
 	for _, e := range base {
 		if _, ok := seen[eventKey(e.CalendarID, e.ExternalID, e.InstanceID)]; ok {
 			continue
 		}
-		excluded, err := hasStatusExcluded(ctx, q, e)
+		excluded, err := policy.HasStatusExcluded(ctx, q, e)
 		if err != nil {
 			return res, err
 		}
@@ -152,26 +143,15 @@ func (s *Service) SyncEvents(ctx context.Context, periodID int64, incoming []Inc
 		if categorized {
 			// Never silently drop a categorized event — keep the fact, queue it
 			// unless the same conflict was already resolved.
-			action, created, err := s.enqueueIfUnresolved(ctx, q, periodID, reviewDeletedCategoriz, e.ID,
-				reviewConflictKey(eventIdentityFromRow(e), "deleted"),
-				map[string]any{"reason": "deleted", "title": e.Title})
+			flagged, removed, err := policy.OnVanishedCategorized(ctx, q, periodID, e)
 			if err != nil {
 				return res, err
 			}
-			if created {
+			if flagged {
 				res.Flagged++
 			}
-			if action == ReviewActionDropEntry || action == ReviewActionKeepEntry {
-				if err := s.resolveDeletedCategorized(ctx, q, sqlc.ReviewItem{
-					PeriodID: periodID,
-					Kind:     reviewDeletedCategoriz,
-					EventID:  sql.NullInt64{Int64: e.ID, Valid: true},
-				}, action); err != nil {
-					return res, err
-				}
-				if action == ReviewActionDropEntry {
-					res.Removed++
-				}
+			if removed {
+				res.Removed++
 			}
 		} else {
 			if err := q.DeleteEvent(ctx, e.ID); err != nil {
@@ -191,70 +171,13 @@ func (s *Service) SyncEvents(ctx context.Context, periodID int64, incoming []Inc
 // auto-categorizes from memory. Flags are mutually exclusive (gap takes
 // precedence) to keep the review queue quiet.
 func (s *Service) handleNewEvent(ctx context.Context, q *sqlc.Queries, periodID int64, inc IncomingEvent, eventID int64, gaps []sqlc.GapFill, res *SyncResult) error {
-	identity := eventIdentityFromIncoming(inc)
-	gapFingerprint, overlapsGap := overlappingGapFingerprint(inc, gaps)
-	switch {
-	case overlapsGap:
-		action, created, err := s.enqueueIfUnresolved(ctx, q, periodID, reviewNewInGap, eventID,
-			reviewConflictKey(identity, gapFingerprint),
-			map[string]any{"title": inc.Title})
-		if err != nil {
-			return err
-		}
-		if created {
-			res.Flagged++
-		}
-		switch action {
-		case ReviewActionKeepGap:
-			ev, err := q.GetEvent(ctx, eventID)
-			if err != nil {
-				return mapErr("get event", err)
-			}
-			if err := markEventExcluded(ctx, q, ev); err != nil {
-				return err
-			}
-			return nil
-		case ReviewActionUseEvent:
-			if err := s.resolveNewInGap(ctx, q, sqlc.ReviewItem{
-				PeriodID: periodID,
-				Kind:     reviewNewInGap,
-				EventID:  sql.NullInt64{Int64: eventID, Valid: true},
-			}, action); err != nil {
-				return err
-			}
-		}
-	case inc.AllDay:
-		_, created, err := s.enqueueIfUnresolved(ctx, q, periodID, reviewAllDay, eventID,
-			reviewConflictKey(identity, inc.StartDate, inc.EndDate),
-			map[string]any{"title": inc.Title})
-		if err != nil {
-			return err
-		}
-		if created {
-			res.Flagged++
-		}
-	case inc.Status == "tentative" || inc.Status == "needsAction":
-		action, created, err := s.enqueueIfUnresolved(ctx, q, periodID, reviewTentative, eventID,
-			reviewConflictKey(identity, inc.Status),
-			map[string]any{"title": inc.Title, "status": inc.Status})
-		if err != nil {
-			return err
-		}
-		if created {
-			res.Flagged++
-		}
-		switch action {
-		case ReviewActionExclude:
-			ev, err := q.GetEvent(ctx, eventID)
-			if err != nil {
-				return mapErr("get event", err)
-			}
-			if err := markEventExcluded(ctx, q, ev); err != nil {
-				return err
-			}
-			return nil
-		case ReviewActionInclude:
-		}
+	flagged, skipAuto, err := s.review().OnNewEvent(ctx, q, periodID, inc, eventID, gaps)
+	if err != nil {
+		return err
+	}
+	res.Flagged += flagged
+	if skipAuto {
+		return nil
 	}
 
 	if err := s.applyMemory(ctx, q, periodID, inc); err != nil {
@@ -277,37 +200,11 @@ func (s *Service) handleChangedEvent(ctx context.Context, q *sqlc.Queries, perio
 		return nil // nothing the user decided yet → no conflict
 	}
 
-	if normalizeTitle(ex.Title) != normalizeTitle(inc.Title) {
-		_, created, err := s.enqueueIfUnresolved(ctx, q, periodID, reviewTitleChanged, eventID,
-			reviewConflictKey(eventIdentityFromIncoming(inc), normalizeTitle(ex.Title), normalizeTitle(inc.Title)),
-			map[string]any{"from": ex.Title, "to": inc.Title})
-		if err != nil {
-			return err
-		}
-		if created {
-			res.Flagged++
-		}
+	flagged, err := s.review().OnChangedCategorized(ctx, q, periodID, eventID, ex, inc)
+	if err != nil {
+		return err
 	}
-	if inc.Status == "declined" {
-		action, created, err := s.enqueueIfUnresolved(ctx, q, periodID, reviewDeletedCategoriz, eventID,
-			reviewConflictKey(eventIdentityFromIncoming(inc), "declined"),
-			map[string]any{"reason": "declined", "title": inc.Title})
-		if err != nil {
-			return err
-		}
-		if created {
-			res.Flagged++
-		}
-		if action == ReviewActionDropEntry {
-			if err := s.resolveDeletedCategorized(ctx, q, sqlc.ReviewItem{
-				PeriodID: periodID,
-				Kind:     reviewDeletedCategoriz,
-				EventID:  sql.NullInt64{Int64: eventID, Valid: true},
-			}, action); err != nil {
-				return err
-			}
-		}
-	}
+	res.Flagged += flagged
 	return nil
 }
 
@@ -389,94 +286,6 @@ func hasCategory(ctx context.Context, q *sqlc.Queries, periodID int64, provider,
 		return false, fmt.Errorf("overlay lookup: %w", err)
 	}
 	return o.CategoryID.Valid, nil
-}
-
-func (s *Service) enqueueIfUnresolved(ctx context.Context, q *sqlc.Queries, periodID int64, kind string, eventID int64, conflictKey string, payload map[string]any) (action string, created bool, err error) {
-	b, err := json.Marshal(payload)
-	if err != nil {
-		return "", false, fmt.Errorf("marshal review payload: %w", err)
-	}
-	existing, err := q.GetReviewItemByConflictKey(ctx, sqlc.GetReviewItemByConflictKeyParams{
-		PeriodID:    periodID,
-		Kind:        kind,
-		ConflictKey: conflictKey,
-	})
-	if err == nil {
-		if existing.Status == "open" {
-			return "", false, nil
-		}
-		return existing.DecisionAction, false, nil
-	}
-	if !errors.Is(err, sql.ErrNoRows) {
-		return "", false, mapErr("get review item by conflict key", err)
-	}
-
-	if _, err := q.CreateReviewItem(ctx, sqlc.CreateReviewItemParams{
-		PeriodID:    periodID,
-		Kind:        kind,
-		EventID:     sql.NullInt64{Int64: eventID, Valid: true},
-		Payload:     string(b),
-		ConflictKey: conflictKey,
-	}); err != nil {
-		return "", false, fmt.Errorf("enqueue review item: %w", err)
-	}
-	return "", true, nil
-}
-
-func reviewConflictKey(identity string, parts ...string) string {
-	fields := append([]string{identity}, parts...)
-	return strings.Join(fields, "|")
-}
-
-// overlapsAnyGap reports whether a timed event's interval intersects any gap
-// fill. Half-open intervals: [s,e) overlaps [gs,ge) iff s < ge && gs < e.
-func overlapsAnyGap(inc IncomingEvent, gaps []sqlc.GapFill) bool {
-	if inc.Start == nil || inc.End == nil {
-		return false
-	}
-	s, e := inc.Start.UTC(), inc.End.UTC()
-	for _, g := range gaps {
-		gs := parseTime(g.StartUtc)
-		ge := parseTime(g.EndUtc)
-		if gs.IsZero() || ge.IsZero() {
-			continue
-		}
-		if s.Before(ge) && gs.Before(e) {
-			return true
-		}
-	}
-	return false
-}
-
-func overlappingGapFingerprint(inc IncomingEvent, gaps []sqlc.GapFill) (string, bool) {
-	if inc.Start == nil || inc.End == nil {
-		return "", false
-	}
-	s, e := inc.Start.UTC(), inc.End.UTC()
-	parts := []string{}
-	for _, g := range gaps {
-		gs := parseTime(g.StartUtc)
-		ge := parseTime(g.EndUtc)
-		if gs.IsZero() || ge.IsZero() {
-			continue
-		}
-		if s.Before(ge) && gs.Before(e) {
-			category := "none"
-			if g.CategoryID.Valid {
-				category = fmt.Sprint(g.CategoryID.Int64)
-			}
-			parts = append(parts, strings.Join([]string{
-				g.StartUtc,
-				g.EndUtc,
-				category,
-				g.Source,
-			}, "~"))
-		}
-	}
-	if len(parts) == 0 {
-		return "", false
-	}
-	return strings.Join(parts, "^"), true
 }
 
 // matchKey is the categorization-memory key: the recurring series id when

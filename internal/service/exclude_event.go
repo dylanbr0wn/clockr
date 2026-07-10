@@ -45,10 +45,11 @@ func (s *Service) ExcludeEvent(ctx context.Context, input ExcludeEventInput) (Ex
 		return res, fmt.Errorf("exclude event: %w", ErrNotFound)
 	}
 
-	if err := s.deleteCategoryOverlay(ctx, q, ev); err != nil {
+	policy := s.review()
+	if err := policy.DeleteCategoryOverlay(ctx, q, ev); err != nil {
 		return res, err
 	}
-	if err := markEventExcluded(ctx, q, ev); err != nil {
+	if err := policy.MarkExcluded(ctx, q, ev); err != nil {
 		return res, err
 	}
 
