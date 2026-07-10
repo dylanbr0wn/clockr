@@ -1,5 +1,5 @@
 /**
- * Schedule projection concentrates Clockr schedule policy for the timeline.
+ * Schedule projection concentrates shiet schedule policy for the timeline.
  *
  * Intentional remaining leakage (not projected here):
  * - Sidebar / NeedsAttentionCard consume raw ReviewDecision[] for the review queue UI.
