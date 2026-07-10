@@ -316,7 +316,7 @@ func (a *App) UpdateManualEvent(input service.ManualEventUpdateInput) (ManualEve
 	return ManualEventResult{PeriodID: fill.PeriodID, ID: fill.ID}, nil
 }
 
-// DeleteManualEvent removes a scheduler-created manual block.
+// DeleteManualEvent removes a scheduler-created block (manual or gap fill).
 func (a *App) DeleteManualEvent(input service.ManualEventDeleteInput) (ManualEventResult, error) {
 	if err := a.Svc.DeleteManualEvent(a.callContext(), input); err != nil {
 		return ManualEventResult{}, err

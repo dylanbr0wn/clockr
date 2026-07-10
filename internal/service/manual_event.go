@@ -68,7 +68,8 @@ func (s *Service) createGapFillEntry(ctx context.Context, action string, input M
 	return toGapFill(row), nil
 }
 
-// UpdateManualEvent persists a scheduler edit to an existing manual block.
+// UpdateManualEvent persists a scheduler edit to an existing gap fill
+// (source manual, gap, or extend).
 func (s *Service) UpdateManualEvent(ctx context.Context, input ManualEventUpdateInput) (GapFill, error) {
 	if input.ID <= 0 {
 		return GapFill{}, fmt.Errorf("update manual event: id is required")
@@ -99,7 +100,7 @@ func (s *Service) UpdateManualEvent(ctx context.Context, input ManualEventUpdate
 	return toGapFill(row), nil
 }
 
-// DeleteManualEvent removes a user-created scheduler block.
+// DeleteManualEvent removes a user-created scheduler block (manual or gap fill).
 func (s *Service) DeleteManualEvent(ctx context.Context, input ManualEventDeleteInput) error {
 	if input.ID <= 0 {
 		return fmt.Errorf("delete manual event: id is required")
@@ -108,7 +109,7 @@ func (s *Service) DeleteManualEvent(ctx context.Context, input ManualEventDelete
 		return fmt.Errorf("delete manual event: periodId is required")
 	}
 
-	rows, err := s.q.DeleteManualGapFill(ctx, sqlc.DeleteManualGapFillParams{
+	rows, err := s.q.DeleteGapFill(ctx, sqlc.DeleteGapFillParams{
 		ID:       input.ID,
 		PeriodID: input.PeriodID,
 	})
