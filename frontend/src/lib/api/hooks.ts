@@ -16,6 +16,8 @@ import {
   excludeEvent,
   getGoogleAuthStatus,
   getSetting,
+  githubAuthMode,
+  githubOAuthAvailable,
   listAIModels,
   listCalendars,
   listCategories,
@@ -84,6 +86,9 @@ export const shietQueryKeys = {
   googleAuthStatus: () =>
     [...shietQueryKeys.all, "googleAuthStatus"] as const,
   githubRepos: () => [...shietQueryKeys.all, "githubRepos"] as const,
+  githubAuthMode: () => [...shietQueryKeys.all, "githubAuthMode"] as const,
+  githubOAuthAvailable: () =>
+    [...shietQueryKeys.all, "githubOAuthAvailable"] as const,
   setting: (key: string) => [...shietQueryKeys.all, "settings", key] as const,
   aiDiscovery: () => [...shietQueryKeys.all, "ai", "discovery"] as const,
   aiClassification: (baseURL: string) =>
@@ -636,6 +641,20 @@ export function useGitHubRepos() {
   return useQuery({
     queryKey: shietQueryKeys.githubRepos(),
     queryFn: listGitHubRepos,
+  });
+}
+
+export function useGitHubAuthMode() {
+  return useQuery({
+    queryKey: shietQueryKeys.githubAuthMode(),
+    queryFn: githubAuthMode,
+  });
+}
+
+export function useGitHubOAuthAvailable() {
+  return useQuery({
+    queryKey: shietQueryKeys.githubOAuthAvailable(),
+    queryFn: githubOAuthAvailable,
   });
 }
 

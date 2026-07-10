@@ -6,10 +6,10 @@ The OAuth broker is a separate deployable Go binary:
 go run ./cmd/oauth-broker
 ```
 
-It keeps the Google Web OAuth client secret in the server environment and stores
-only short-lived coordination records in the configured datastore. It does not
-create durable tables for Google access tokens, Google refresh tokens, or
-Calendar event data.
+It keeps Google Web OAuth and GitHub OAuth App client secrets in the server
+environment and stores only short-lived coordination records in the configured
+datastore. It does not create durable tables for provider access tokens,
+refresh tokens, Calendar event data, or GitHub repository data.
 
 ## Environment
 
@@ -19,6 +19,10 @@ Required:
   `https://auth.shiet.app`.
 - `SHIET_BROKER_GOOGLE_CLIENT_ID`: Google Web OAuth client id.
 - `SHIET_BROKER_GOOGLE_CLIENT_SECRET`: Google Web OAuth client secret.
+- `SHIET_BROKER_GITHUB_CLIENT_ID`: GitHub OAuth App client id (required to
+  enable GitHub routes).
+- `SHIET_BROKER_GITHUB_CLIENT_SECRET`: GitHub OAuth App client secret (required
+  with the GitHub client id).
 - `SHIET_BROKER_DATASTORE_DSN`: SQLite DSN for the broker datastore.
 
 Optional:
@@ -31,6 +35,10 @@ Optional:
 - `SHIET_BROKER_HANDOFF_TTL`: handoff TTL, default `2m`, maximum `5m`.
 - `SHIET_BROKER_GOOGLE_SCOPES`: space- or comma-separated Google scopes,
   default `https://www.googleapis.com/auth/calendar.readonly`.
+- `SHIET_BROKER_GITHUB_DESKTOP_HANDOFF_URL`: GitHub desktop handoff URL,
+  default `shiet://oauth/github/handoff`.
+- `SHIET_BROKER_GITHUB_SCOPES`: space- or comma-separated GitHub OAuth App
+  scopes, default `repo`.
 - `SHIET_BROKER_AUTH_DISABLED`: when `true`/`1`/`yes`/`on`, reject start,
   callback, and handoff with `auth_disabled` (HTTP 403). Revoke stays enabled.
 - `SHIET_BROKER_REFRESH_DISABLED`: when truthy, reject refresh with
@@ -45,11 +53,11 @@ each minute:
 
 | Surface | Limit | Notes |
 |---------|-------|-------|
-| start | 10 / min | before minting OAuth state |
-| callback | 30 / min | HTML responses; 429 page on overage |
-| handoff | 20 / min | all exchange attempts |
+| start | 10 / min | shared Google + GitHub budget before minting OAuth state |
+| callback | 30 / min | shared provider budget; HTML responses; 429 page on overage |
+| handoff | 20 / min | shared provider budget for all exchange attempts |
 | handoff failures | 5 / min | stricter: IP + desktop session + handoff-code hash |
-| refresh | 60 / min | all refresh attempts (before Google) |
+| refresh | 60 / min | Google refresh attempts; GitHub OAuth App tokens do not refresh |
 | refresh failures | 10 / min | additional budget for `invalid_grant` / Google failures |
 | revoke | 20 / min | stays available under auth/refresh kill switches |
 
@@ -69,9 +77,9 @@ this document is the operator runbook.
 
 Structured JSON logs go to stdout via a redacting `slog` handler. Never log:
 
-- Google authorization codes
+- Google or GitHub authorization codes
 - handoff codes / verifiers
-- Google access or refresh tokens
+- Google access/refresh tokens or GitHub access tokens
 - `client_secret` or other secret-bearing fields
 
 Safe fields include event name, surface, outcome/reason codes, IP bucket,
@@ -113,7 +121,7 @@ Handoff failure reasons: `already_used`, `expired`, `not_found`,
    - `broker_quota_risk_total` for `invalid_grant` or `handoff_replay`
    - sustained `broker_handoff_failures_total` / refresh failures
 2. Correlate with Railway request volume and error rates on
-   `/v1/google/oauth/*`.
+   `/v1/google/oauth/*` and `/v1/github/oauth/*`.
 
 ### Incident response steps
 
@@ -123,10 +131,10 @@ Handoff failure reasons: `already_used`, `expired`, `not_found`,
    users can disconnect.
 2. **Narrow**: if abuse is version-specific, set
    `SHIET_BROKER_DISABLED_APP_VERSIONS` instead of a global kill switch.
-3. **Rotate** (if secret exposure is suspected): rotate the Google Web OAuth
-   client secret in Google Cloud, update the sealed Railway variable, restart
-   the broker. Existing desktop refresh tokens may need reconnect after Google
-   invalidates grants.
+3. **Rotate** (if secret exposure is suspected): rotate the affected Google Web
+   OAuth or GitHub OAuth App client secret, update the sealed Railway variable,
+   and restart the broker. Existing tokens may need reconnect after the
+   provider invalidates grants.
 4. **Investigate**: inspect `/metrics` and redacted logs for IP buckets,
    outcomes, and quota-risk signals. Do not dump request bodies that may contain
    tokens.
@@ -137,8 +145,10 @@ Handoff failure reasons: `already_used`, `expired`, `not_found`,
 
 - HTTPS/domain: provision `auth.shiet.app` with HTTPS and HSTS. Configure the
   Google Web OAuth redirect URI as
-  `https://auth.shiet.app/v1/google/oauth/callback`.
-- Secret management: inject the Google client id and client secret from a
+  `https://auth.shiet.app/v1/google/oauth/callback`, and configure the GitHub
+  OAuth App callback URL as
+  `https://auth.shiet.app/v1/github/oauth/callback`.
+- Secret management: inject both provider client ids and client secrets from a
   managed secret store. Restrict runtime access and keep audit logs for reads
   and rotations.
 - Datastore: start with a small SQLite database on durable storage for the first
@@ -167,9 +177,12 @@ Recommended Railway service variables:
 - `SHIET_BROKER_PUBLIC_ORIGIN=https://auth.shiet.app`
 - `SHIET_BROKER_GOOGLE_CLIENT_ID=<Google Web OAuth client id>`
 - `SHIET_BROKER_GOOGLE_CLIENT_SECRET=<Google Web OAuth client secret>`
+- `SHIET_BROKER_GITHUB_CLIENT_ID=<GitHub OAuth App client id>`
+- `SHIET_BROKER_GITHUB_CLIENT_SECRET=<GitHub OAuth App client secret>`
+- `SHIET_BROKER_GITHUB_SCOPES=repo`
 - `SHIET_BROKER_DATASTORE_DSN=file:/data/oauth-broker.sqlite`
 
-Mark the Google client secret as a sealed Railway variable. Attach a Railway
+Mark both provider client secrets as sealed Railway variables. Attach a Railway
 Volume at `/data` before using the SQLite DSN above.
 
 To smoke-test the Docker image locally:
@@ -217,3 +230,19 @@ schema guarantees.
   token, calls Google's revoke endpoint, and returns `{ "revoked": true }`.
   Already-revoked / `invalid_token` responses are treated as success. The
   broker does not persist the token or any disconnected-account record.
+- `POST /v1/github/oauth/start`: creates provider-bound short-lived state and
+  returns a GitHub authorization URL with PKCE.
+- `GET /v1/github/oauth/callback`: exchanges GitHub's authorization code using
+  the server-only OAuth App secret and mints a short-lived handoff.
+- `POST /v1/github/oauth/handoff`: returns the non-persisted GitHub OAuth App
+  user access token once, bound to the initiating desktop session and verifier.
+- `POST /v1/github/oauth/revoke`: accepts the desktop-held GitHub access token
+  and revokes that one app token with the server-side OAuth App credentials.
+
+There is deliberately no `/v1/github/oauth/refresh`. This implementation uses
+GitHub OAuth App user access tokens, not GitHub App installation tokens. If a
+token becomes invalid, the desktop marks the connection `needs_reauth` and the
+user reconnects. GitHub documents the web authorization-code exchange and PKCE
+parameters in [Authorizing OAuth apps](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps),
+and the server-authenticated single-token revocation operation in
+[REST API endpoints for OAuth authorizations](https://docs.github.com/en/rest/apps/oauth-applications).

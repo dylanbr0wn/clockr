@@ -27,8 +27,10 @@ const (
 // Sentinel errors so callers can distinguish local credential gaps from broker
 // configuration problems without parsing message text.
 var (
-	ErrLocalCredentials = errors.New("local Google OAuth credentials are not configured")
-	ErrBrokerConfig     = errors.New("Google OAuth broker is not configured")
+	ErrLocalCredentials       = errors.New("local Google OAuth credentials are not configured")
+	ErrBrokerConfig           = errors.New("Google OAuth broker is not configured")
+	ErrGitHubBrokerConfig     = errors.New("GitHub OAuth broker is not configured")
+	ErrGitHubLocalCredentials = errors.New("local GitHub OAuth credentials are not configured")
 )
 
 // Config holds typed app/runtime settings. User preferences (window start, AI
@@ -43,6 +45,12 @@ type Config struct {
 		ClientID      string `koanf:"client_id"`
 		ClientSecret  string `koanf:"client_secret"`
 	} `koanf:"google"`
+	GitHub struct {
+		AuthMode      string `koanf:"auth_mode"`
+		BrokerBaseURL string `koanf:"broker_base_url"`
+		ClientID      string `koanf:"client_id"`
+		ClientSecret  string `koanf:"client_secret"`
+	} `koanf:"github"`
 }
 
 // envKeyMap maps legacy SHIET_* env vars to koanf dotted keys.
@@ -52,6 +60,10 @@ var envKeyMap = map[string]string{
 	"SHIET_GOOGLE_BROKER_BASE_URL": "google.broker_base_url",
 	"SHIET_GOOGLE_CLIENT_ID":       "google.client_id",
 	"SHIET_GOOGLE_CLIENT_SECRET":   "google.client_secret",
+	"SHIET_GITHUB_AUTH_MODE":       "github.auth_mode",
+	"SHIET_GITHUB_BROKER_BASE_URL": "github.broker_base_url",
+	"SHIET_GITHUB_CLIENT_ID":       "github.client_id",
+	"SHIET_GITHUB_CLIENT_SECRET":   "github.client_secret",
 }
 
 // Load reads configuration using the standard discovery order:
@@ -86,6 +98,9 @@ func load(configFiles []string) (Config, error) {
 		"google": map[string]any{
 			"broker_base_url": defaultBrokerBaseURL,
 		},
+		"github": map[string]any{
+			"broker_base_url": defaultBrokerBaseURL,
+		},
 	}, "."), nil); err != nil {
 		return Config{}, fmt.Errorf("load defaults: %w", err)
 	}
@@ -113,12 +128,20 @@ func load(configFiles []string) (Config, error) {
 	cfg.Google.BrokerBaseURL = strings.TrimSpace(cfg.Google.BrokerBaseURL)
 	cfg.Google.ClientID = strings.TrimSpace(cfg.Google.ClientID)
 	cfg.Google.ClientSecret = strings.TrimSpace(cfg.Google.ClientSecret)
+	cfg.GitHub.AuthMode = strings.ToLower(strings.TrimSpace(cfg.GitHub.AuthMode))
+	cfg.GitHub.BrokerBaseURL = strings.TrimSpace(cfg.GitHub.BrokerBaseURL)
+	cfg.GitHub.ClientID = strings.TrimSpace(cfg.GitHub.ClientID)
+	cfg.GitHub.ClientSecret = strings.TrimSpace(cfg.GitHub.ClientSecret)
 
 	cfg.resolveGoogleAuthMode()
+	cfg.resolveGitHubAuthMode()
 
 	// Broker mode must not carry a desktop Google client_secret into runtime.
 	if cfg.UsesBrokerAuth() {
 		cfg.Google.ClientSecret = ""
+	}
+	if cfg.UsesGitHubBrokerAuth() {
+		cfg.GitHub.ClientSecret = ""
 	}
 
 	if err := cfg.Validate(); err != nil {
@@ -141,22 +164,40 @@ func (c *Config) resolveGoogleAuthMode() {
 	c.Google.AuthMode = AuthModeBroker
 }
 
+// resolveGitHubAuthMode applies the public-build default. Explicit local mode
+// keeps PAT and BYO credentials available for development and advanced users.
+func (c *Config) resolveGitHubAuthMode() {
+	if c.GitHub.AuthMode != "" {
+		return
+	}
+	if c.GitHub.ClientID != "" {
+		c.GitHub.AuthMode = AuthModeLocal
+		return
+	}
+	c.GitHub.AuthMode = AuthModeBroker
+}
+
 // Validate checks Google auth mode settings. Broker mode requires an HTTPS
 // broker base URL and must not depend on a desktop Google client_secret.
 // Local/BYO mode requires a desktop client_id and preserves existing OAuth
 // credential fields for development and advanced users.
 func (c Config) Validate() error {
 	mode := strings.ToLower(strings.TrimSpace(c.Google.AuthMode))
+	var err error
 	switch mode {
 	case AuthModeBroker:
-		return c.validateBrokerMode()
+		err = c.validateBrokerMode()
 	case AuthModeLocal:
-		return c.validateLocalMode()
+		err = c.validateLocalMode()
 	case "":
 		return fmt.Errorf("google.auth_mode is required (use %q or %q)", AuthModeBroker, AuthModeLocal)
 	default:
 		return fmt.Errorf("google.auth_mode %q is invalid (use %q or %q)", c.Google.AuthMode, AuthModeBroker, AuthModeLocal)
 	}
+	if err != nil {
+		return err
+	}
+	return c.validateGitHubAuth()
 }
 
 // UsesBrokerAuth reports whether Google Calendar auth should go through the
@@ -165,23 +206,65 @@ func (c Config) UsesBrokerAuth() bool {
 	return strings.EqualFold(strings.TrimSpace(c.Google.AuthMode), AuthModeBroker)
 }
 
+// UsesGitHubBrokerAuth reports whether GitHub connect should use the hosted
+// secret-only OAuth broker. Local mode retains PAT/BYO access.
+func (c Config) UsesGitHubBrokerAuth() bool {
+	return strings.EqualFold(strings.TrimSpace(c.GitHub.AuthMode), AuthModeBroker)
+}
+
+func (c Config) validateGitHubAuth() error {
+	switch strings.ToLower(strings.TrimSpace(c.GitHub.AuthMode)) {
+	case AuthModeBroker:
+		if err := validateBrokerURL(c.GitHub.BrokerBaseURL, "github.broker_base_url", "SHIET_GITHUB_BROKER_BASE_URL"); err != nil {
+			return fmt.Errorf("%w: %v", ErrGitHubBrokerConfig, err)
+		}
+		return nil
+	case AuthModeLocal:
+		clientID := strings.TrimSpace(c.GitHub.ClientID)
+		clientSecret := strings.TrimSpace(c.GitHub.ClientSecret)
+		if clientID == "" && clientSecret == "" {
+			return nil // PAT-only local mode.
+		}
+		if clientID == "" {
+			return fmt.Errorf("%w: set github.client_id or SHIET_GITHUB_CLIENT_ID with the local client_secret", ErrGitHubLocalCredentials)
+		}
+		if clientSecret == "" {
+			return fmt.Errorf("%w: set github.client_secret or SHIET_GITHUB_CLIENT_SECRET for local/BYO GitHub OAuth; desktop apps cannot keep it confidential, so public builds must use broker mode", ErrGitHubLocalCredentials)
+		}
+		return nil
+	case "":
+		// Config values constructed directly by tests and embedders predate the
+		// GitHub section. Load always resolves this to broker or local.
+		return nil
+	default:
+		return fmt.Errorf("github.auth_mode %q is invalid (use %q or %q)", c.GitHub.AuthMode, AuthModeBroker, AuthModeLocal)
+	}
+}
+
 func (c Config) validateBrokerMode() error {
-	raw := strings.TrimSpace(c.Google.BrokerBaseURL)
+	if err := validateBrokerURL(c.Google.BrokerBaseURL, "google.broker_base_url", "SHIET_GOOGLE_BROKER_BASE_URL"); err != nil {
+		return fmt.Errorf("%w: %v", ErrBrokerConfig, err)
+	}
+	return nil
+}
+
+func validateBrokerURL(raw, key, envKey string) error {
+	raw = strings.TrimSpace(raw)
 	if raw == "" {
-		return fmt.Errorf("%w: set google.broker_base_url or SHIET_GOOGLE_BROKER_BASE_URL", ErrBrokerConfig)
+		return fmt.Errorf("set %s or %s", key, envKey)
 	}
 	u, err := url.Parse(raw)
 	if err != nil {
-		return fmt.Errorf("%w: google.broker_base_url is invalid: %v", ErrBrokerConfig, err)
+		return fmt.Errorf("%s is invalid: %v", key, err)
 	}
 	if u.Scheme != "https" {
-		return fmt.Errorf("%w: google.broker_base_url must use https", ErrBrokerConfig)
+		return fmt.Errorf("%s must use https", key)
 	}
 	if u.Host == "" {
-		return fmt.Errorf("%w: google.broker_base_url must include a host", ErrBrokerConfig)
+		return fmt.Errorf("%s must include a host", key)
 	}
 	if u.RawQuery != "" || u.Fragment != "" {
-		return fmt.Errorf("%w: google.broker_base_url must not include query or fragment", ErrBrokerConfig)
+		return fmt.Errorf("%s must not include query or fragment", key)
 	}
 	return nil
 }

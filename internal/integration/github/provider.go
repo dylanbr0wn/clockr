@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dylanbr0wn/shiet/internal/config"
 	"github.com/dylanbr0wn/shiet/internal/db/sqlc"
 	"github.com/dylanbr0wn/shiet/internal/integration/connection"
 	"github.com/dylanbr0wn/shiet/internal/integration/httpclient"
@@ -20,30 +21,81 @@ import (
 )
 
 const (
-	apiBaseURL      = "https://api.github.com"
-	userPath         = "/user"
-	userReposPath    = "/user/repos"
-	defaultPerPage  = 100
-	providerGitHub  = service.ProviderGitHub
+	apiBaseURL     = "https://api.github.com"
+	userPath       = "/user"
+	userReposPath  = "/user/repos"
+	defaultPerPage = 100
+	providerGitHub = service.ProviderGitHub
 )
 
 // Provider implements GitHub account connect via personal access token and
 // repo sync for evidence-source selection.
 type Provider struct {
-	Store    secrets.TokenStore
-	Registry *connection.Registry
-	Queries  *sqlc.Queries
-	HTTP     *http.Client // optional; used for pre-store PAT validation
-	BaseURL  string       // override for tests
+	Config        oauth.ProviderConfig
+	Store         secrets.TokenStore
+	Registry      *connection.Registry
+	Queries       *sqlc.Queries
+	HTTP          *http.Client // optional; used for pre-store PAT validation
+	BaseURL       string       // override for tests
+	AuthMode      string
+	BrokerBaseURL string
+	Authorizer    Authorizer
+	Revoker       TokenRevoker
+}
+
+// Authorizer runs a GitHub OAuth connect flow and returns token material
+// without deciding the GitHub account identity. Connect always revalidates
+// identity through GET /user before persisting the token.
+type Authorizer interface {
+	Authorize(ctx context.Context, accountID string) (oauth.Result, error)
+}
+
+// TokenRevoker revokes a broker-issued GitHub OAuth access token.
+type TokenRevoker interface {
+	Revoke(ctx context.Context, accessToken string) error
 }
 
 // Connect validates a PAT against the GitHub API, stores it in the keychain,
 // upserts connection metadata, and syncs accessible repos.
 func (p *Provider) Connect(ctx context.Context, pat string) (connection.Connection, error) {
 	pat = strings.TrimSpace(pat)
-	if pat == "" {
+	if pat != "" {
+		return p.connectWithToken(ctx, secrets.Token{AccessToken: pat, TokenType: "Bearer", CredentialSource: secrets.CredentialSourcePAT}, nil, true)
+	}
+	authorizer := p.Authorizer
+	if authorizer == nil && p.usesBrokerAuth() {
+		authorizer = &BrokerFlow{BaseURL: p.BrokerBaseURL, HTTPClient: p.HTTP}
+	}
+	if authorizer == nil && strings.TrimSpace(p.Config.ClientID) != "" {
+		authorizer = &oauth.Flow{Config: p.Config, Store: transientTokenStore{}}
+	}
+	if authorizer == nil {
 		return connection.Connection{}, errors.New("personal access token is required")
 	}
+	result, err := authorizer.Authorize(ctx, "github")
+	if err != nil {
+		return connection.Connection{}, fmt.Errorf("authorize github: %w", err)
+	}
+	if strings.TrimSpace(result.Token.AccessToken) == "" {
+		return connection.Connection{}, errors.New("GitHub OAuth returned an empty access token")
+	}
+	if p.usesBrokerAuth() {
+		result.Token.CredentialSource = secrets.CredentialSourceBroker
+	} else {
+		result.Token.CredentialSource = secrets.CredentialSourceLocalOAuth
+	}
+	return p.connectWithToken(ctx, result.Token, result.Scopes, false)
+}
+
+type transientTokenStore struct{}
+
+func (transientTokenStore) Get(string, string) (secrets.Token, error) {
+	return secrets.Token{}, secrets.ErrNotFound
+}
+func (transientTokenStore) Set(string, string, secrets.Token) error { return nil }
+func (transientTokenStore) Delete(string, string) error             { return nil }
+
+func (p *Provider) connectWithToken(ctx context.Context, token secrets.Token, scopes []string, personalAccessToken bool) (connection.Connection, error) {
 	if p.Store == nil {
 		return connection.Connection{}, errors.New("token store is required")
 	}
@@ -51,7 +103,7 @@ func (p *Provider) Connect(ctx context.Context, pat string) (connection.Connecti
 		return connection.Connection{}, errors.New("connection registry is required")
 	}
 
-	user, err := p.fetchUserWithPAT(ctx, pat)
+	user, err := p.fetchUser(ctx, token.AccessToken, personalAccessToken)
 	if err != nil {
 		return connection.Connection{}, err
 	}
@@ -60,9 +112,8 @@ func (p *Provider) Connect(ctx context.Context, pat string) (connection.Connecti
 		return connection.Connection{}, errors.New("github user login is empty")
 	}
 
-	token := secrets.Token{
-		AccessToken: pat,
-		TokenType:   "Bearer",
+	if strings.TrimSpace(token.TokenType) == "" {
+		token.TokenType = "Bearer"
 	}
 	if err := p.Store.Set(providerGitHub, login, token); err != nil {
 		return connection.Connection{}, fmt.Errorf("persist token: %w", err)
@@ -77,7 +128,7 @@ func (p *Provider) Connect(ctx context.Context, pat string) (connection.Connecti
 		Provider:     providerGitHub,
 		AccountLabel: label,
 		AccountID:    login,
-		Scopes:       []string{},
+		Scopes:       append([]string(nil), scopes...),
 		Status:       connection.StatusConnected,
 	})
 	if err != nil {
@@ -112,12 +163,43 @@ func (p *Provider) Disconnect(ctx context.Context, accountID string) error {
 		}
 	}
 
+	var accessToken string
+	var credentialSource secrets.CredentialSource
+	if p.Store != nil {
+		if token, err := p.Store.Get(providerGitHub, accountID); err == nil {
+			accessToken = strings.TrimSpace(token.AccessToken)
+			credentialSource = token.CredentialSource
+		}
+	}
+	if credentialSource == secrets.CredentialSourceBroker && accessToken != "" {
+		revoker := p.Revoker
+		if revoker == nil && strings.TrimSpace(p.BrokerBaseURL) != "" {
+			revoker = &BrokerFlow{BaseURL: p.BrokerBaseURL, HTTPClient: p.HTTP}
+		}
+		if revoker != nil {
+			_ = revoker.Revoke(ctx, accessToken)
+		}
+	}
+
 	if p.Store != nil {
 		if err := p.Store.Delete(providerGitHub, accountID); err != nil && !errors.Is(err, secrets.ErrNotFound) {
 			return fmt.Errorf("delete token: %w", err)
 		}
 	}
 	return p.Registry.Disconnect(ctx, providerGitHub, accountID)
+}
+
+func (p *Provider) usesBrokerAuth() bool {
+	return strings.EqualFold(strings.TrimSpace(p.AuthMode), config.AuthModeBroker)
+}
+
+// OAuthAvailable reports whether the configured mode can start browser OAuth.
+// PAT connect remains available independently.
+func (p *Provider) OAuthAvailable() bool {
+	if p.usesBrokerAuth() {
+		return strings.TrimSpace(p.BrokerBaseURL) != ""
+	}
+	return strings.TrimSpace(p.Config.ClientID) != "" && strings.TrimSpace(p.Config.ClientSecret) != ""
 }
 
 // SyncRepos lists repositories visible to the connected account and upserts
@@ -204,12 +286,12 @@ func (p *Provider) SetRepoSelected(ctx context.Context, repoID int64, selected b
 	})
 }
 
-func (p *Provider) fetchUserWithPAT(ctx context.Context, pat string) (userResponse, error) {
+func (p *Provider) fetchUser(ctx context.Context, accessToken string, personalAccessToken bool) (userResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.baseURL()+userPath, nil)
 	if err != nil {
 		return userResponse{}, err
 	}
-	req.Header.Set("Authorization", "Bearer "+pat)
+	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 
@@ -227,7 +309,10 @@ func (p *Provider) fetchUserWithPAT(ctx context.Context, pat string) (userRespon
 		return userResponse{}, fmt.Errorf("read github user: %w", err)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return userResponse{}, fmt.Errorf("invalid personal access token (github api %s: %s)", userPath, strings.TrimSpace(string(body)))
+		if personalAccessToken {
+			return userResponse{}, fmt.Errorf("invalid personal access token (github api %s: %s)", userPath, strings.TrimSpace(string(body)))
+		}
+		return userResponse{}, fmt.Errorf("invalid GitHub OAuth token (github api %s: %s)", userPath, strings.TrimSpace(string(body)))
 	}
 	var user userResponse
 	if err := json.Unmarshal(body, &user); err != nil {
@@ -268,8 +353,8 @@ func (p *Provider) getJSON(ctx context.Context, accountID, path string, query ur
 }
 
 func (p *Provider) httpClient(accountID string) *httpclient.Client {
-	// Empty OAuth config: PAT has no refresh. On 401, TokenSource fails and
-	// Registry is marked needs_reauth by httpclient.
+	// GitHub OAuth App user tokens and PATs have no refresh exchange. On 401,
+	// httpclient marks the connection needs_reauth without rewriting the token.
 	return &httpclient.Client{
 		Provider:  providerGitHub,
 		AccountID: accountID,
@@ -277,7 +362,14 @@ func (p *Provider) httpClient(accountID string) *httpclient.Client {
 		Store:     p.Store,
 		Registry:  p.Registry,
 		HTTP:      p.HTTP,
+		Refresher: githubNoRefresh{},
 	}
+}
+
+type githubNoRefresh struct{}
+
+func (githubNoRefresh) Refresh(context.Context, secrets.Token) (secrets.Token, error) {
+	return secrets.Token{}, errors.New("GitHub OAuth App and PAT tokens do not support refresh")
 }
 
 func (p *Provider) baseURL() string {

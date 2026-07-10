@@ -163,6 +163,18 @@ func (a *App) ConnectGitHub(pat string) (connection.Connection, error) {
 	return a.github.Connect(a.callContext(), pat)
 }
 
+// GitHubAuthMode returns the configured connect mode so the UI can present
+// broker OAuth as the public default while retaining the local PAT escape hatch.
+func (a *App) GitHubAuthMode() string {
+	return a.github.AuthMode
+}
+
+// GitHubOAuthAvailable reports whether GitHub browser OAuth can be started.
+// PAT connect is exposed separately and remains available in either mode.
+func (a *App) GitHubOAuthAvailable() bool {
+	return a.github.OAuthAvailable()
+}
+
 // DisconnectGitHub removes a GitHub connection, tokens, and synced repos.
 func (a *App) DisconnectGitHub(accountID string) error {
 	return a.github.Disconnect(a.callContext(), accountID)

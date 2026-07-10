@@ -15,6 +15,16 @@ const keyringService = "shiet"
 // ErrNotFound is returned when no token exists for a provider/account pair.
 var ErrNotFound = errors.New("token not found")
 
+// CredentialSource records how a token was issued so provider cleanup follows
+// the credential's origin even if runtime auth mode changes later.
+type CredentialSource string
+
+const (
+	CredentialSourceBroker     CredentialSource = "broker"
+	CredentialSourceLocalOAuth CredentialSource = "local_oauth"
+	CredentialSourcePAT        CredentialSource = "pat"
+)
+
 // TokenStore persists OAuth tokens outside SQLite.
 type TokenStore interface {
 	Get(provider, accountID string) (Token, error)
@@ -24,10 +34,11 @@ type TokenStore interface {
 
 // Token is the persisted OAuth credential bundle.
 type Token struct {
-	AccessToken  string    `json:"access_token"`
-	TokenType    string    `json:"token_type,omitempty"`
-	RefreshToken string    `json:"refresh_token,omitempty"`
-	Expiry       time.Time `json:"expiry,omitempty"`
+	AccessToken      string           `json:"access_token"`
+	TokenType        string           `json:"token_type,omitempty"`
+	RefreshToken     string           `json:"refresh_token,omitempty"`
+	Expiry           time.Time        `json:"expiry,omitempty"`
+	CredentialSource CredentialSource `json:"credential_source,omitempty"`
 }
 
 // ToOAuth2 converts the stored token to an oauth2.Token.
