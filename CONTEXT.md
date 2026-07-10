@@ -18,8 +18,10 @@ database.
 - **Handoff code**: a short-lived, one-time broker code that lets the desktop app
   retrieve token material after the broker completes a provider callback.
 - **BYO credentials**: a developer or advanced-user mode where the desktop app
-  is configured with provider OAuth credentials from local config or
-  environment. GitHub PAT connect is also retained as an advanced-user path.
+  uses provider OAuth client credentials stored in the OS keychain (with
+  non-secret metadata in SQLite), edited from Integrations settings. GitHub PAT
+  connect remains an advanced-user path. See
+  [ADR-0003](docs/adr/0003-in-app-oauth-credential-authority.md).
 - **Integration**: a third-party service the desktop app connects to (e.g. Google
   Calendar, GitHub, Slack). Each integration has one or more connected accounts
   tracked in the connection registry.
@@ -42,6 +44,13 @@ database.
   App secret. GitHub OAuth App user tokens are handed to the desktop keychain,
   are not refreshed by the broker, and are revoked through the broker on
   disconnect. Local/BYO OAuth and PAT connect remain available.
+- Desktop OAuth auth mode and BYO client credentials are in-app authority
+  (keychain + SQLite metadata), edited on the Integrations detail surface for
+  Google, GitHub, and Slack together. Per-provider OAuth keys are removed from
+  YAML/env. One top-level broker URL defaults to production
+  (`https://auth.shiet.app`), with an optional `broker.base_url` /
+  `SHIET_BROKER_BASE_URL` escape hatch only. See
+  [ADR-0003](docs/adr/0003-in-app-oauth-credential-authority.md).
 - Portable frontend/backend operations use versioned Protobuf contracts and
   Connect behind the frontend API facade. Wails bindings are restricted to
   native-only desktop capabilities. The OAuth broker serves start,
@@ -58,5 +67,6 @@ database.
 
 - [DESIGN.md](DESIGN.md) — product shape, core loop, schema intent, roadmap
 - [docs/adr/0002-standardized-integrations-settings-surface.md](docs/adr/0002-standardized-integrations-settings-surface.md) — Integrations settings IA and API contract
+- [docs/adr/0003-in-app-oauth-credential-authority.md](docs/adr/0003-in-app-oauth-credential-authority.md) — in-app BYO credentials + auth mode
 - [docs/oauth-broker.md](docs/oauth-broker.md) — broker operator runbook
 - [README.md](README.md) — setup, build, config

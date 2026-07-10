@@ -89,7 +89,7 @@ components under `frontend/src/components/settings/integrations/`:
 | `ConnectionCard` | Account label, status badge, connected-at, disconnect / reconnect actions |
 | `ConnectionStatusBadge` | `connected` / `needs_reauth` / `disconnected` — single implementation |
 | `ConnectActions` | Provider-keyed connect UI (OAuth button, account hint input, PAT `<details>`) |
-| `AuthModeDescription` | Broker vs local/BYO copy; never shows secrets or token material |
+| `AuthModeDescription` | Broker vs local/BYO status; never shows secrets or token material. Editable mode + BYO credential controls land here per [ADR-0003](0003-in-app-oauth-credential-authority.md) |
 | `ResourceMultiSelect` | Scrollable list with per-row selected toggle; optional extra fields via render prop |
 
 Kind-specific slots register against the provider id:

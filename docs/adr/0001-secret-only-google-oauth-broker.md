@@ -500,15 +500,22 @@ compromise.
 
 ## Migration Plan
 
-1. Keep the current BYO/local Google credential config for development and
-   advanced users: `google.client_id`, `google.client_secret`,
-   `SHIET_GOOGLE_CLIENT_ID`, and `SHIET_GOOGLE_CLIENT_SECRET`.
-2. Add broker configuration separately, for example `google.auth_mode` with
-   values `broker` and `local`, plus `google.broker_base_url`.
+> **Update (DYL-124 / [ADR-0003](0003-in-app-oauth-credential-authority.md)):**
+> Desktop BYO client credentials and auth mode are no longer YAML/env-primary.
+> They are in-app (keychain + SQLite metadata). Per-provider `broker_base_url`
+> collapses to one top-level broker URL with a production default. Steps 1–2
+> below describe the interim state before ADR-0003; follow ADR-0003 for new work.
+
+1. ~~Keep BYO/local Google credential config in YAML/env~~ → superseded: store
+   BYO `client_id` / `client_secret` in the OS keychain; edit from Integrations
+   settings ([ADR-0003](0003-in-app-oauth-credential-authority.md)).
+2. ~~Per-provider `auth_mode` + `broker_base_url` in config~~ → superseded:
+   in-app auth mode (default broker); single top-level broker URL defaulting to
+   production.
 3. Public builds default to `broker` mode and must not embed a shared
    `client_secret`.
-4. Development builds may default to `local` mode when local credentials are
-   present, or `broker` mode when exercising production-like auth.
+4. Development builds may use local/BYO mode when in-app BYO credentials are
+   configured, or broker mode when exercising production-like auth.
 5. Existing local tokens stay in the OS keychain. Users do not need to reconnect
    until a token refresh requires the broker or the configured auth mode changes.
 6. If a user switches from BYO/local to broker mode, require a fresh Google
