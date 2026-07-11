@@ -25,6 +25,7 @@ import (
 	"github.com/dylanbr0wn/shiet/internal/broker/ratelimit"
 	"github.com/dylanbr0wn/shiet/internal/broker/store"
 	"github.com/dylanbr0wn/shiet/internal/integration/oauth"
+	"github.com/dylanbr0wn/shiet/internal/oauthpages"
 )
 
 const (
@@ -385,7 +386,12 @@ func (s Server) oauthCallback(w http.ResponseWriter, r *http.Request, provider s
 	s.logInfo(codes.EventCallback, "outcome", codes.OutcomeOK, "ip_bucket", ipBucket)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	_, _ = io.WriteString(w, callbackSuccessPage(providerName, handoffURL))
+	page, err := oauthpages.Success(providerName, handoffURL)
+	if err != nil {
+		s.logInfo(codes.EventCallback, "outcome", "render_page_failed", "error", err.Error())
+		page = fallbackSuccessPage(providerName, handoffURL)
+	}
+	_, _ = io.WriteString(w, page)
 }
 
 func (s Server) exchangeProviderHandoff(w http.ResponseWriter, r *http.Request, provider string) {
@@ -1054,19 +1060,28 @@ func validateDesktopHandoffRedirect(raw string) error {
 	return nil
 }
 
-func callbackSuccessPage(providerName, handoffURL string) string {
-	safe := html.EscapeString(handoffURL)
-	return "<!doctype html><html><body>" +
-		"<p>Authorization complete. Return to shiet to finish connecting " + html.EscapeString(providerName) + ".</p>" +
-		`<p><a href="` + safe + `">Open shiet</a></p>` +
-		`<meta http-equiv="refresh" content="0;url=` + safe + `">` +
-		"</body></html>"
-}
-
 func writeHTMLError(w http.ResponseWriter, status int, message string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
-	_, _ = io.WriteString(w, "<!doctype html><html><body><p>"+html.EscapeString(message)+"</p></body></html>")
+	page, err := oauthpages.Error(message)
+	if err != nil {
+		_, _ = io.WriteString(w, fallbackErrorPage(message))
+		return
+	}
+	_, _ = io.WriteString(w, page)
+}
+
+func fallbackSuccessPage(providerName, handoffURL string) string {
+	safeURL := html.EscapeString(handoffURL)
+	return "<!doctype html><html><body>" +
+		"<p>Authorization complete. Return to shiet to finish connecting " + html.EscapeString(providerName) + ".</p>" +
+		`<p><a href="` + safeURL + `">Open shiet</a></p>` +
+		`<meta http-equiv="refresh" content="0;url=` + safeURL + `">` +
+		"</body></html>"
+}
+
+func fallbackErrorPage(message string) string {
+	return "<!doctype html><html><body><p>" + html.EscapeString(message) + "</p></body></html>"
 }
 
 func notImplemented(endpoint string) http.HandlerFunc {

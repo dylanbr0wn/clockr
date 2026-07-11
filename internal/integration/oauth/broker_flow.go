@@ -20,6 +20,7 @@ import (
 	"github.com/dylanbr0wn/shiet/gen/shiet/broker/v1/brokerv1connect"
 	"github.com/dylanbr0wn/shiet/internal/broker/codes"
 	"github.com/dylanbr0wn/shiet/internal/integration/secrets"
+	"github.com/dylanbr0wn/shiet/internal/oauthpages"
 	"github.com/pkg/browser"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -126,7 +127,11 @@ func (f *BrokerFlow) Authorize(ctx context.Context, accountID string) (Result, e
 		default:
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = io.WriteString(w, "<!doctype html><html><body><p>Handoff received. You can close this window and return to shiet.</p></body></html>")
+		page, err := oauthpages.Close("Handoff received. You can close this window and return to shiet.")
+		if err != nil {
+			page = "<!doctype html><html><body><p>Handoff received. You can close this window and return to shiet.</p></body></html>"
+		}
+		_, _ = io.WriteString(w, page)
 	})}
 
 	var serveWG sync.WaitGroup

@@ -39,6 +39,19 @@ jobs:
       - name: Run Go tests
         run: go test ./internal/...
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: oauth-pages/pnpm-lock.yaml
+
+      - name: Check oauth-pages assets
+        run: ./scripts/check-oauth-pages.sh
+
       - name: Google OAuth pre-build checks
         run: ./scripts/prebuild-oauth-check.sh
 

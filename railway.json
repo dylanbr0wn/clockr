@@ -6,6 +6,8 @@
     "watchPatterns": [
       "cmd/oauth-broker/**",
       "internal/broker/**",
+      "internal/oauthpages/**",
+      "oauth-pages/**",
       "deploy/railway/**",
       "proto/**",
       "buf.yaml",

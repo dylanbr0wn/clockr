@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/dylanbr0wn/shiet/internal/integration/secrets"
+	"github.com/dylanbr0wn/shiet/internal/oauthpages"
 	"github.com/pkg/browser"
 )
 
@@ -246,7 +247,11 @@ func isDesktopClientTypeExchangeError(err *ExchangeError) bool {
 }
 
 func callbackPage(message string) string {
-	return "<!doctype html><html><body><p>" + html.EscapeString(message) + "</p></body></html>"
+	page, err := oauthpages.Close(message)
+	if err != nil {
+		return "<!doctype html><html><body><p>" + html.EscapeString(message) + "</p></body></html>"
+	}
+	return page
 }
 
 func shutdownAndWait(srv *http.Server, serveWG *sync.WaitGroup) {
