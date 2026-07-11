@@ -7,8 +7,8 @@ export {
 } from "./ConnectionStatusBadge";
 export { IntegrationCatalog } from "./IntegrationCatalog";
 export { IntegrationDetail } from "./IntegrationDetail";
-export { IntegrationsSettings } from "./IntegrationsSettings";
 export {
+  aggregateProviderStatus,
   getIntegrationEntry,
   groupIntegrationsByKind,
   integrationKindLabels,

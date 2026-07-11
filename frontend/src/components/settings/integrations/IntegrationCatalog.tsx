@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import { useMemo } from "react";
 import {
@@ -8,44 +9,13 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { useIntegrationConnections } from "@/lib/api";
-import type { IntegrationConnection } from "@/lib/api";
 import { ConnectionStatusBadge } from "./ConnectionStatusBadge";
 import {
+  aggregateProviderStatus,
   groupIntegrationsByKind,
-  type IntegrationProviderId,
 } from "./registry";
 
-function aggregateProviderStatus(
-  connections: IntegrationConnection[],
-  providerId: IntegrationProviderId,
-): string | null {
-  const providerConnections = connections.filter(
-    (connection) => connection.provider === providerId,
-  );
-  if (providerConnections.length === 0) {
-    return null;
-  }
-  if (providerConnections.some((connection) => connection.status === "connected")) {
-    return "connected";
-  }
-  if (
-    providerConnections.some((connection) => connection.status === "needs_reauth")
-  ) {
-    return "needs_reauth";
-  }
-  if (
-    providerConnections.some((connection) => connection.status === "disconnected")
-  ) {
-    return "disconnected";
-  }
-  return providerConnections[0]?.status ?? null;
-}
-
-export function IntegrationCatalog({
-  onSelect,
-}: {
-  onSelect: (providerId: IntegrationProviderId) => void;
-}) {
+export function IntegrationCatalog() {
   const connectionsQuery = useIntegrationConnections();
   const connections = connectionsQuery.data ?? [];
   const groups = useMemo(() => groupIntegrationsByKind(), []);
@@ -71,33 +41,30 @@ export function IntegrationCatalog({
               return (
                 <Item
                   key={entry.id}
+                  asChild
                   variant="outline"
                   className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => onSelect(entry.id)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      onSelect(entry.id);
-                    }
-                  }}
-                  role="button"
-                  tabIndex={0}
                 >
-                  <ItemContent className="min-w-0">
-                    <ItemTitle className="flex flex-wrap items-center gap-2">
-                      <span className="truncate">{entry.displayName}</span>
-                      {status ? (
-                        <ConnectionStatusBadge status={status} />
-                      ) : (
-                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                          Not connected
-                        </span>
-                      )}
-                    </ItemTitle>
-                  </ItemContent>
-                  <ItemActions>
-                    <ChevronRight className="size-4 text-muted-foreground" />
-                  </ItemActions>
+                  <Link
+                    to="/settings/integrations/$providerId"
+                    params={{ providerId: entry.id }}
+                  >
+                    <ItemContent className="min-w-0">
+                      <ItemTitle className="flex flex-wrap items-center gap-2">
+                        <span className="truncate">{entry.displayName}</span>
+                        {status ? (
+                          <ConnectionStatusBadge status={status} />
+                        ) : (
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            Not connected
+                          </span>
+                        )}
+                      </ItemTitle>
+                    </ItemContent>
+                    <ItemActions>
+                      <ChevronRight className="size-4 text-muted-foreground" />
+                    </ItemActions>
+                  </Link>
                 </Item>
               );
             })}

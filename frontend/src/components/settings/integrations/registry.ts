@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import type { IntegrationConnection } from "@/lib/api";
 import { CalendarSettings } from "../CalendarSettings";
 import { GitHubSettings } from "../GitHubSettings";
 import { SlackSettings } from "../SlackSettings";
@@ -13,6 +14,32 @@ export type IntegrationCatalogEntry = {
   kind: IntegrationKind;
   Panel: ComponentType;
 };
+
+export function aggregateProviderStatus(
+  connections: IntegrationConnection[],
+  providerId: IntegrationProviderId,
+): string | null {
+  const providerConnections = connections.filter(
+    (connection) => connection.provider === providerId,
+  );
+  if (providerConnections.length === 0) {
+    return null;
+  }
+  if (providerConnections.some((connection) => connection.status === "connected")) {
+    return "connected";
+  }
+  if (
+    providerConnections.some((connection) => connection.status === "needs_reauth")
+  ) {
+    return "needs_reauth";
+  }
+  if (
+    providerConnections.some((connection) => connection.status === "disconnected")
+  ) {
+    return "disconnected";
+  }
+  return providerConnections[0]?.status ?? null;
+}
 
 export const integrationKindLabels: Record<IntegrationKind, string> = {
   calendar_source: "Calendar sources",
