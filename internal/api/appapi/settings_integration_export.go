@@ -7,6 +7,9 @@ import (
 	"connectrpc.com/connect"
 	appv1 "github.com/dylanbr0wn/shiet/gen/shiet/app/v1"
 	"github.com/dylanbr0wn/shiet/internal/integration/connection"
+	"github.com/dylanbr0wn/shiet/internal/integration/github"
+	"github.com/dylanbr0wn/shiet/internal/integration/google"
+	"github.com/dylanbr0wn/shiet/internal/integration/slack"
 	"github.com/dylanbr0wn/shiet/internal/service"
 )
 
@@ -38,6 +41,9 @@ type IntegrationService struct {
 	listConnections      func(context.Context) ([]connection.Connection, error)
 	refreshGitHubRepos   func(context.Context, string) error
 	refreshSlackChannels func(context.Context, string) error
+	google               *google.Provider
+	github               *github.Provider
+	slack                *slack.Provider
 }
 
 func (s *IntegrationService) ListIntegrationConnections(ctx context.Context, _ *connect.Request[appv1.ListIntegrationConnectionsRequest]) (*connect.Response[appv1.ListIntegrationConnectionsResponse], error) {
@@ -50,7 +56,7 @@ func (s *IntegrationService) ListIntegrationConnections(ctx context.Context, _ *
 	}
 	out := make([]*appv1.IntegrationConnection, len(items))
 	for i, item := range items {
-		out[i] = &appv1.IntegrationConnection{Id: item.ID, Provider: item.Provider, AccountLabel: item.AccountLabel, AccountId: item.AccountID, Scopes: append([]string(nil), item.Scopes...), Status: item.Status, ConnectedAt: item.ConnectedAt, UpdatedAt: item.UpdatedAt}
+		out[i] = mapIntegrationConnection(item)
 	}
 	return connect.NewResponse(&appv1.ListIntegrationConnectionsResponse{Connections: out}), nil
 }

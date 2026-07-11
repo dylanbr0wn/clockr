@@ -68,6 +68,17 @@ func (p *Provider) Status() AuthStatus {
 	return status
 }
 
+// OAuthAvailable reports whether the configured mode can start browser OAuth.
+func (p *Provider) OAuthAvailable() bool {
+	if p == nil {
+		return false
+	}
+	if p.usesBrokerAuth() {
+		return strings.TrimSpace(p.BrokerBaseURL) != ""
+	}
+	return strings.TrimSpace(p.Config.ClientID) != ""
+}
+
 // OAuthConfig builds reusable Google OAuth settings for local/BYO desktop OAuth.
 // Google desktop clients are public OAuth clients: clientSecret may be needed by
 // Google's token endpoint, but must not be treated as a confidential secret.

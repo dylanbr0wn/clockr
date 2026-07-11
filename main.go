@@ -75,6 +75,9 @@ func main() {
 					_, err := app.slack.SyncChannels(ctx, accountID)
 					return err
 				},
+				Google: app.google,
+				GitHub: app.github,
+				Slack:  app.slack,
 			})),
 		},
 		Frameless:        false,

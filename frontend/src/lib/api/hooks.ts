@@ -4,6 +4,7 @@ import {
   computeGaps,
   connectGitHub,
   connectGoogle,
+  connectIntegration,
   connectSlack,
   createGapFill,
   createCategory,
@@ -12,17 +13,14 @@ import {
   deleteManualEvent,
   disconnectGitHub,
   disconnectGoogle,
+  disconnectIntegration,
   disconnectSlack,
   discoverLocalAIEndpoints,
   ensureCurrentPeriod,
   excludeEvent,
-  getGoogleAuthStatus,
+  getIntegrationAuthStatus,
   getLogPath,
   getSetting,
-  githubAuthMode,
-  githubOAuthAvailable,
-  slackAuthMode,
-  slackOAuthAvailable,
   listAIModels,
   listCalendars,
   listCategories,
@@ -38,6 +36,7 @@ import {
   duplicateExportTemplate,
   previewExport,
   listIntegrationConnections,
+  listIntegrationProviders,
   listReviewDecisions,
   listPeriods,
   listSelectedCalendars,
@@ -99,17 +98,23 @@ export const shietQueryKeys = {
   selectedCalendars: () =>
     [...shietQueryKeys.calendars(), "selected"] as const,
   connections: () => [...shietQueryKeys.all, "connections"] as const,
+  integrationProviders: () =>
+    [...shietQueryKeys.all, "integrationProviders"] as const,
+  integrationAuthStatus: (provider: string) =>
+    [...shietQueryKeys.all, "integrationAuthStatus", provider] as const,
   googleAuthStatus: () =>
-    [...shietQueryKeys.all, "googleAuthStatus"] as const,
+    [...shietQueryKeys.integrationAuthStatus("google")] as const,
   logPath: () => [...shietQueryKeys.all, "logPath"] as const,
   githubRepos: () => [...shietQueryKeys.all, "githubRepos"] as const,
-  githubAuthMode: () => [...shietQueryKeys.all, "githubAuthMode"] as const,
+  githubAuthMode: () =>
+    [...shietQueryKeys.integrationAuthStatus("github")] as const,
   githubOAuthAvailable: () =>
-    [...shietQueryKeys.all, "githubOAuthAvailable"] as const,
+    [...shietQueryKeys.integrationAuthStatus("github")] as const,
   slackChannels: () => [...shietQueryKeys.all, "slackChannels"] as const,
-  slackAuthMode: () => [...shietQueryKeys.all, "slackAuthMode"] as const,
+  slackAuthMode: () =>
+    [...shietQueryKeys.integrationAuthStatus("slack")] as const,
   slackOAuthAvailable: () =>
-    [...shietQueryKeys.all, "slackOAuthAvailable"] as const,
+    [...shietQueryKeys.integrationAuthStatus("slack")] as const,
   setting: (key: string) => [...shietQueryKeys.all, "settings", key] as const,
   aiDiscovery: () => [...shietQueryKeys.all, "ai", "discovery"] as const,
   aiClassification: (baseURL: string) =>
@@ -671,10 +676,84 @@ export function useIntegrationConnections() {
   });
 }
 
+export function useIntegrationProviders() {
+  return useQuery({
+    queryKey: shietQueryKeys.integrationProviders(),
+    queryFn: listIntegrationProviders,
+  });
+}
+
+export function useIntegrationAuthStatus(provider: string) {
+  return useQuery({
+    queryKey: shietQueryKeys.integrationAuthStatus(provider),
+    queryFn: () => getIntegrationAuthStatus(provider),
+  });
+}
+
+function invalidateProviderIntegrationQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  provider: string,
+) {
+  void queryClient.invalidateQueries({
+    queryKey: shietQueryKeys.integrationAuthStatus(provider),
+  });
+  void queryClient.invalidateQueries({
+    queryKey: shietQueryKeys.connections(),
+  });
+  if (provider === "google") {
+    void queryClient.invalidateQueries({
+      queryKey: shietQueryKeys.calendars(),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: shietQueryKeys.selectedCalendars(),
+    });
+  }
+  if (provider === "github") {
+    void queryClient.invalidateQueries({
+      queryKey: shietQueryKeys.githubRepos(),
+    });
+  }
+  if (provider === "slack") {
+    void queryClient.invalidateQueries({
+      queryKey: shietQueryKeys.slackChannels(),
+    });
+  }
+}
+
+export function useConnectIntegration() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: connectIntegration,
+    onSettled: (_data, _error, input) => {
+      invalidateProviderIntegrationQueries(queryClient, input.provider);
+    },
+  });
+}
+
+export function useDisconnectIntegration() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      provider,
+      accountID,
+    }: {
+      provider: string;
+      accountID: string;
+    }) => disconnectIntegration(provider, accountID),
+    onSuccess: (_data, input) => {
+      invalidateProviderIntegrationQueries(queryClient, input.provider);
+    },
+  });
+}
+
 export function useGoogleAuthStatus() {
   return useQuery({
-    queryKey: shietQueryKeys.googleAuthStatus(),
-    queryFn: getGoogleAuthStatus,
+    queryKey: shietQueryKeys.integrationAuthStatus("google"),
+    queryFn: () => getIntegrationAuthStatus("google"),
+    select: (status) => ({
+      mode: status.mode,
+      brokerBaseUrl: status.brokerBaseUrl,
+    }),
   });
 }
 
@@ -694,15 +773,7 @@ export function useRevealLogFolder() {
 export function useConnectGoogle() {
   const queryClient = useQueryClient();
   const refreshGoogleQueries = () => {
-    void queryClient.invalidateQueries({
-      queryKey: shietQueryKeys.connections(),
-    });
-    void queryClient.invalidateQueries({
-      queryKey: shietQueryKeys.calendars(),
-    });
-    void queryClient.invalidateQueries({
-      queryKey: shietQueryKeys.selectedCalendars(),
-    });
+    invalidateProviderIntegrationQueries(queryClient, "google");
   };
 
   return useMutation({
@@ -723,15 +794,7 @@ export function useDisconnectGoogle() {
   return useMutation({
     mutationFn: (accountID: string) => disconnectGoogle(accountID),
     onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: shietQueryKeys.connections(),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: shietQueryKeys.calendars(),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: shietQueryKeys.selectedCalendars(),
-      });
+      invalidateProviderIntegrationQueries(queryClient, "google");
     },
   });
 }
@@ -767,27 +830,24 @@ export function useGitHubRepos() {
 
 export function useGitHubAuthMode() {
   return useQuery({
-    queryKey: shietQueryKeys.githubAuthMode(),
-    queryFn: githubAuthMode,
+    queryKey: shietQueryKeys.integrationAuthStatus("github"),
+    queryFn: () => getIntegrationAuthStatus("github"),
+    select: (status) => status.mode,
   });
 }
 
 export function useGitHubOAuthAvailable() {
   return useQuery({
-    queryKey: shietQueryKeys.githubOAuthAvailable(),
-    queryFn: githubOAuthAvailable,
+    queryKey: shietQueryKeys.integrationAuthStatus("github"),
+    queryFn: () => getIntegrationAuthStatus("github"),
+    select: (status) => status.oauthAvailable,
   });
 }
 
 export function useConnectGitHub() {
   const queryClient = useQueryClient();
   const refreshGitHubQueries = () => {
-    void queryClient.invalidateQueries({
-      queryKey: shietQueryKeys.connections(),
-    });
-    void queryClient.invalidateQueries({
-      queryKey: shietQueryKeys.githubRepos(),
-    });
+    invalidateProviderIntegrationQueries(queryClient, "github");
   };
 
   return useMutation({
@@ -802,12 +862,7 @@ export function useDisconnectGitHub() {
   return useMutation({
     mutationFn: (accountID: string) => disconnectGitHub(accountID),
     onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: shietQueryKeys.connections(),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: shietQueryKeys.githubRepos(),
-      });
+      invalidateProviderIntegrationQueries(queryClient, "github");
     },
   });
 }
@@ -853,27 +908,24 @@ export function useSlackChannels() {
 
 export function useSlackAuthMode() {
   return useQuery({
-    queryKey: shietQueryKeys.slackAuthMode(),
-    queryFn: slackAuthMode,
+    queryKey: shietQueryKeys.integrationAuthStatus("slack"),
+    queryFn: () => getIntegrationAuthStatus("slack"),
+    select: (status) => status.mode,
   });
 }
 
 export function useSlackOAuthAvailable() {
   return useQuery({
-    queryKey: shietQueryKeys.slackOAuthAvailable(),
-    queryFn: slackOAuthAvailable,
+    queryKey: shietQueryKeys.integrationAuthStatus("slack"),
+    queryFn: () => getIntegrationAuthStatus("slack"),
+    select: (status) => status.oauthAvailable,
   });
 }
 
 export function useConnectSlack() {
   const queryClient = useQueryClient();
   const refreshSlackQueries = () => {
-    void queryClient.invalidateQueries({
-      queryKey: shietQueryKeys.connections(),
-    });
-    void queryClient.invalidateQueries({
-      queryKey: shietQueryKeys.slackChannels(),
-    });
+    invalidateProviderIntegrationQueries(queryClient, "slack");
   };
 
   return useMutation({
@@ -888,12 +940,7 @@ export function useDisconnectSlack() {
   return useMutation({
     mutationFn: (accountID: string) => disconnectSlack(accountID),
     onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: shietQueryKeys.connections(),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: shietQueryKeys.slackChannels(),
-      });
+      invalidateProviderIntegrationQueries(queryClient, "slack");
     },
   });
 }
