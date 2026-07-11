@@ -9,6 +9,9 @@ import {
   type SettingsSectionId,
 } from "@/components/settings/settingsSections";
 import { cn } from "@/lib/utils";
+import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarHeader, SidebarMenuButton, SidebarMenuItem, SidebarProvider } from "@/components/ui/sidebar";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { ArrowLeft, ChevronLeft } from "lucide-react";
 
 export const Route = createFileRoute("/settings")({
   component: SettingsLayout,
@@ -24,54 +27,63 @@ const sectionPaths = {
 
 function SettingsLayout() {
   return (
-    <section className="app-no-drag grid min-h-0 flex-1 grid-cols-[180px_minmax(0,1fr)] overflow-hidden border-t border-border">
-      <nav className="flex h-full flex-col gap-0.5 border-r border-border bg-sidebar p-1">
+    <SidebarProvider>
+      <SettingsSidebar />
+      <ScrollArea className="h-[calc(100vh-48px)] w-full">
+        <Outlet />
+      </ScrollArea>
+    </SidebarProvider>
+  );
+}
+
+function SettingsSidebar() {
+  return <Sidebar className="app-no-drag">
+    <SidebarHeader className="mt-10">
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild>
+          <Link to="/">
+            <ArrowLeft className="size-4 " />
+            <span className="truncate">Back</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarHeader>
+    <SidebarContent>
+      <SidebarGroup>
+        <SidebarGroupLabel>Settings</SidebarGroupLabel>
         {settingsNavItems.map((section) => {
           const Icon = section.icon;
 
           if (!section.ready) {
             return (
-              <Button
+              <SidebarMenuItem
                 key={section.id}
-                type="button"
-                disabled
-                variant="ghost"
-                className="opacity-50 justify-start"
               >
-                <Icon className="size-4 " />
-                <span className="truncate">{section.label}</span>
-              </Button>
+                <SidebarMenuButton disabled className="opacity-50 justify-start">
+                  <Icon className="size-4 " />
+                  <span className="truncate">{section.label}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             );
           }
 
           return (
-            <Button asChild variant="ghost" className="justify-start">
-              <Link
-                key={section.id}
-                activeProps={{
-                  className: cn("text-green-300 hover:text-green-300 bg-muted")
-                }}
-                to={sectionPaths[section.id]}
-              >
-                <Icon className="size-4" />
-                <span className="truncate">{section.label}</span>
-              </Link>
-            </Button>
-
+            <SidebarMenuItem key={section.id}>
+              <SidebarMenuButton asChild className="justify-start hover:text-green-300">
+                <Link
+                  activeProps={{
+                    className: cn("text-green-300 hover:text-green-300 bg-muted")
+                  }}
+                  to={sectionPaths[section.id]}
+                >
+                  <Icon className="size-4" />
+                  <span className="truncate">{section.label}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           );
         })}
-      </nav>
-
-      <div className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto]">
-        <div className="min-h-0 overflow-hidden">
-          <Outlet />
-        </div>
-        <footer className="flex items-center justify-end border-t border-border px-5 py-3 bg-background-lighter">
-          <Button asChild variant="secondary" size="sm">
-            <Link to="/">Done</Link>
-          </Button>
-        </footer>
-      </div>
-    </section>
-  );
+      </SidebarGroup>
+    </SidebarContent>
+  </Sidebar>
 }

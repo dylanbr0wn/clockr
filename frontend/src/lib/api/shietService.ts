@@ -153,7 +153,17 @@ async function readFromPortableBackend<T>(fallback: T, read: () => Promise<T>) {
 }
 
 function isPortableBackendAvailable() {
-  return isShietAppAvailable() || Boolean(import.meta.env.VITE_SHIET_RPC_BASE_URL?.trim());
+  // Prefer Wails bindings when present, but do not require them: Connect on
+  // same-origin /rpc works even when a path-based deep link skipped IPC
+  // injection (window.go missing). Hash routing is the primary fix; this is
+  // a safety net for production AssetServer builds.
+  if (isShietAppAvailable()) {
+    return true;
+  }
+  if (import.meta.env.VITE_SHIET_RPC_BASE_URL?.trim()) {
+    return true;
+  }
+  return import.meta.env.PROD;
 }
 
 async function writeToPortableBackend<T>(write: () => Promise<T>) {

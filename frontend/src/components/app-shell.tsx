@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Environment } from "../../wailsjs/runtime/runtime";
+import { useAppBootstrap } from "@/components/app-bootstrap";
 import { AppHeader } from "@/components/app-header";
 import { useConfiguredTheme } from "@/components/settings/useConfiguredTheme";
 
@@ -46,12 +47,15 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const titlebarPaddingClass = useTitlebarPaddingClass();
   useConfiguredTheme();
+  useAppBootstrap();
 
   return (
     <main className="app-drag-region app-window relative h-screen overflow-hidden overscroll-none bg-background text-foreground">
-      <div className="mx-auto flex h-full min-h-0 w-full flex-col">
+      <div className="mx-auto grid h-full min-h-0 w-full  grid-rows-[48px_minmax(0,1fr)]">
         <AppHeader titlebarPaddingClass={titlebarPaddingClass} />
-        {children}
+        <div className="h-[calc(100vh-48px)] min-h-0 w-full relative">
+            {children}
+        </div>
       </div>
     </main>
   );

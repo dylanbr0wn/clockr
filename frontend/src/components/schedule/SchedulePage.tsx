@@ -16,7 +16,7 @@ export function SchedulePage() {
 
   return (
     <>
-      <section className="grid min-h-0 flex-1 gap-3 overflow-hidden bg-background lg:grid-cols-[minmax(0,1fr)_320px] pt-px pr-1">
+      <section className="grid min-h-0 h-full flex-1 gap-3 overflow-hidden bg-background lg:grid-cols-[minmax(0,1fr)_320px] pt-px pr-1">
         <Card className="app-no-drag flex min-h-0 flex-col gap-0 ml-3 mb-3 py-0">
           <CardHeader className="flex shrink-0 flex-row items-center justify-end gap-2 border-b py-2 [.border-b]:pb-2">
             <ScheduleHeader schedule={schedule} />
