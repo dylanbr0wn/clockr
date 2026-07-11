@@ -117,6 +117,30 @@ func TestProviderStatus_nilDefaultsBroker(t *testing.T) {
 	}
 }
 
+func TestOAuthAvailableSeparatesBrokerAndLocalMode(t *testing.T) {
+	t.Parallel()
+	var p *google.Provider
+	if p.OAuthAvailable() {
+		t.Fatal("nil provider must not advertise browser OAuth")
+	}
+	p = &google.Provider{AuthMode: config.AuthModeBroker}
+	if p.OAuthAvailable() {
+		t.Fatal("broker mode without URL must not advertise browser OAuth")
+	}
+	p.BrokerBaseURL = "https://auth.shiet.app"
+	if !p.OAuthAvailable() {
+		t.Fatal("broker URL should enable broker browser OAuth")
+	}
+	p = &google.Provider{AuthMode: config.AuthModeLocal}
+	if p.OAuthAvailable() {
+		t.Fatal("local mode without client id must not advertise browser OAuth")
+	}
+	p.Config = google.OAuthConfig("client-id", "client-secret")
+	if !p.OAuthAvailable() {
+		t.Fatal("BYO client id should enable local browser OAuth")
+	}
+}
+
 func TestConnect_brokerModeReportsUnavailable(t *testing.T) {
 	p, _, _ := newProviderEnv(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)

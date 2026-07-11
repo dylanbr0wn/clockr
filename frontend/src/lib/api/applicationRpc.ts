@@ -6,6 +6,7 @@ import {
   CategoryService,
   ExportService,
   IntegrationService,
+  IntegrationKind as WireIntegrationKind,
   ReviewActionRole,
   ReviewActionVariant,
   ScheduleService,
@@ -19,6 +20,8 @@ import {
   type GapFill as WireGapFill,
   type GitHubRepo as WireGitHubRepo,
   type IntegrationConnection as WireIntegrationConnection,
+  type IntegrationDescriptor as WireIntegrationDescriptor,
+  type GetIntegrationAuthStatusResponse as WireIntegrationAuthStatus,
   type ReviewDecision as WireReviewDecision,
   type SlackChannel as WireSlackChannel,
 } from "@/gen/shiet/app/v1/application_pb";
@@ -37,7 +40,10 @@ import type {
   GapFill,
   GapSuggestion,
   GitHubRepo,
+  IntegrationAuthStatus,
   IntegrationConnection,
+  IntegrationKind,
+  IntegrationProvider,
   ManualEventDeleteInput,
   ManualEventInput,
   ManualEventResult,
@@ -200,6 +206,30 @@ export async function setSettingRPC(key: string, value: string) { await settings
 export async function listIntegrationConnectionsRPC() {
   return (await integrationClient().listIntegrationConnections({})).connections.map(mapConnection);
 }
+export async function listIntegrationProvidersRPC(): Promise<IntegrationProvider[]> {
+  return (await integrationClient().listIntegrationProviders({})).providers.map(mapIntegrationProvider);
+}
+export async function getIntegrationAuthStatusRPC(provider: string): Promise<IntegrationAuthStatus> {
+  return mapIntegrationAuthStatus(await integrationClient().getIntegrationAuthStatus({ provider }));
+}
+export async function connectIntegrationRPC(input: {
+  provider: string;
+  accountId?: string;
+  accountLabel?: string;
+  pat?: string;
+}): Promise<IntegrationConnection> {
+  const out = await integrationClient().connectIntegration({
+    provider: input.provider,
+    accountId: input.accountId ?? "",
+    accountLabel: input.accountLabel ?? "",
+    pat: input.pat ?? "",
+  });
+  if (!out.connection) throw new Error("connect integration response is missing connection");
+  return mapConnection(out.connection);
+}
+export async function disconnectIntegrationRPC(provider: string, accountId: string) {
+  await integrationClient().disconnectIntegration({ provider, accountId });
+}
 export async function listGitHubReposRPC() { return (await integrationClient().listGitHubRepos({})).repos.map(mapGitHubRepo); }
 export async function setGitHubRepoSelectedRPC(repoId: number, selected: boolean) { await integrationClient().setGitHubRepoSelected({ repoId: bigint(repoId), selected }); }
 export async function refreshGitHubReposRPC(accountId: string) { await integrationClient().refreshGitHubRepos({ accountId }); }
@@ -277,6 +307,33 @@ function mapDayTimeline(item: WireDayTimeline): DayTimeline {
   return { date: item.date, tz: item.tz, windowStart: iso(item.windowStart, "window start"), windowEnd: iso(item.windowEnd, "window end"), events: intervals(item.events), filled: intervals(item.filled), gaps: intervals(item.gaps), coveredHours: item.coveredHours, gapHours: item.gapHours };
 }
 function mapConnection(item: WireIntegrationConnection): IntegrationConnection { return { id: safeInt(item.id, "connection id"), provider: item.provider, accountLabel: item.accountLabel, accountId: item.accountId, scopes: item.scopes, status: item.status, connectedAt: item.connectedAt, updatedAt: item.updatedAt }; }
+function mapIntegrationKind(kind: WireIntegrationKind): IntegrationKind {
+  if (kind === WireIntegrationKind.CALENDAR_SOURCE) return "calendar_source";
+  if (kind === WireIntegrationKind.ACTIVITY_EVIDENCE) return "activity_evidence";
+  throw new Error(`unknown integration kind ${kind}`);
+}
+function mapIntegrationProvider(item: WireIntegrationDescriptor): IntegrationProvider {
+  if (!item.connect) throw new Error("integration descriptor is missing connect capabilities");
+  return {
+    id: item.id,
+    displayName: item.displayName,
+    kind: mapIntegrationKind(item.kind),
+    connect: {
+      needsAccountHint: item.connect.needsAccountHint,
+      supportsPat: item.connect.supportsPat,
+      oauthAvailable: item.connect.oauthAvailable,
+    },
+  };
+}
+function mapIntegrationAuthStatus(item: WireIntegrationAuthStatus): IntegrationAuthStatus {
+  return {
+    provider: item.provider,
+    mode: item.mode,
+    brokerBaseUrl: item.brokerBaseUrl,
+    oauthAvailable: item.oauthAvailable,
+    supportsPat: item.supportsPat,
+  };
+}
 function mapGitHubRepo(item: WireGitHubRepo): GitHubRepo { return { id: safeInt(item.id, "repository id"), accountId: item.accountId, externalId: item.externalId, name: item.name, fullName: item.fullName, private: item.private, selected: item.selected }; }
 function mapSlackChannel(item: WireSlackChannel): SlackChannel { return { id: safeInt(item.id, "channel id"), accountId: item.accountId, externalId: item.externalId, name: item.name, private: item.private, selected: item.selected }; }
 function mapExportTemplate(item: WireExportTemplate): ExportTemplate { return { id: safeInt(item.id, "export template id"), key: item.key, name: item.name, description: item.description, format: item.format, builtin: item.builtin, body: item.body }; }

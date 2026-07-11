@@ -8,6 +8,9 @@ import (
 	"connectrpc.com/connect"
 	"github.com/dylanbr0wn/shiet/gen/shiet/app/v1/appv1connect"
 	"github.com/dylanbr0wn/shiet/internal/integration/connection"
+	"github.com/dylanbr0wn/shiet/internal/integration/github"
+	"github.com/dylanbr0wn/shiet/internal/integration/google"
+	"github.com/dylanbr0wn/shiet/internal/integration/slack"
 	"github.com/dylanbr0wn/shiet/internal/service"
 )
 
@@ -17,6 +20,9 @@ type Dependencies struct {
 	ListConnections      func(context.Context) ([]connection.Connection, error)
 	RefreshGitHubRepos   func(context.Context, string) error
 	RefreshSlackChannels func(context.Context, string) error
+	Google               *google.Provider
+	GitHub               *github.Provider
+	Slack                *slack.Provider
 }
 
 func NewHandler(deps Dependencies) http.Handler {
@@ -33,7 +39,15 @@ func NewHandler(deps Dependencies) http.Handler {
 	mount(path, handler)
 	path, handler = appv1connect.NewSettingsServiceHandler(&SettingsService{service: deps.Service})
 	mount(path, handler)
-	path, handler = appv1connect.NewIntegrationServiceHandler(&IntegrationService{service: deps.Service, listConnections: deps.ListConnections, refreshGitHubRepos: deps.RefreshGitHubRepos, refreshSlackChannels: deps.RefreshSlackChannels})
+	path, handler = appv1connect.NewIntegrationServiceHandler(&IntegrationService{
+		service:              deps.Service,
+		listConnections:      deps.ListConnections,
+		refreshGitHubRepos:   deps.RefreshGitHubRepos,
+		refreshSlackChannels: deps.RefreshSlackChannels,
+		google:               deps.Google,
+		github:               deps.GitHub,
+		slack:                deps.Slack,
+	})
 	mount(path, handler)
 	path, handler = appv1connect.NewExportServiceHandler(&ExportService{service: deps.Service})
 	mount(path, handler)

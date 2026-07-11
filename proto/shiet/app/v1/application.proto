@@ -45,6 +45,10 @@ service SettingsService {
 }
 
 service IntegrationService {
+  rpc ListIntegrationProviders(ListIntegrationProvidersRequest) returns (ListIntegrationProvidersResponse);
+  rpc GetIntegrationAuthStatus(GetIntegrationAuthStatusRequest) returns (GetIntegrationAuthStatusResponse);
+  rpc ConnectIntegration(ConnectIntegrationRequest) returns (ConnectIntegrationResponse);
+  rpc DisconnectIntegration(DisconnectIntegrationRequest) returns (DisconnectIntegrationResponse);
   rpc ListIntegrationConnections(ListIntegrationConnectionsRequest) returns (ListIntegrationConnectionsResponse);
   rpc ListGitHubRepos(ListGitHubReposRequest) returns (ListGitHubReposResponse);
   rpc SetGitHubRepoSelected(SetGitHubRepoSelectedRequest) returns (SetGitHubRepoSelectedResponse);
@@ -258,6 +262,51 @@ message GetSettingRequest { string key = 1; }
 message GetSettingResponse { string value = 1; }
 message SetSettingRequest { string key = 1; string value = 2; }
 message SetSettingResponse {}
+
+enum IntegrationKind {
+  INTEGRATION_KIND_UNSPECIFIED = 0;
+  INTEGRATION_KIND_CALENDAR_SOURCE = 1;
+  INTEGRATION_KIND_ACTIVITY_EVIDENCE = 2;
+}
+
+message ConnectCapabilities {
+  bool needs_account_hint = 1;
+  bool supports_pat = 2;
+  bool oauth_available = 3;
+}
+
+message IntegrationDescriptor {
+  string id = 1;
+  string display_name = 2;
+  IntegrationKind kind = 3;
+  ConnectCapabilities connect = 4;
+}
+
+message ListIntegrationProvidersRequest {}
+message ListIntegrationProvidersResponse { repeated IntegrationDescriptor providers = 1; }
+
+message GetIntegrationAuthStatusRequest { string provider = 1; }
+message GetIntegrationAuthStatusResponse {
+  string provider = 1;
+  string mode = 2;
+  string broker_base_url = 3;
+  bool oauth_available = 4;
+  bool supports_pat = 5;
+}
+
+message ConnectIntegrationRequest {
+  string provider = 1;
+  string account_id = 2;
+  string account_label = 3;
+  string pat = 4;
+}
+message ConnectIntegrationResponse { IntegrationConnection connection = 1; }
+
+message DisconnectIntegrationRequest {
+  string provider = 1;
+  string account_id = 2;
+}
+message DisconnectIntegrationResponse {}
 
 message IntegrationConnection {
   int64 id = 1;

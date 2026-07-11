@@ -52,6 +52,36 @@ export interface IntegrationConnection {
   updatedAt: string;
 }
 
+export type IntegrationKind = "calendar_source" | "activity_evidence";
+
+export interface ConnectCapabilities {
+  needsAccountHint: boolean;
+  supportsPat: boolean;
+  oauthAvailable: boolean;
+}
+
+export interface IntegrationProvider {
+  id: string;
+  displayName: string;
+  kind: IntegrationKind;
+  connect: ConnectCapabilities;
+}
+
+export interface IntegrationAuthStatus {
+  provider: string;
+  mode: "broker" | "local" | string;
+  brokerBaseUrl: string;
+  oauthAvailable: boolean;
+  supportsPat: boolean;
+}
+
+export interface ConnectIntegrationInput {
+  provider: string;
+  accountId?: string;
+  accountLabel?: string;
+  pat?: string;
+}
+
 export interface GoogleAuthStatus {
   mode: "broker" | "local" | string;
   brokerBaseUrl: string;
