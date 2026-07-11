@@ -1,19 +1,8 @@
-import {
-  AlertCircle,
-  CheckCircle2,
-  LoaderCircle,
-  LogOut,
-  MessagesSquare,
-  RefreshCw,
-} from "lucide-react";
 import { useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { FieldError } from "@/components/ui/field";
 import {
   Item,
   ItemActions,
   ItemContent,
-  ItemDescription,
   ItemGroup,
   ItemTitle,
 } from "@/components/ui/item";
@@ -29,45 +18,11 @@ import {
 } from "@/lib/api";
 import { SettingBlock } from "./SettingBlock";
 import { ScrollArea } from "../ui/scroll-area";
-
-function connectionStatusLabel(status: string) {
-  switch (status) {
-    case "connected":
-      return "Connected";
-    case "needs_reauth":
-      return "Needs re-auth";
-    case "disconnected":
-      return "Disconnected";
-    default:
-      return status;
-  }
-}
-
-function ConnectionStatusBadge({ status }: { status: string }) {
-  if (status === "connected") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">
-        <CheckCircle2 className="size-3" />
-        Connected
-      </span>
-    );
-  }
-
-  if (status === "needs_reauth") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">
-        <AlertCircle className="size-3" />
-        Needs re-auth
-      </span>
-    );
-  }
-
-  return (
-    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-      {connectionStatusLabel(status)}
-    </span>
-  );
-}
+import {
+  AuthModeDescription,
+  ConnectActions,
+  ConnectionCard,
+} from "./integrations";
 
 export function SlackSettings() {
   const connectionsQuery = useIntegrationConnections();
@@ -151,32 +106,16 @@ export function SlackSettings() {
     <div className="mx-auto max-w-2xl space-y-6">
       <SettingBlock
         title="Slack"
-        description="Connect Slack to pick channels as read-only evidence sources for AI gap-fill. OAuth tokens stay in the OS keychain. Shiet never posts messages."
+        description={<AuthModeDescription provider="slack" />}
       >
-        <div className="space-y-3">
-          {oauthAvailable ? (
-            <Button
-              type="button"
-              disabled={isBusy}
-              onClick={() => void handleOAuthConnect()}
-            >
-              {connectSlack.isPending ? (
-                <LoaderCircle className="size-4 animate-spin" />
-              ) : (
-                <>
-                  <MessagesSquare className="size-4" />
-                  Connect with Slack
-                </>
-              )}
-            </Button>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Slack OAuth is not configured for this build.
-            </p>
-          )}
-
-          {connectError ? <FieldError>{connectError}</FieldError> : null}
-        </div>
+        <ConnectActions
+          provider="slack"
+          oauthAvailable={oauthAvailable}
+          onOAuthConnect={() => void handleOAuthConnect()}
+          isConnecting={connectSlack.isPending}
+          disabled={isBusy}
+          connectError={connectError}
+        />
       </SettingBlock>
 
       <SettingBlock
@@ -186,39 +125,16 @@ export function SlackSettings() {
         {slackConnections.length > 0 ? (
           <ItemGroup className="gap-2">
             {slackConnections.map((connection) => (
-              <Item key={connection.id} variant="outline">
-                <ItemContent className="min-w-0">
-                  <ItemTitle className="flex flex-wrap items-center gap-2">
-                    <span className="truncate">{connection.accountLabel}</span>
-                    <ConnectionStatusBadge status={connection.status} />
-                  </ItemTitle>
-                  <ItemDescription className="truncate">
-                    {connection.accountId}
-                  </ItemDescription>
-                </ItemContent>
-                <ItemActions>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={isBusy}
-                    onClick={() => void handleRefresh(connection.accountId)}
-                  >
-                    <RefreshCw className="size-4" />
-                    Refresh channels
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={isBusy}
-                    onClick={() => void handleDisconnect(connection.accountId)}
-                  >
-                    <LogOut className="size-4" />
-                    Disconnect
-                  </Button>
-                </ItemActions>
-              </Item>
+              <ConnectionCard
+                key={connection.id}
+                connection={connection}
+                disabled={isBusy}
+                onDisconnect={(accountID) => void handleDisconnect(accountID)}
+                secondaryAction={{
+                  label: "Refresh channels",
+                  onClick: (accountID) => void handleRefresh(accountID),
+                }}
+              />
             ))}
           </ItemGroup>
         ) : (

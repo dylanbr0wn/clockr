@@ -30,8 +30,8 @@ export function ScheduleAllDayRow({
 }: ScheduleAllDayRowProps) {
   return (
     <>
-      <div className="sticky left-0 top-[52px] z-30 flex items-center border-b border-r border-border bg-background px-2">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+      <div className="sticky left-0 top-[52px] z-40 flex items-center border-b border-r border-border bg-background-lighter px-2">
+        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground text-right w-full">
           All day
         </span>
       </div>
@@ -44,8 +44,8 @@ export function ScheduleAllDayRow({
             key={`all-day-${day.date}`}
             className={cn([
               // Omit column borders so multi-day chips abut as one strip.
-              "sticky top-[52px] z-20 flex flex-col gap-1 border-b border-border py-1",
-              isWeekend ? "bg-muted" : "bg-background",
+              "sticky top-[52px] z-20 flex flex-col gap-1 border-b border-r border-border py-1",
+              isWeekend ? "bg-background" : "bg-background-lighter",
             ])}
             style={{ height: `${allDayRowHeight}px` }}
           >

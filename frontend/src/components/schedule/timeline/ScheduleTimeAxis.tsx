@@ -15,7 +15,7 @@ export function ScheduleTimeAxis({
   timelineMarks,
 }: ScheduleTimeAxisProps) {
   return (
-    <div className="sticky left-0 z-20 border-r border-border bg-background">
+    <div className="sticky left-0 z-20 border-r border-border bg-background-lighter">
       {timelineMarks.map((minute) => (
         <div
           key={minute}

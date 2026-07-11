@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Environment } from "../../wailsjs/runtime/runtime";
+import { AppHeader } from "@/components/app-header";
 
 const MAC_TITLEBAR_PADDING_CLASS = "pl-24";
 const DEFAULT_TITLEBAR_PADDING_CLASS = "pl-3";
@@ -38,7 +39,7 @@ function useTitlebarPaddingClass() {
 }
 
 interface AppShellProps {
-  children: (titlebarPaddingClass: string) => ReactNode;
+  children: ReactNode;
 }
 
 export function AppShell({ children }: AppShellProps) {
@@ -47,7 +48,8 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <main className="app-drag-region app-window relative h-screen overflow-hidden overscroll-none bg-background text-foreground">
       <div className="mx-auto flex h-full min-h-0 w-full flex-col">
-        {children(titlebarPaddingClass)}
+        <AppHeader titlebarPaddingClass={titlebarPaddingClass} />
+        {children}
       </div>
     </main>
   );

@@ -1,0 +1,20 @@
+db:
+  path: ~/.config/shiet/shiet.db
+
+google:
+  auth_mode: broker
+  broker_base_url: https://auth.shiet.app
+  client_id: ""
+  client_secret: ""
+
+github:
+  auth_mode: broker
+  broker_base_url: https://auth.shiet.app
+  client_id: ""
+  client_secret: ""
+
+slack:
+  auth_mode: broker
+  broker_base_url: https://auth.shiet.app
+  client_id: ""
+  client_secret: ""

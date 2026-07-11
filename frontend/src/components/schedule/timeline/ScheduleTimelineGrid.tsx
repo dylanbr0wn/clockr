@@ -58,7 +58,7 @@ export function ScheduleTimelineGrid({
 
   return (
     <div
-      className="grid"
+      className="grid relative"
       style={{
         minWidth: `${
           TIME_AXIS_COLUMN_WIDTH + scheduler.days.length * DAY_COLUMN_MIN_WIDTH
@@ -69,7 +69,22 @@ export function ScheduleTimelineGrid({
           : `${DAY_HEADER_ROW_HEIGHT}px ${timelineHeight}px`,
       }}
     >
-      <div className="sticky left-0 top-0 z-40 border-b border-r border-border bg-background" />
+      {/*<div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-20"
+        style={{
+          backgroundColor: "var(--color-green-900)",
+          maskImage: "url(/topography.svg)",
+          WebkitMaskImage: "url(/topography.svg)",
+          maskSize: "cover",
+          WebkitMaskSize: "cover",
+          maskPosition: "center",
+          WebkitMaskPosition: "center",
+          maskRepeat: "no-repeat",
+          WebkitMaskRepeat: "no-repeat",
+        }}
+      />*/}
+      <div className="sticky left-0 top-0 z-40 border-b border-r border-border bg-background-lighter" />
       <ScheduleDayHeaders
         days={scheduler.days}
         visibleDayCount={visibleDayCount}

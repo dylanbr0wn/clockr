@@ -1,23 +1,8 @@
-import {
-  AlertCircle,
-  CheckCircle2,
-  LoaderCircle,
-  LogOut,
-  RefreshCw,
-} from "lucide-react";
 import { useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Field,
-  FieldError,
-  FieldLabel,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import {
   Item,
   ItemActions,
   ItemContent,
-  ItemDescription,
   ItemGroup,
   ItemTitle,
 } from "@/components/ui/item";
@@ -34,45 +19,11 @@ import {
 } from "@/lib/api";
 import { SettingBlock } from "./SettingBlock";
 import { ScrollArea } from "../ui/scroll-area";
-
-function connectionStatusLabel(status: string) {
-  switch (status) {
-    case "connected":
-      return "Connected";
-    case "needs_reauth":
-      return "Needs re-auth";
-    case "disconnected":
-      return "Disconnected";
-    default:
-      return status;
-  }
-}
-
-function ConnectionStatusBadge({ status }: { status: string }) {
-  if (status === "connected") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">
-        <CheckCircle2 className="size-3" />
-        Connected
-      </span>
-    );
-  }
-
-  if (status === "needs_reauth") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">
-        <AlertCircle className="size-3" />
-        Needs re-auth
-      </span>
-    );
-  }
-
-  return (
-    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-      {connectionStatusLabel(status)}
-    </span>
-  );
-}
+import {
+  AuthModeDescription,
+  ConnectActions,
+  ConnectionCard,
+} from "./integrations";
 
 export function GitHubSettings() {
   const connectionsQuery = useIntegrationConnections();
@@ -168,69 +119,20 @@ export function GitHubSettings() {
     <div className="mx-auto max-w-2xl space-y-6">
       <SettingBlock
         title="GitHub"
-        description="Connect GitHub to pick repositories as evidence sources for AI gap-fill. OAuth and PAT tokens stay in the OS keychain."
+        description={<AuthModeDescription provider="github" />}
       >
-        <div className="space-y-3">
-          {oauthAvailable ? (
-            <Button
-              type="button"
-              disabled={isBusy}
-              onClick={() => void handleOAuthConnect()}
-            >
-              {connectGitHub.isPending ? (
-                <LoaderCircle className="size-4 animate-spin" />
-              ) : (
-                "Connect with GitHub"
-              )}
-            </Button>
-          ) : null}
-
-          <details
-            className="rounded-md border border-border/70 p-3"
-            open={authMode === "local"}
-          >
-            <summary className="cursor-pointer text-sm font-medium">
-              Connect with a personal access token
-            </summary>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Local/advanced mode. The token is validated with GitHub and stored
-              only in the OS keychain.
-            </p>
-            <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-              <Field>
-                <FieldLabel htmlFor="github-pat">
-                  Personal access token
-                </FieldLabel>
-                <Input
-                  id="github-pat"
-                  type="password"
-                  autoComplete="off"
-                  value={pat}
-                  placeholder="ghp_… or github_pat_…"
-                  onChange={(event) => setPat(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      void handlePATConnect();
-                    }
-                  }}
-                />
-              </Field>
-              <Button
-                type="button"
-                disabled={!pat.trim() || isBusy}
-                onClick={() => void handlePATConnect()}
-              >
-                {connectGitHub.isPending ? (
-                  <LoaderCircle className="size-4 animate-spin" />
-                ) : (
-                  "Connect"
-                )}
-              </Button>
-            </div>
-          </details>
-
-          {connectError ? <FieldError>{connectError}</FieldError> : null}
-        </div>
+        <ConnectActions
+          provider="github"
+          oauthAvailable={oauthAvailable}
+          authMode={authMode}
+          pat={pat}
+          onPatChange={setPat}
+          onOAuthConnect={() => void handleOAuthConnect()}
+          onPatConnect={() => void handlePATConnect()}
+          isConnecting={connectGitHub.isPending}
+          disabled={isBusy}
+          connectError={connectError}
+        />
       </SettingBlock>
       <SettingBlock
         title="Connected Accounts"
@@ -239,39 +141,16 @@ export function GitHubSettings() {
         {githubConnections.length > 0 ? (
           <ItemGroup className="gap-2">
             {githubConnections.map((connection) => (
-              <Item key={connection.id} variant="outline">
-                <ItemContent className="min-w-0">
-                  <ItemTitle className="flex flex-wrap items-center gap-2">
-                    <span className="truncate">{connection.accountLabel}</span>
-                    <ConnectionStatusBadge status={connection.status} />
-                  </ItemTitle>
-                  <ItemDescription className="truncate">
-                    {connection.accountId}
-                  </ItemDescription>
-                </ItemContent>
-                <ItemActions>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={isBusy}
-                    onClick={() => void handleRefresh(connection.accountId)}
-                  >
-                    <RefreshCw className="size-4" />
-                    Refresh repos
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={isBusy}
-                    onClick={() => void handleDisconnect(connection.accountId)}
-                  >
-                    <LogOut className="size-4" />
-                    Disconnect
-                  </Button>
-                </ItemActions>
-              </Item>
+              <ConnectionCard
+                key={connection.id}
+                connection={connection}
+                disabled={isBusy}
+                onDisconnect={(accountID) => void handleDisconnect(accountID)}
+                secondaryAction={{
+                  label: "Refresh repos",
+                  onClick: (accountID) => void handleRefresh(accountID),
+                }}
+              />
             ))}
           </ItemGroup>
         ) : (

@@ -22,7 +22,7 @@ export const ALL_DAY_CHIP_GAP = 4;
 export const TIMELINE_MARK_STEP_MINUTES = 60;
 
 export const NON_WORKING_HOURS_BACKGROUND =
-  "repeating-linear-gradient(135deg, var(--background) 0 6px, transparent 6px 12px), var(--muted)";
+  "repeating-linear-gradient(135deg, var(--muted) 0 2px, transparent 2px 12px), var(--background)";
 
 export interface TimelinePointerRect {
   top: number;

@@ -1,18 +1,8 @@
-import {
-  AlertCircle,
-  CheckCircle2,
-  LoaderCircle,
-  LogOut,
-  RefreshCw,
-} from "lucide-react";
 import { useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
   Field,
-  FieldError,
   FieldLabel,
 } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -24,7 +14,6 @@ import {
   Item,
   ItemActions,
   ItemContent,
-  ItemDescription,
   ItemGroup,
   ItemTitle,
 } from "@/components/ui/item";
@@ -34,79 +23,21 @@ import {
   useCategories,
   useConnectGoogle,
   useDisconnectGoogle,
-  useGoogleAuthStatus,
   useIntegrationConnections,
   useSetCalendarDefaultCategory,
   useSetCalendarSelected,
 } from "@/lib/api";
-import type { GoogleAuthStatus } from "@/lib/api";
 import { SettingBlock } from "./SettingBlock";
+import {
+  AuthModeDescription,
+  ConnectActions,
+  ConnectionCard,
+} from "./integrations";
 
 const NONE_CATEGORY = "__none__";
 
-function googleAuthDescription(status: GoogleAuthStatus | undefined) {
-  const keychain =
-    "OAuth opens in your browser; tokens stay in the OS keychain.";
-  if (!status) {
-    return `Connect a Google account to import calendars. ${keychain}`;
-  }
-  if (status.mode === "local") {
-    return `Auth: local / BYO credentials. Connect a Google account to import calendars. ${keychain}`;
-  }
-  const host = status.brokerBaseUrl
-    ? (() => {
-        try {
-          return new URL(status.brokerBaseUrl).host;
-        } catch {
-          return status.brokerBaseUrl;
-        }
-      })()
-    : "auth broker";
-  return `Auth: broker (${host}). Connect a Google account to import calendars. ${keychain}`;
-}
-
-function connectionStatusLabel(status: string) {
-  switch (status) {
-    case "connected":
-      return "Connected";
-    case "needs_reauth":
-      return "Needs re-auth";
-    case "disconnected":
-      return "Disconnected";
-    default:
-      return status;
-  }
-}
-
-function ConnectionStatusBadge({ status }: { status: string }) {
-  if (status === "connected") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">
-        <CheckCircle2 className="size-3" />
-        Connected
-      </span>
-    );
-  }
-
-  if (status === "needs_reauth") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">
-        <AlertCircle className="size-3" />
-        Needs re-auth
-      </span>
-    );
-  }
-
-  return (
-    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-      {connectionStatusLabel(status)}
-    </span>
-  );
-}
-
 export function CalendarSettings() {
   const connectionsQuery = useIntegrationConnections();
-  const googleAuthQuery = useGoogleAuthStatus();
   const calendarsQuery = useCalendars();
   const categoriesQuery = useCategories();
   const connectGoogle = useConnectGoogle();
@@ -134,7 +65,6 @@ export function CalendarSettings() {
   );
 
   const categories = categoriesQuery.data ?? [];
-  const authDescription = googleAuthDescription(googleAuthQuery.data);
 
   const isBusy =
     connectGoogle.isPending ||
@@ -190,42 +120,17 @@ export function CalendarSettings() {
     <div className="mx-auto max-w-2xl space-y-6">
       <SettingBlock
         title="Google Calendar"
-        description={authDescription}
+        description={<AuthModeDescription provider="google" />}
       >
-        <div className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-            <Field>
-              <FieldLabel htmlFor="google-account-email">
-                Google account email
-              </FieldLabel>
-              <Input
-                id="google-account-email"
-                type="email"
-                value={accountEmail}
-                placeholder="you@example.com"
-                onChange={(event) => setAccountEmail(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    void handleConnect();
-                  }
-                }}
-              />
-            </Field>
-            <Button
-              type="button"
-              disabled={!accountEmail.trim() || isBusy}
-              onClick={() => void handleConnect()}
-            >
-              {connectGoogle.isPending ? (
-                <LoaderCircle className="size-4 animate-spin" />
-              ) : (
-                "Connect"
-              )}
-            </Button>
-          </div>
-
-          {connectError ? <FieldError>{connectError}</FieldError> : null}
-        </div>
+        <ConnectActions
+          provider="google"
+          accountEmail={accountEmail}
+          onAccountEmailChange={setAccountEmail}
+          onConnect={() => void handleConnect()}
+          isConnecting={connectGoogle.isPending}
+          disabled={isBusy}
+          connectError={connectError}
+        />
       </SettingBlock>
       <SettingBlock
         title="Connected Google Accounts"
@@ -234,46 +139,15 @@ export function CalendarSettings() {
         {googleConnections.length > 0 ? (
           <ItemGroup className="gap-2">
             {googleConnections.map((connection) => (
-              <Item key={connection.id} variant="outline">
-                <ItemContent className="min-w-0">
-                  <ItemTitle className="flex flex-wrap items-center gap-2">
-                    <span className="truncate">{connection.accountLabel}</span>
-                    <ConnectionStatusBadge status={connection.status} />
-                  </ItemTitle>
-                  <ItemDescription className="truncate">
-                    {connection.accountId}
-                  </ItemDescription>
-                </ItemContent>
-                <ItemActions>
-                  {connection.status === "needs_reauth" ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={isBusy}
-                      onClick={() =>
-                        void handleReconnect(
-                          connection.accountId,
-                          connection.accountLabel,
-                        )
-                      }
-                    >
-                      <RefreshCw className="size-4" />
-                      Reconnect
-                    </Button>
-                  ) : null}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={isBusy}
-                    onClick={() => void handleDisconnect(connection.accountId)}
-                  >
-                    <LogOut className="size-4" />
-                    Disconnect
-                  </Button>
-                </ItemActions>
-              </Item>
+              <ConnectionCard
+                key={connection.id}
+                connection={connection}
+                disabled={isBusy}
+                onDisconnect={(accountID) => void handleDisconnect(accountID)}
+                onReconnect={(accountID, accountLabel) =>
+                  void handleReconnect(accountID, accountLabel)
+                }
+              />
             ))}
           </ItemGroup>
         ) : (

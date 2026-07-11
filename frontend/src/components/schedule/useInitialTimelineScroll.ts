@@ -8,8 +8,8 @@ import {
   computeTimelineHeight,
 } from "./ScheduleTimeline.helpers";
 
-export function useInitialTimelineScroll(
-  schedulerViewportRef: RefObject<HTMLDivElement>,
+export function useInitialTimelineScroll<T extends HTMLElement>(
+  schedulerViewportRef: RefObject<T>,
 ) {
   useEffect(() => {
     const viewport = schedulerViewportRef.current;

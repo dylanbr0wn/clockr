@@ -1,11 +1,9 @@
 import {
-  CalendarDays,
   Download,
-  Github,
   LoaderCircle,
-  MessagesSquare,
   Monitor,
   Moon,
+  Plug,
   Settings,
   Shield,
   Sparkles,
@@ -46,11 +44,9 @@ import { isShietAppAvailable } from "@/lib/api/shietService";
 import { Environment } from "../../../wailsjs/runtime/runtime";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { AIModelSettings } from "./AIModelSettings";
-import { CalendarSettings } from "./CalendarSettings";
 import { CategorySettings } from "./CategorySettings";
 import { ExportSettings } from "./ExportSettings";
-import { GitHubSettings } from "./GitHubSettings";
-import { SlackSettings } from "./SlackSettings";
+import { IntegrationsSettings } from "./integrations";
 import { SettingBlock } from "./SettingBlock";
 
 type ThemeSetting = "system" | "light" | "dark";
@@ -68,9 +64,7 @@ const sections: Array<{
   ready: boolean;
 }> = [
   { id: "general", label: "General", icon: Settings, ready: true },
-  { id: "calendars", label: "Calendars", icon: CalendarDays, ready: true },
-  { id: "github", label: "GitHub", icon: Github, ready: true },
-  { id: "slack", label: "Slack", icon: MessagesSquare, ready: true },
+  { id: "integrations", label: "Integrations", icon: Plug, ready: true },
   { id: "categories", label: "Categories", icon: Tags, ready: true },
   { id: "ai", label: "AI Model", icon: Sparkles, ready: true },
   { id: "privacy", label: "Privacy", icon: Shield, ready: false },
@@ -489,14 +483,8 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
                 </SettingBlock>
               </div>
             </TabsContent>
-            <TabsContent value="calendars" className="min-h-0 overflow-auto p-5">
-              <CalendarSettings />
-            </TabsContent>
-            <TabsContent value="github" className="min-h-0 overflow-auto p-5">
-              <GitHubSettings />
-            </TabsContent>
-            <TabsContent value="slack" className="min-h-0 overflow-auto p-5">
-              <SlackSettings />
+            <TabsContent value="integrations" className="flex h-full min-h-0 flex-col overflow-hidden p-0">
+              <IntegrationsSettings />
             </TabsContent>
             <TabsContent value="categories" className="min-h-0 overflow-auto p-5">
               <CategorySettings />

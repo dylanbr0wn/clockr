@@ -1,16 +1,16 @@
 export namespace ai {
-
+	
 	export class Endpoint {
 	    name: string;
 	    baseUrl: string;
 	    local: boolean;
 	    running: boolean;
 	    models?: string[];
-
+	
 	    static createFrom(source: any = {}) {
 	        return new Endpoint(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
@@ -25,11 +25,11 @@ export namespace ai {
 	    local: boolean;
 	    verdict: string;
 	    message: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new ValidationResult(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
@@ -42,7 +42,7 @@ export namespace ai {
 }
 
 export namespace connection {
-
+	
 	export class Connection {
 	    id: number;
 	    provider: string;
@@ -52,11 +52,11 @@ export namespace connection {
 	    status: string;
 	    connectedAt: string;
 	    updatedAt: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new Connection(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -73,15 +73,15 @@ export namespace connection {
 }
 
 export namespace main {
-
+	
 	export class AIClassification {
 	    local: boolean;
 	    verdict: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new AIClassification(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.local = source["local"];
@@ -91,11 +91,11 @@ export namespace main {
 	export class GoogleAuthStatus {
 	    mode: string;
 	    brokerBaseUrl: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new GoogleAuthStatus(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.mode = source["mode"];

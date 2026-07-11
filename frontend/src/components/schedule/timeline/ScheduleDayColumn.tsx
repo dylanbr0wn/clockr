@@ -116,7 +116,7 @@ export function ScheduleDayColumn({
             },
             className: cn([
               "relative not-last:border-r border-border",
-              isWeekend ? "bg-muted" : "bg-background",
+              isWeekend ? "bg-background" : "bg-card",
             ]),
             style: {
               height: `${timelineHeight}px`,

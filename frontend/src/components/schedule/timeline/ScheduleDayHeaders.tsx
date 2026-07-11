@@ -16,8 +16,8 @@ export function ScheduleDayHeaders({
         <div
           key={day.date}
           className={cn([
-            "sticky top-0 z-30 flex items-center border-b border-border px-3",
-            day.metadata?.isWeekend ? "bg-muted" : "bg-background",
+            "sticky top-0 z-40 flex items-center border-b border-border px-3",
+            day.metadata?.isWeekend ? "bg-background" : "bg-background-lighter",
             index % visibleDayCount !== visibleDayCount - 1 ? "border-r" : "",
           ])}
         >

@@ -19,6 +19,8 @@ import type {
 } from "./ScheduleTimeline.types";
 import { ScheduleTimelineGrid } from "./timeline/ScheduleTimelineGrid";
 import { useInitialTimelineScroll } from "./useInitialTimelineScroll";
+import { ScrollArea } from "../ui/scroll-area";
+
 
 interface ScheduleTimelineProps {
   data: ScheduleTimelineData;
@@ -70,12 +72,13 @@ export function ScheduleTimeline({ data, actions }: ScheduleTimelineProps) {
       onCommitChange={actions.onCommitChange}
     >
       {(scheduler) => (
-        <div
+        <ScrollArea
           {...scheduler.getRootProps({
             ref: schedulerViewportRef,
             className:
-              "app-no-drag h-full min-h-0 overflow-auto overscroll-none rounded-xl bg-card text-sm text-card-foreground ring-1 ring-foreground/10",
+              "app-no-drag h-full min-h-0 overflow-auto overscroll-none text-sm text-card-foreground bg-background-lighter",
           })}
+          dir="ltr"
         >
           <ScheduleTimelineGrid
             scheduler={scheduler}
@@ -91,7 +94,7 @@ export function ScheduleTimeline({ data, actions }: ScheduleTimelineProps) {
             onHoveredGapChange={setHoveredGapId}
             actions={actions}
           />
-        </div>
+        </ScrollArea>
       )}
     </Scheduler>
   );
