@@ -1,14 +1,14 @@
 # ADR-0002: Connect and Protobuf API Boundary
 
-- Status: Accepted
+- Status: Accepted (amended 2026-07-10)
 - Date: 2026-07-09
 - Linear: DYL-94
 
 ## Context
 
-shiet's React frontend currently calls the local Go process through generated
-Wails bindings. That is a good native integration mechanism, but it is not a
-network contract that a future browser client can reuse. The OAuth broker has a
+shiet's React frontend originally called the local Go process through generated
+Wails bindings. That is a workable native integration mechanism, but it is not a
+network contract a future browser client can reuse. The OAuth broker has a
 separate hand-written JSON contract whose request and response structs have
 also been repeated in the broker and desktop provider packages.
 
@@ -21,15 +21,19 @@ gRPC-Web, and gRPC clients.
 A transport change alone does not create a hosted web product. User identity,
 tenant ownership, hosted persistence, browser sessions, and the privacy impact
 of moving local SQLite/keychain data remain separate architecture decisions.
+See [ADR-0003](0003-platform-adapters.md) for how platform-specific behavior
+stays behind handlers without splitting the frontend contract.
 
 ## Decision
 
-Use versioned Protobuf contracts and Connect for portable shiet APIs:
+Use versioned Protobuf contracts and Connect as the **sole application API**
+between frontend and backend:
 
 - `shiet.app.v1` contains every application operation that can make sense on
   either a desktop-local or future hosted service. Its versioned services cover
   periods, categories, calendars and sync, schedules and review decisions,
-  settings, integration metadata, and export rendering/templates.
+  settings, integration metadata and connect/disconnect, AI configuration, and
+  export rendering/templates.
 - `shiet.broker.v1` contains the provider-neutral OAuth broker start, handoff,
   refresh, and revoke operations. Generated messages replace duplicated wire
   shapes in new desktop clients.
@@ -38,33 +42,44 @@ Use versioned Protobuf contracts and Connect for portable shiet APIs:
 - Generated sources are Git-ignored and reproduced locally and in CI from
   generator versions pinned with Buf.
 
-The application RPC handler delegates to the existing `service.Service`; it
-does not move business rules into the transport. Generated Protobuf messages
-remain behind `frontend/src/lib/api/shietService.ts`, which maps `int64` IDs to
-JavaScript numbers only after checking the safe-integer range.
+The application RPC handler delegates to the existing `service.Service` and
+integration providers; it does not move business rules into the transport.
+Generated Protobuf messages remain behind `frontend/src/lib/api/shietService.ts`,
+which maps `int64` IDs to JavaScript numbers only after checking the safe-integer
+range.
 
-Wails binds only operations whose implementation is intrinsically desktop
-native: OAuth browser/loopback and keychain flows, local AI
-discovery/configuration, and the native save
-dialog. Export content is rendered through Connect and then passed to the
-native save adapter. `service.Service` itself is not Wails-bound.
+### Wails role (desktop shell only)
+
+Wails v2 remains the desktop **container**: webview, lifecycle, and AssetServer
+mount for `/rpc`. It is **not** an application API surface.
+
+- Do **not** add new Wails-bound business methods.
+- Deprecate and remove existing `App` exports as each operation moves to Connect.
+- Platform-specific behavior (keychain, system browser during OAuth, optional
+  native save dialog) runs inside Connect handlers via adapters defined in
+  [ADR-0003](0003-platform-adapters.md).
+
+`service.Service` itself is not Wails-bound.
 
 Low-level dependency and merge seams (`SetCalendarSync`, `SetEvidence`, and
 `SyncEvents`) are internal service APIs, not frontend operations, and are
-intentionally exposed through neither Connect nor Wails. The explicit Connect
-surface includes the previously bound portable reads (`GetPeriod`,
-`GetPeriodByRange`, `GetCategory`, `GetEvent`, `GetExportTemplate`) and the
-period export aggregation.
+intentionally exposed through neither Connect nor Wails.
 
-The broker replaces its handwritten REST operations with the generated Connect
-service. There are no released users requiring a compatibility period, so this
-branch is a hard transport switch: desktop clients use the generated Connect-Go
-client and the broker exposes no REST aliases or fallback behavior for start,
-handoff, refresh, or revoke.
+### HTTP endpoints (not Connect, not Wails)
 
-Google, GitHub, and Slack callbacks remain ordinary HTTP GET routes because providers
-navigate the user agent to those endpoints with `code` and `state`. Health,
-readiness, and Prometheus metrics also remain ordinary HTTP endpoints.
+These stay ordinary HTTP routes:
+
+- OAuth provider and broker **callbacks** — providers navigate the user agent
+  to fixed URLs with `code` and `state` (Google, GitHub, Slack).
+- Broker health, readiness, and Prometheus metrics.
+- (Future) hosted auth session endpoints once a web product exists.
+
+### Desktop mounting
+
+On desktop, Connect handlers mount on the Wails AssetServer at `/rpc` (same origin
+as the embedded frontend). Standalone or hosted deployments mount the same
+handler mux on their HTTP server. The frontend uses one generated Connect client;
+only the base URL differs (`/rpc` vs remote origin).
 
 ## Security and compatibility
 
@@ -91,26 +106,43 @@ readiness, and Prometheus metrics also remain ordinary HTTP endpoints.
 ### Keep Wails bindings and handwritten broker JSON only
 
 Smallest short-term change, but it leaves no reusable browser contract and
-continues duplicating broker wire types.
+continues duplicating broker wire types. **Rejected.**
 
 ### Native grpc-go everywhere
 
 Appropriate for trusted server-to-server traffic, but browser clients cannot
 use native gRPC directly. A separate gRPC-Web layer or proxy would still be
-required.
+required. Connect already accepts gRPC clients on the server side.
 
-### Route native capabilities through Connect
+### Permanent dual transport (Wails + Connect)
 
-Rejected because a network-shaped contract does not make file dialogs,
-keychain access, local runtime discovery, or desktop OAuth handoff portable.
-Those operations remain explicit platform adapters while the complete portable
-surface uses Connect.
+Maintain Wails bindings for "native" operations and Connect for portable reads.
+**Rejected.** It forces two client paths, duplicate types, and drift (e.g.
+integration connect on Wails while resource lists use Connect). One Connect
+contract with platform adapters is strictly better for desktop + hosted.
+
+### Route native capabilities through Connect (original rejection, now accepted)
+
+Earlier draft rejected routing OAuth, keychain, and file dialogs through Connect
+because the *implementations* are not portable. That conflated transport with
+deployment. **Accepted (amended):** the RPC contract is portable; desktop and
+hosted supply different adapters behind the same handlers. OAuth HTTP callbacks
+remain HTTP; opening the system browser happens inside the Go handler, not as a
+separate Wails export.
 
 ### Keep REST alongside Connect
 
 Rejected because there are no released users to migrate. A dual transport
 would add schema, tests, fallback behavior, and replay risk without providing
 compatibility value.
+
+## Consequences
+
+- Frontend maintains one Connect client path per operation.
+- Remaining Wails `App` methods are technical debt to remove, not a pattern to
+  extend.
+- Integration connect/disconnect/auth/catalog belong on `IntegrationService`
+  (see [ADR-0004](0004-standardized-integrations-settings-surface.md)).
 
 ## Sources
 

@@ -6,7 +6,7 @@
 
 ## Context
 
-shiet currently runs Google OAuth from the local Wails desktop app. The current
+shiet currently runs Google OAuth from the local desktop process. The current
 implementation uses the system browser, a loopback redirect, PKCE, state
 checking, and OS keychain-backed token storage. That is the right native-app
 shape for local OAuth, but it does not solve the product security concern for
@@ -64,8 +64,10 @@ credentials are configured.
 
 The same confidentiality boundary applies to the shared GitHub OAuth App:
 public desktop builds must not ship its `client_secret`. The broker therefore
-also owns GitHub's web authorization code exchange. ADR-0002 supersedes the
-application transport with provider-neutral Connect methods; only the provider
+also owns GitHub's web authorization code exchange.
+[ADR-0002](0002-connect-protobuf-api-boundary.md) defines the application
+transport; integration connect/disconnect uses Connect `IntegrationService` per
+[ADR-0004](0004-standardized-integrations-settings-surface.md). Only the provider
 callback remains an ordinary `/v1/github/oauth/callback` route. GitHub
 state and handoff records use the same expiry, one-time-use, verifier binding,
 rate limiting, kill switches, redacted observability, and no-persistent-token

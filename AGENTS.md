@@ -27,8 +27,11 @@ shiet uses a single-context domain-doc layout: root `CONTEXT.md` plus root `docs
 
 shiet is a single **Wails v2 desktop app**: a Go backend (root `app.go`/`main.go` + `internal/`)
 compiled together with a React/TypeScript frontend (`frontend/`, pnpm) into one native binary.
-Portable frontend/backend operations may use same-origin Connect handlers mounted through Wails'
-AssetServer; native capabilities continue to use generated Wails bindings (`frontend/wailsjs/`).
+Portable frontend/backend operations use same-origin Connect handlers mounted through Wails'
+AssetServer; Wails is the desktop shell, not the application API. Connect handlers use
+platform adapters for OAuth browser open, keychain, and optional native save dialog
+(see `docs/adr/0003-platform-adapters.md`). Legacy Wails `App` bindings are deprecated
+and being removed as operations move to Connect.
 Data lives in an embedded SQLite file (pure-Go `modernc.org/sqlite`), auto-migrated and seeded on
 startup. There are no separate backing services to run.
 

@@ -83,8 +83,8 @@ Settings — not as separate top-level tabs per provider.
   and a kind-specific config panel. It does **not** add a new top-level settings
   tab.
 
-See [ADR-0002](docs/adr/0002-standardized-integrations-settings-surface.md) for
-the settings IA, shared UI primitives, Wails API sketch, and migration plan.
+See [ADR-0004](docs/adr/0004-standardized-integrations-settings-surface.md) for
+the settings IA, shared UI primitives, Connect API contract, and migration plan.
 
 ### 4. Export
 - **On-screen summary**: period totals by category + per-day breakdown, copyable.
