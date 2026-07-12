@@ -12,13 +12,19 @@ describe("integrationRegistry", () => {
     expect(google?.kind).toBe("calendar_source");
   });
 
-  it("registers GitHub and Slack with Panel only", () => {
-    for (const id of ["github", "slack"] as const) {
-      const entry = integrationRegistry.find((item) => item.id === id);
-      expect(entry).toBeDefined();
-      expect(entry?.Panel).toBeDefined();
-      expect(entry?.ConfigSlot).toBeUndefined();
-      expect(entry?.kind).toBe("activity_evidence");
-    }
+  it("registers GitHub with ConfigSlot only", () => {
+    const github = integrationRegistry.find((entry) => entry.id === "github");
+    expect(github).toBeDefined();
+    expect(github?.ConfigSlot).toBeDefined();
+    expect(github?.Panel).toBeUndefined();
+    expect(github?.kind).toBe("activity_evidence");
+  });
+
+  it("registers Slack with Panel only", () => {
+    const slack = integrationRegistry.find((entry) => entry.id === "slack");
+    expect(slack).toBeDefined();
+    expect(slack?.Panel).toBeDefined();
+    expect(slack?.ConfigSlot).toBeUndefined();
+    expect(slack?.kind).toBe("activity_evidence");
   });
 });

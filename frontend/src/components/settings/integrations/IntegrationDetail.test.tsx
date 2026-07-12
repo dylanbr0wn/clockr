@@ -30,8 +30,12 @@ vi.mock("@/lib/api", () => ({
     mutateAsync: vi.fn(),
   }),
   useIntegrationAuthStatus: () => ({
-    data: { mode: "broker", brokerBaseUrl: "https://auth.example.com" },
+    data: { mode: "broker", brokerBaseUrl: "https://auth.example.com", oauthAvailable: true },
     isLoading: false,
+  }),
+  useRefreshGitHubRepos: () => ({
+    isPending: false,
+    mutateAsync: vi.fn(),
   }),
   useCalendars: () => ({
     data: [],
@@ -46,6 +50,14 @@ vi.mock("@/lib/api", () => ({
     mutateAsync: vi.fn(),
   }),
   useSetCalendarDefaultCategory: () => ({
+    isPending: false,
+    mutateAsync: vi.fn(),
+  }),
+  useGitHubRepos: () => ({
+    data: [],
+    isLoading: false,
+  }),
+  useSetGitHubRepoSelected: () => ({
     isPending: false,
     mutateAsync: vi.fn(),
   }),
@@ -78,6 +90,20 @@ describe("IntegrationDetail", () => {
     expect(screen.getByText("Calendars")).toBeTruthy();
     expect(
       screen.getByText("Connect a Google account to see calendars here."),
+    ).toBeTruthy();
+  });
+
+  it("renders GitHub connect shell and repository config slot", () => {
+    render(<IntegrationDetail providerId="github" />, {
+      wrapper: createWrapper(),
+    });
+
+    expect(screen.getByText("GitHub")).toBeTruthy();
+    expect(screen.getByText("Connect with GitHub")).toBeTruthy();
+    expect(screen.getByText("Connected Accounts")).toBeTruthy();
+    expect(screen.getByText("Repositories")).toBeTruthy();
+    expect(
+      screen.getByText("Connect a GitHub account to see repositories here."),
     ).toBeTruthy();
   });
 

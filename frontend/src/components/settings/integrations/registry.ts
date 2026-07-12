@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 import type { IntegrationConnection } from "@/lib/api";
 import { CalendarSourceConfig } from "./CalendarSourceConfig";
-import { GitHubSettings } from "../GitHubSettings";
+import { GitHubEvidenceConfig } from "./GitHubEvidenceConfig";
 import { SlackSettings } from "../SlackSettings";
 import type { IntegrationConfigSlotProps } from "./types";
 
@@ -13,9 +13,9 @@ export type IntegrationCatalogEntry = {
   id: IntegrationProviderId;
   displayName: string;
   kind: IntegrationKind;
-  /** Legacy full panel — GitHub/Slack until DYL-115/116 */
+  /** Legacy full panel — Slack until DYL-115 */
   Panel?: ComponentType;
-  /** Kind config only — Google after DYL-114 */
+  /** Kind config only — Google (DYL-114), GitHub (DYL-116) */
   ConfigSlot?: ComponentType<IntegrationConfigSlotProps>;
 };
 
@@ -61,7 +61,7 @@ export const integrationRegistry: IntegrationCatalogEntry[] = [
     id: "github",
     displayName: "GitHub",
     kind: "activity_evidence",
-    Panel: GitHubSettings,
+    ConfigSlot: GitHubEvidenceConfig,
   },
   {
     id: "slack",

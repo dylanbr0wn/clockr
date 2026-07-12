@@ -3,7 +3,9 @@ import { ItemGroup } from "@/components/ui/item";
 import {
   useConnectIntegration,
   useDisconnectIntegration,
+  useIntegrationAuthStatus,
   useIntegrationConnections,
+  useRefreshGitHubRepos,
 } from "@/lib/api";
 import { SettingBlock } from "../SettingBlock";
 import { AuthModeDescription } from "./AuthModeDescription";
@@ -18,6 +20,31 @@ type IntegrationConnectShellProps = {
   onBusyChange?: (busy: boolean) => void;
 };
 
+const PROVIDER_LABELS: Record<
+  IntegrationProviderId,
+  { account: string; connected: string; empty: string; connectedDescription: string }
+> = {
+  google: {
+    account: "Google account",
+    connected: "Connected Google Accounts",
+    empty: "No Google account connected yet.",
+    connectedDescription: "Manage your connected Google accounts.",
+  },
+  github: {
+    account: "GitHub account",
+    connected: "Connected Accounts",
+    empty: "No GitHub account connected yet.",
+    connectedDescription:
+      "Connected GitHub accounts are used to fetch repositories, commits, and pull requests for AI gap-fill evidence.",
+  },
+  slack: {
+    account: "Slack workspace",
+    connected: "Connected Accounts",
+    empty: "No Slack workspace connected yet.",
+    connectedDescription: "Manage your connected Slack workspaces.",
+  },
+};
+
 export function IntegrationConnectShell({
   providerId,
   displayName,
@@ -27,8 +54,14 @@ export function IntegrationConnectShell({
   const connectionsQuery = useIntegrationConnections();
   const connectIntegration = useConnectIntegration();
   const disconnectIntegration = useDisconnectIntegration();
+  const refreshGitHubRepos = useRefreshGitHubRepos();
+
+  const githubAuthQuery = useIntegrationAuthStatus("github", {
+    enabled: providerId === "github",
+  });
 
   const [accountEmail, setAccountEmail] = useState("");
+  const [pat, setPat] = useState("");
   const [connectError, setConnectError] = useState<string | null>(null);
 
   const providerConnections = useMemo(
@@ -40,29 +73,66 @@ export function IntegrationConnectShell({
   );
 
   const connectBusy =
-    connectIntegration.isPending || disconnectIntegration.isPending;
+    connectIntegration.isPending ||
+    disconnectIntegration.isPending ||
+    (providerId === "github" && refreshGitHubRepos.isPending);
 
   useEffect(() => {
     onBusyChange?.(connectBusy);
   }, [connectBusy, onBusyChange]);
 
   const isDisabled = disabled || connectBusy;
+  const labels = PROVIDER_LABELS[providerId];
 
-  const handleConnect = async (accountID: string, accountLabel: string) => {
+  const handleConnectError = (error: unknown, action: string) => {
+    setConnectError(
+      error instanceof Error
+        ? error.message
+        : `Unable to ${action} ${labels.account}`,
+    );
+  };
+
+  const handleGoogleConnect = async (accountID: string, accountLabel: string) => {
     setConnectError(null);
     try {
       await connectIntegration.mutateAsync({
-        provider: providerId,
+        provider: "google",
         accountId: accountID,
         accountLabel,
       });
       setAccountEmail("");
     } catch (error) {
-      setConnectError(
-        error instanceof Error
-          ? error.message
-          : "Unable to connect Google account",
-      );
+      handleConnectError(error, "connect");
+    }
+  };
+
+  const handleGitHubOAuthConnect = async () => {
+    setConnectError(null);
+    try {
+      await connectIntegration.mutateAsync({
+        provider: "github",
+        pat: "",
+      });
+    } catch (error) {
+      handleConnectError(error, "connect");
+    }
+  };
+
+  const handleGitHubPATConnect = async () => {
+    const token = pat.trim();
+    if (!token) {
+      return;
+    }
+
+    setConnectError(null);
+    try {
+      await connectIntegration.mutateAsync({
+        provider: "github",
+        pat: token,
+      });
+      setPat("");
+    } catch (error) {
+      handleConnectError(error, "connect");
     }
   };
 
@@ -74,11 +144,7 @@ export function IntegrationConnectShell({
         accountID,
       });
     } catch (error) {
-      setConnectError(
-        error instanceof Error
-          ? error.message
-          : "Unable to disconnect Google account",
-      );
+      handleConnectError(error, "disconnect");
     }
   };
 
@@ -91,17 +157,29 @@ export function IntegrationConnectShell({
         accountLabel,
       });
     } catch (error) {
+      handleConnectError(error, "reconnect");
+    }
+  };
+
+  const handleRefreshRepos = async (accountID: string) => {
+    setConnectError(null);
+    try {
+      await refreshGitHubRepos.mutateAsync(accountID);
+    } catch (error) {
       setConnectError(
         error instanceof Error
           ? error.message
-          : "Unable to reconnect Google account",
+          : "Unable to refresh GitHub repositories",
       );
     }
   };
 
-  if (providerId !== "google") {
+  if (providerId !== "google" && providerId !== "github") {
     return null;
   }
+
+  const authMode = githubAuthQuery.data?.mode ?? "broker";
+  const oauthAvailable = githubAuthQuery.data?.oauthAvailable ?? true;
 
   return (
     <>
@@ -109,25 +187,40 @@ export function IntegrationConnectShell({
         title={displayName}
         description={<AuthModeDescription provider={providerId} />}
       >
-        <ConnectActions
-          provider="google"
-          accountEmail={accountEmail}
-          onAccountEmailChange={setAccountEmail}
-          onConnect={() => {
-            const email = accountEmail.trim();
-            if (!email) {
-              return;
-            }
-            void handleConnect(email, email);
-          }}
-          isConnecting={connectIntegration.isPending}
-          disabled={isDisabled}
-          connectError={connectError}
-        />
+        {providerId === "google" ? (
+          <ConnectActions
+            provider="google"
+            accountEmail={accountEmail}
+            onAccountEmailChange={setAccountEmail}
+            onConnect={() => {
+              const email = accountEmail.trim();
+              if (!email) {
+                return;
+              }
+              void handleGoogleConnect(email, email);
+            }}
+            isConnecting={connectIntegration.isPending}
+            disabled={isDisabled}
+            connectError={connectError}
+          />
+        ) : (
+          <ConnectActions
+            provider="github"
+            oauthAvailable={oauthAvailable}
+            authMode={authMode}
+            pat={pat}
+            onPatChange={setPat}
+            onOAuthConnect={() => void handleGitHubOAuthConnect()}
+            onPatConnect={() => void handleGitHubPATConnect()}
+            isConnecting={connectIntegration.isPending}
+            disabled={isDisabled}
+            connectError={connectError}
+          />
+        )}
       </SettingBlock>
       <SettingBlock
-        title="Connected Google Accounts"
-        description="Manage your connected Google accounts."
+        title={labels.connected}
+        description={labels.connectedDescription}
       >
         {providerConnections.length > 0 ? (
           <ItemGroup className="gap-2">
@@ -137,16 +230,25 @@ export function IntegrationConnectShell({
                 connection={connection}
                 disabled={isDisabled}
                 onDisconnect={(accountID) => void handleDisconnect(accountID)}
-                onReconnect={(accountID, accountLabel) =>
-                  void handleReconnect(accountID, accountLabel)
+                onReconnect={
+                  providerId === "google"
+                    ? (accountID, accountLabel) =>
+                        void handleReconnect(accountID, accountLabel)
+                    : undefined
+                }
+                secondaryAction={
+                  providerId === "github"
+                    ? {
+                        label: "Refresh repos",
+                        onClick: (accountID) => void handleRefreshRepos(accountID),
+                      }
+                    : undefined
                 }
               />
             ))}
           </ItemGroup>
         ) : (
-          <p className="text-sm text-muted-foreground">
-            No Google account connected yet.
-          </p>
+          <p className="text-sm text-muted-foreground">{labels.empty}</p>
         )}
       </SettingBlock>
     </>
