@@ -92,6 +92,43 @@ func (q *Queries) ListBitbucketReposByAccount(ctx context.Context, accountID str
 	return items, nil
 }
 
+const listSelectedBitbucketRepos = `-- name: ListSelectedBitbucketRepos :many
+SELECT id, account_id, workspace_uuid, external_id, name, full_name, private, selected, created_at FROM bitbucket_repo WHERE selected = 1 ORDER BY full_name
+`
+
+func (q *Queries) ListSelectedBitbucketRepos(ctx context.Context) ([]BitbucketRepo, error) {
+	rows, err := q.db.QueryContext(ctx, listSelectedBitbucketRepos)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []BitbucketRepo{}
+	for rows.Next() {
+		var i BitbucketRepo
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.WorkspaceUuid,
+			&i.ExternalID,
+			&i.Name,
+			&i.FullName,
+			&i.Private,
+			&i.Selected,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setBitbucketRepoSelected = `-- name: SetBitbucketRepoSelected :exec
 UPDATE bitbucket_repo SET selected = ? WHERE id = ?
 `

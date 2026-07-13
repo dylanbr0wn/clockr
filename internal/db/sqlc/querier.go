@@ -74,6 +74,7 @@ type Querier interface {
 	ListOpenReviewItems(ctx context.Context, periodID int64) ([]ReviewItem, error)
 	ListOverlaysForPeriod(ctx context.Context, periodID int64) ([]Overlay, error)
 	ListPeriods(ctx context.Context) ([]Period, error)
+	ListSelectedBitbucketRepos(ctx context.Context) ([]BitbucketRepo, error)
 	ListSelectedCalendars(ctx context.Context) ([]Calendar, error)
 	ListSelectedGitHubRepos(ctx context.Context) ([]GithubRepo, error)
 	ListSelectedSlackChannels(ctx context.Context) ([]SlackChannel, error)
