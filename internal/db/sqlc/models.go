@@ -149,6 +149,16 @@ type Period struct {
 	CreatedAt    string         `json:"created_at"`
 }
 
+type Project struct {
+	ID         int64          `json:"id"`
+	Name       string         `json:"name"`
+	Key        string         `json:"key"`
+	Color      sql.NullString `json:"color"`
+	ArchivedAt sql.NullString `json:"archived_at"`
+	CreatedAt  string         `json:"created_at"`
+	UpdatedAt  string         `json:"updated_at"`
+}
+
 type ReviewItem struct {
 	ID              int64          `json:"id"`
 	PeriodID        int64          `json:"period_id"`
@@ -212,6 +222,9 @@ type TimeEntry struct {
 	Method          sql.NullString `json:"method"`
 	CreatedAt       string         `json:"created_at"`
 	UpdatedAt       string         `json:"updated_at"`
+	WorkType        string         `json:"work_type"`
+	ProjectID       sql.NullInt64  `json:"project_id"`
+	BillableStatus  string         `json:"billable_status"`
 }
 
 type TzSegment struct {
