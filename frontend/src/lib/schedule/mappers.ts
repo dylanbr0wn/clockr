@@ -48,6 +48,17 @@ export function categoryName(
   return categoriesById.get(categoryId)?.name ?? "Unassigned";
 }
 
+/** Active categories for new assigns; keep selected archived so edit still shows it. */
+export function categoriesForAssignPicker(
+  categories: Category[],
+  selectedCategoryId?: number,
+): Category[] {
+  return categories.filter(
+    (category) =>
+      !category.archived || category.id === selectedCategoryId,
+  );
+}
+
 export function resolveCategoryColor(
   categoryId: number | undefined,
   categoriesById: Map<number, Category>,

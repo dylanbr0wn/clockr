@@ -22,7 +22,7 @@ import {
 export function useSchedulePageBaseQueries(today: string, currentTimeZone: string) {
   const periodsQuery = usePeriods();
   const currentPeriodQuery = useCurrentPeriod(today, currentTimeZone);
-  const categoriesQuery = useCategories();
+  const categoriesQuery = useCategories(true);
 
   const createTimeEntryMutation = useCreateTimeEntry();
   const createGapTimeEntryMutation = useCreateGapTimeEntry();

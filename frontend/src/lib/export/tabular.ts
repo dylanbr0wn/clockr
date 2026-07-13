@@ -72,14 +72,14 @@ export function fieldCatalog(
       {
         field: "title",
         label: "Title",
-        description: "Event title or gap-fill note",
+        description: "Event title or time-entry note",
       },
       {
         field: "description",
         label: "Description",
-        description: "Event or gap-fill work notes",
+        description: "Event or time-entry work notes",
       },
-      { field: "source", label: "Source", description: "event or gap_fill" },
+      { field: "source", label: "Source", description: "event or time_entry" },
     ];
   }
   if (layout === "matrix") {

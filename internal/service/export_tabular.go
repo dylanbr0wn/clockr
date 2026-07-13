@@ -128,9 +128,9 @@ func fieldCatalog(grain, layout string) []ExportFieldInfo {
 			{Field: ExportFieldCategoryKey, Label: "Category key", Description: "Category key (falls back to name)"},
 			{Field: ExportFieldHours, Label: "Hours", Description: "Duration as decimal hours"},
 			{Field: ExportFieldMinutes, Label: "Minutes", Description: "Duration as whole minutes"},
-			{Field: ExportFieldTitle, Label: "Title", Description: "Event title or gap-fill note"},
-			{Field: ExportFieldDescription, Label: "Description", Description: "Event or gap-fill work notes"},
-			{Field: ExportFieldSource, Label: "Source", Description: "event or gap_fill"},
+			{Field: ExportFieldTitle, Label: "Title", Description: "Event title or time-entry note"},
+			{Field: ExportFieldDescription, Label: "Description", Description: "Event or time-entry work notes"},
+			{Field: ExportFieldSource, Label: "Source", Description: "event or time_entry"},
 		}
 	case layout == ExportLayoutMatrix:
 		return []ExportFieldInfo{

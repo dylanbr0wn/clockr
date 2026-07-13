@@ -100,6 +100,48 @@ describe("schedule projection", () => {
     expect(projected.timeEntriesByItemId.get("time-entry-21")?.id).toBe(21);
   });
 
+  it("resolves archived category names on historical time entries", () => {
+    const projected = projectSchedulePeriod({
+      events: [],
+      eventCategoryOverlays: [],
+      timeEntries: [
+        {
+          id: 21,
+          periodId: 1,
+          localWorkDate: "2026-06-09",
+          start: "2026-06-09T18:00:00Z",
+          end: "2026-06-09T19:15:00Z",
+          durationMinutes: 75,
+          categoryId: 99,
+          description: "Old bucket",
+          attestation: "confirmed",
+        } as never,
+      ],
+      gapTimeline: [],
+      reviewDecisions: [],
+      tzSegments: [...tzSegments],
+      categories: [
+        {
+          id: 99,
+          name: "Legacy Work",
+          description: "",
+          key: "Legacy Work",
+          color: "#64748B",
+          isDefaultGap: false,
+          archived: true,
+          inUse: true,
+        },
+      ],
+      visibleDays: new Set(["2026-06-09"]),
+      draftPlacements: {},
+    });
+
+    expect(projected.items.find((item) => item.id === "time-entry-21")?.metadata).toMatchObject({
+      category: "Legacy Work",
+      categoryColor: "#64748B",
+    });
+  });
+
   it("builds resettable days from user-created time entries only", () => {
     expect(
       buildResettableDays([

@@ -8,6 +8,7 @@ import type {
 import {
   buildAllDayChipsByDay,
   buildEventCategoryOverlayMap,
+  categoriesForAssignPicker,
   eventToSchedulerItem,
   expandAllDayEventDays,
   timeEntryToSchedulerItem,
@@ -381,5 +382,45 @@ describe("schedule mappers", () => {
     expect(periodContainsDate(period, "2026-06-08")).toBe(true);
     expect(periodContainsDate(period, "2026-06-14")).toBe(true);
     expect(periodContainsDate(period, "2026-06-15")).toBe(false);
+  });
+
+  it("excludes archived categories from assign pickers unless selected", () => {
+    const categories: Category[] = [
+      {
+        id: 1,
+        name: "Active",
+        description: "",
+        key: "Active",
+        color: "#0EA5E9",
+        isDefaultGap: false,
+        archived: false,
+        inUse: false,
+      },
+      {
+        id: 2,
+        name: "Archived",
+        description: "",
+        key: "Archived",
+        color: "#64748B",
+        isDefaultGap: false,
+        archived: true,
+        inUse: true,
+      },
+      {
+        id: 3,
+        name: "Other archived",
+        description: "",
+        key: "Other",
+        color: "#94A3B8",
+        isDefaultGap: false,
+        archived: true,
+        inUse: true,
+      },
+    ];
+
+    expect(categoriesForAssignPicker(categories).map((c) => c.id)).toEqual([1]);
+    expect(categoriesForAssignPicker(categories, 2).map((c) => c.id)).toEqual([
+      1, 2,
+    ]);
   });
 });

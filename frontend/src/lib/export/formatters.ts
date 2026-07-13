@@ -144,7 +144,7 @@ function entryDateTime(day: string, minutes: number) {
   return `${day}T${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
 }
 
-/** Detail grain: one row per schedule entry (event or gap fill). */
+/** Detail grain: one row per schedule entry (event or time entry). */
 export function formatDetailEntriesCSV(
   items: ScheduleItem[],
   categoryKeys: Record<string, string> = {},

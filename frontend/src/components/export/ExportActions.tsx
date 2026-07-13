@@ -60,7 +60,7 @@ const FALLBACK_CSV_TEMPLATES: ExportTemplate[] = [
     key: EXPORT_TEMPLATE_DETAIL_ENTRIES_CSV,
     name: "Detail entries",
     description:
-      "One row per event or gap fill with start, end, category, duration, and title.",
+      "One row per event or time entry with start, end, category, duration, and title.",
     format: "csv",
     builtin: true,
     body: "",

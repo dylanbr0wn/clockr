@@ -66,7 +66,7 @@ type ExportCategory struct {
 
 // ExportEntry is one timed interval contributing to the period export.
 type ExportEntry struct {
-	Source       string         `json:"source"` // event | gap_fill
+	Source       string         `json:"source"` // event | time_entry
 	SourceID     int64          `json:"sourceId"`
 	Day          string         `json:"day"` // YYYY-MM-DD
 	StartMinutes int            `json:"startMinutes"`
@@ -161,7 +161,7 @@ func (s *Service) BuildPeriodExport(ctx context.Context, periodID int64) (Period
 	if err != nil {
 		return PeriodExportModel{}, err
 	}
-	fills, err := s.ListTimeEntries(ctx, periodID)
+	timeEntries, err := s.ListTimeEntries(ctx, periodID)
 	if err != nil {
 		return PeriodExportModel{}, err
 	}
@@ -184,7 +184,7 @@ func (s *Service) BuildPeriodExport(ctx context.Context, periodID int64) (Period
 	}
 
 	locCache := map[string]*time.Location{}
-	entries := make([]ExportEntry, 0, len(events)+len(fills))
+	entries := make([]ExportEntry, 0, len(events)+len(timeEntries))
 
 	for _, event := range events {
 		entry, ok, err := eventToExportEntry(event, segs, catsByID, overlayByKey, locCache)
@@ -195,8 +195,8 @@ func (s *Service) BuildPeriodExport(ctx context.Context, periodID int64) (Period
 			entries = append(entries, entry)
 		}
 	}
-	for _, fill := range fills {
-		entry, ok, err := timeEntryToExportEntry(fill, segs, catsByID, locCache)
+	for _, te := range timeEntries {
+		entry, ok, err := timeEntryToExportEntry(te, segs, catsByID, locCache)
 		if err != nil {
 			return PeriodExportModel{}, err
 		}
@@ -472,7 +472,7 @@ func timeEntryToExportEntry(
 		title = category.Name
 	}
 	return ExportEntry{
-		Source:       "gap_fill",
+		Source:       "time_entry",
 		SourceID:     entry.ID,
 		Day:          day,
 		StartMinutes: startMinutes,

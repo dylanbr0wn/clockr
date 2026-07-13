@@ -364,16 +364,16 @@ func TestBuildPeriodExport_EntryDescriptions(t *testing.T) {
 		t.Fatalf("entries = %d want 2", len(model.Entries))
 	}
 
-	var eventEntry, gapEntry *service.ExportEntry
+	var eventEntry, timeEntry *service.ExportEntry
 	for i := range model.Entries {
 		switch model.Entries[i].Source {
 		case "event":
 			eventEntry = &model.Entries[i]
-		case "gap_fill":
-			gapEntry = &model.Entries[i]
+		case "time_entry":
+			timeEntry = &model.Entries[i]
 		}
 	}
-	if eventEntry == nil || gapEntry == nil {
+	if eventEntry == nil || timeEntry == nil {
 		t.Fatalf("entries = %+v", model.Entries)
 	}
 	if eventEntry.Description != "Calendar agenda" {
@@ -382,11 +382,11 @@ func TestBuildPeriodExport_EntryDescriptions(t *testing.T) {
 	if eventEntry.Title != "meet-1" {
 		t.Fatalf("event title = %q want meet-1", eventEntry.Title)
 	}
-	if gapEntry.Description != "Longer work notes" {
-		t.Fatalf("gap description = %q want Longer work notes", gapEntry.Description)
+	if timeEntry.Description != "Longer work notes" {
+		t.Fatalf("time entry description = %q want Longer work notes", timeEntry.Description)
 	}
-	if gapEntry.Title != "Longer work notes" {
-		t.Fatalf("gap title = %q want Longer work notes", gapEntry.Title)
+	if timeEntry.Title != "Longer work notes" {
+		t.Fatalf("time entry title = %q want Longer work notes", timeEntry.Title)
 	}
 }
 

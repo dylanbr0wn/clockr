@@ -3,6 +3,7 @@ import {
   CardContent,
   CardHeader,
 } from "@/components/ui/card";
+import { categoriesForAssignPicker } from "@/lib/schedule";
 import { EventEditDialog } from "./EventEditDialog";
 import { GapSuggestDialog } from "./GapSuggestDialog";
 import { ReviewQueueDialog } from "./ReviewQueueDialog";
@@ -13,6 +14,11 @@ import { useSchedulePage } from "./useSchedulePage";
 
 export function SchedulePage() {
   const schedule = useSchedulePage();
+  const editPickerCategories = categoriesForAssignPicker(
+    schedule.categories,
+    schedule.editingEvent?.categoryId,
+  );
+  const gapPickerCategories = categoriesForAssignPicker(schedule.categories);
 
   return (
     <>
@@ -66,7 +72,7 @@ export function SchedulePage() {
         onOpenChange={schedule.setReviewQueueOpen}
       />
       <EventEditDialog
-        categories={schedule.categories}
+        categories={editPickerCategories}
         event={schedule.editingEvent}
         isSaving={schedule.editEventPending || schedule.createPending}
         open={schedule.editingEvent !== null}
@@ -79,7 +85,7 @@ export function SchedulePage() {
       />
       <GapSuggestDialog
         aiConfigured={schedule.aiConfigured}
-        categories={schedule.categories}
+        categories={gapPickerCategories}
         evidenceError={schedule.gapEvidenceError}
         evidenceItems={schedule.gapEvidenceItems}
         evidencePending={schedule.gapEvidencePending}
