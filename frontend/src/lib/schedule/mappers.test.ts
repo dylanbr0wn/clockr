@@ -304,6 +304,8 @@ describe("schedule mappers", () => {
       categoryId: 5,
       description: "",
       attestation: "confirmed",
+      workType: "worked",
+      billableStatus: "unset",
     };
 
     expect(
@@ -337,6 +339,8 @@ describe("schedule mappers", () => {
       description: "Feature implementation",
       attestation: "confirmed",
       method: "gap_fill",
+      workType: "worked",
+      billableStatus: "unset",
     };
 
     expect(

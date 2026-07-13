@@ -132,6 +132,170 @@ func TestCreateTimeEntryValidation(t *testing.T) {
 	}
 }
 
+func TestCreateTimeEntry_AllocationDefaults(t *testing.T) {
+	s := newSvc(t)
+	ctx := context.Background()
+
+	periods, err := s.ListPeriods(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pid := periods[0].ID
+
+	entry, err := s.CreateTimeEntry(ctx, service.TimeEntryInput{
+		PeriodID:     pid,
+		Day:          "2026-06-01",
+		StartMinutes: 9 * 60,
+		EndMinutes:   10 * 60,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if entry.WorkType != "worked" {
+		t.Fatalf("work_type = %q want worked", entry.WorkType)
+	}
+	if entry.BillableStatus != "unset" {
+		t.Fatalf("billable_status = %q want unset", entry.BillableStatus)
+	}
+	if entry.ProjectID != nil {
+		t.Fatalf("project_id = %v want nil", entry.ProjectID)
+	}
+}
+
+func TestCreateAndUpdateTimeEntry_AllocationFields(t *testing.T) {
+	s := newSvc(t)
+	ctx := context.Background()
+
+	periods, err := s.ListPeriods(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pid := periods[0].ID
+
+	project, err := s.CreateProject(ctx, service.CreateProjectInput{Name: "Apollo", Key: "apollo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	projectID := project.ID
+
+	entry, err := s.CreateTimeEntry(ctx, service.TimeEntryInput{
+		PeriodID:       pid,
+		Day:            "2026-06-01",
+		StartMinutes:   9 * 60,
+		EndMinutes:     10 * 60,
+		WorkType:       "paid_leave",
+		ProjectID:      &projectID,
+		BillableStatus: "non_billable",
+		Description:    "PTO",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if entry.WorkType != "paid_leave" {
+		t.Fatalf("work_type = %q want paid_leave", entry.WorkType)
+	}
+	if entry.BillableStatus != "non_billable" {
+		t.Fatalf("billable_status = %q want non_billable", entry.BillableStatus)
+	}
+	if entry.ProjectID == nil || *entry.ProjectID != projectID {
+		t.Fatalf("project_id = %v want %d", entry.ProjectID, projectID)
+	}
+
+	listed, err := s.ListTimeEntries(ctx, pid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(listed) != 1 || listed[0].WorkType != "paid_leave" || listed[0].BillableStatus != "non_billable" {
+		t.Fatalf("list allocation mismatch: %+v", listed)
+	}
+	if listed[0].ProjectID == nil || *listed[0].ProjectID != projectID {
+		t.Fatalf("list project_id = %v", listed[0].ProjectID)
+	}
+
+	updated, err := s.UpdateTimeEntry(ctx, service.TimeEntryUpdateInput{
+		ID: entry.ID,
+		TimeEntryInput: service.TimeEntryInput{
+			PeriodID:       pid,
+			Day:            "2026-06-01",
+			StartMinutes:   9 * 60,
+			EndMinutes:     10 * 60,
+			WorkType:       "worked",
+			ProjectID:      &projectID,
+			BillableStatus: "billable",
+			Description:    "Back to work",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.WorkType != "worked" || updated.BillableStatus != "billable" {
+		t.Fatalf("update allocation: %+v", updated)
+	}
+
+	cleared, err := s.UpdateTimeEntry(ctx, service.TimeEntryUpdateInput{
+		ID: entry.ID,
+		TimeEntryInput: service.TimeEntryInput{
+			PeriodID:       pid,
+			Day:            "2026-06-01",
+			StartMinutes:   9 * 60,
+			EndMinutes:     10 * 60,
+			WorkType:       "break",
+			BillableStatus: "unset",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cleared.WorkType != "break" || cleared.BillableStatus != "unset" || cleared.ProjectID != nil {
+		t.Fatalf("clear project: %+v", cleared)
+	}
+}
+
+func TestCreateTimeEntry_InvalidAllocation(t *testing.T) {
+	s := newSvc(t)
+	ctx := context.Background()
+
+	periods, err := s.ListPeriods(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pid := periods[0].ID
+
+	_, err = s.CreateTimeEntry(ctx, service.TimeEntryInput{
+		PeriodID:     pid,
+		Day:          "2026-06-01",
+		StartMinutes: 9 * 60,
+		EndMinutes:   10 * 60,
+		WorkType:     "overtime",
+	})
+	if err == nil {
+		t.Fatal("expected invalid work_type error")
+	}
+
+	_, err = s.CreateTimeEntry(ctx, service.TimeEntryInput{
+		PeriodID:       pid,
+		Day:            "2026-06-01",
+		StartMinutes:   9 * 60,
+		EndMinutes:     10 * 60,
+		BillableStatus: "maybe",
+	})
+	if err == nil {
+		t.Fatal("expected invalid billable_status error")
+	}
+
+	badID := int64(999999)
+	_, err = s.CreateTimeEntry(ctx, service.TimeEntryInput{
+		PeriodID:     pid,
+		Day:          "2026-06-01",
+		StartMinutes: 9 * 60,
+		EndMinutes:   10 * 60,
+		ProjectID:    &badID,
+	})
+	if err == nil {
+		t.Fatal("expected unknown project_id error")
+	}
+}
+
 func TestUpdateAndDeleteTimeEntry(t *testing.T) {
 	s := newSvc(t)
 	ctx := context.Background()

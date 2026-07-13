@@ -34,6 +34,8 @@ func insertTimeEntry(t *testing.T, q *sqlc.Queries, periodID int64, day, startUT
 		Description:     description,
 		Attestation:     "confirmed",
 		Method:          method,
+		WorkType:        "worked",
+		BillableStatus:  "unset",
 	}); err != nil {
 		t.Fatalf("insert time entry: %v", err)
 	}

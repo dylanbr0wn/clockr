@@ -16,6 +16,8 @@ const timeEntries: TimeEntry[] = [
     categoryId: 10,
     description: "Existing description",
     attestation: "confirmed",
+    workType: "worked",
+    billableStatus: "unset",
   },
 ];
 

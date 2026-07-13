@@ -237,6 +237,11 @@ message TimeEntry {
   string description = 8;
   string attestation = 9;
   string method = 10;
+  // worked | paid_leave | unpaid_leave | holiday | break | adjustment
+  string work_type = 11;
+  optional int64 project_id = 12;
+  // unset | billable | non_billable
+  string billable_status = 13;
 }
 message ListTimeEntriesRequest { int64 period_id = 1; }
 message ListTimeEntriesResponse { repeated TimeEntry time_entries = 1; }
@@ -252,6 +257,11 @@ message TimeEntryInput {
   int32 end_minutes = 4;
   optional int64 category_id = 5;
   string description = 6;
+  // Empty → worked. Same closed set as TimeEntry.work_type.
+  string work_type = 7;
+  optional int64 project_id = 8;
+  // Empty → unset. Same closed set as TimeEntry.billable_status.
+  string billable_status = 9;
 }
 message CreateTimeEntryRequest { TimeEntryInput input = 1; }
 message CreateGapTimeEntryRequest { TimeEntryInput input = 1; }

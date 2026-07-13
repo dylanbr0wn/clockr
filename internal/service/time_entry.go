@@ -12,12 +12,15 @@ import (
 
 // TimeEntryInput describes a user-authored interval on the schedule.
 type TimeEntryInput struct {
-	PeriodID     int64  `json:"periodId"`
-	Day          string `json:"day"` // YYYY-MM-DD in the period's active local timezone
-	StartMinutes int    `json:"startMinutes"`
-	EndMinutes   int    `json:"endMinutes"`
-	CategoryID   *int64 `json:"categoryId,omitempty"`
-	Description  string `json:"description,omitempty"`
+	PeriodID       int64  `json:"periodId"`
+	Day            string `json:"day"` // YYYY-MM-DD in the period's active local timezone
+	StartMinutes   int    `json:"startMinutes"`
+	EndMinutes     int    `json:"endMinutes"`
+	CategoryID     *int64 `json:"categoryId,omitempty"`
+	Description    string `json:"description,omitempty"`
+	WorkType       string `json:"workType,omitempty"`       // empty → worked
+	ProjectID      *int64 `json:"projectId,omitempty"`
+	BillableStatus string `json:"billableStatus,omitempty"` // empty → unset
 }
 
 // TimeEntryUpdateInput describes an edit to an existing time entry.
@@ -48,10 +51,18 @@ func (s *Service) createTimeEntry(ctx context.Context, action string, input Time
 	if err != nil {
 		return TimeEntry{}, err
 	}
+	workType, billableStatus, err := normalizeTimeEntryAllocation(action, input.WorkType, input.BillableStatus)
+	if err != nil {
+		return TimeEntry{}, err
+	}
 
 	categoryID := sql.NullInt64{}
 	if input.CategoryID != nil {
 		categoryID = sql.NullInt64{Int64: *input.CategoryID, Valid: true}
+	}
+	projectID := sql.NullInt64{}
+	if input.ProjectID != nil {
+		projectID = sql.NullInt64{Int64: *input.ProjectID, Valid: true}
 	}
 
 	params := sqlc.CreateTimeEntryParams{
@@ -63,6 +74,9 @@ func (s *Service) createTimeEntry(ctx context.Context, action string, input Time
 		CategoryID:      categoryID,
 		Description:     strings.TrimSpace(input.Description),
 		Attestation:     "confirmed",
+		WorkType:        workType,
+		ProjectID:       projectID,
+		BillableStatus:  billableStatus,
 	}
 	if gapOrigin {
 		params.Method = sql.NullString{String: "gap_fill", Valid: true}
@@ -85,10 +99,18 @@ func (s *Service) UpdateTimeEntry(ctx context.Context, input TimeEntryUpdateInpu
 	if err != nil {
 		return TimeEntry{}, err
 	}
+	workType, billableStatus, err := normalizeTimeEntryAllocation("update time entry", input.WorkType, input.BillableStatus)
+	if err != nil {
+		return TimeEntry{}, err
+	}
 
 	categoryID := sql.NullInt64{}
 	if input.CategoryID != nil {
 		categoryID = sql.NullInt64{Int64: *input.CategoryID, Valid: true}
+	}
+	projectID := sql.NullInt64{}
+	if input.ProjectID != nil {
+		projectID = sql.NullInt64{Int64: *input.ProjectID, Valid: true}
 	}
 
 	row, err := s.q.UpdateTimeEntry(ctx, sqlc.UpdateTimeEntryParams{
@@ -98,6 +120,9 @@ func (s *Service) UpdateTimeEntry(ctx context.Context, input TimeEntryUpdateInpu
 		LocalWorkDate:   input.Day,
 		CategoryID:      categoryID,
 		Description:     strings.TrimSpace(input.Description),
+		WorkType:        workType,
+		ProjectID:       projectID,
+		BillableStatus:  billableStatus,
 		ID:              input.ID,
 		PeriodID:        input.PeriodID,
 	})
@@ -187,4 +212,31 @@ func (s *Service) timeEntrySpan(ctx context.Context, action string, input TimeEn
 
 func durationMinutes(start, end time.Time) int64 {
 	return int64(end.Sub(start) / time.Minute)
+}
+
+var allowedWorkTypes = map[string]struct{}{
+	"worked": {}, "paid_leave": {}, "unpaid_leave": {}, "holiday": {}, "break": {}, "adjustment": {},
+}
+
+var allowedBillableStatuses = map[string]struct{}{
+	"unset": {}, "billable": {}, "non_billable": {},
+}
+
+func normalizeTimeEntryAllocation(action, workType, billableStatus string) (string, string, error) {
+	workType = strings.TrimSpace(workType)
+	if workType == "" {
+		workType = "worked"
+	}
+	if _, ok := allowedWorkTypes[workType]; !ok {
+		return "", "", invalidInputf("%s: work_type %q is invalid", action, workType)
+	}
+
+	billableStatus = strings.TrimSpace(billableStatus)
+	if billableStatus == "" {
+		billableStatus = "unset"
+	}
+	if _, ok := allowedBillableStatuses[billableStatus]; !ok {
+		return "", "", invalidInputf("%s: billable_status %q is invalid", action, billableStatus)
+	}
+	return workType, billableStatus, nil
 }

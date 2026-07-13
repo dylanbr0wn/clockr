@@ -38,6 +38,8 @@ describe("schedule ids", () => {
         description: "",
         attestation: "confirmed",
         method: undefined,
+        workType: "worked",
+        billableStatus: "unset",
       },
     ] as const;
 
