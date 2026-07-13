@@ -22,7 +22,7 @@ type gapEnv struct {
 	catID    int64
 }
 
-func newGapEnv(t *testing.T, start, end, iana string, target float64) *gapEnv {
+func newGapEnv(t *testing.T, start, end, iana string) *gapEnv {
 	t.Helper()
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "gap.db")
@@ -34,7 +34,7 @@ func newGapEnv(t *testing.T, start, end, iana string, target float64) *gapEnv {
 	if err := db.Migrate(conn); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
-	// Core seed (categories + settings incl. window.start) but a custom period.
+	// Core seed (categories + settings + default work schedule) but a custom period.
 	if err := seed.Core(ctx, conn); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
@@ -44,7 +44,7 @@ func newGapEnv(t *testing.T, start, end, iana string, target float64) *gapEnv {
 		t.Fatal(err)
 	}
 	p, err := q.CreatePeriod(ctx, sqlc.CreatePeriodParams{
-		StartDate: start, EndDate: end, Cadence: "weekly", AnchorDate: start, TargetHoursPerDay: target,
+		StartDate: start, EndDate: end, Cadence: "weekly", AnchorDate: start,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -80,7 +80,7 @@ func (e *gapEnv) addEvent(t *testing.T, gid string, startUTC, endUTC string, des
 }
 
 func TestGaps_EmptyDayIsOneFullGap(t *testing.T) {
-	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto", 8)
+	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto")
 	days, err := e.svc.ComputeGaps(context.Background(), e.periodID)
 	if err != nil {
 		t.Fatal(err)
@@ -99,7 +99,7 @@ func TestGaps_EmptyDayIsOneFullGap(t *testing.T) {
 
 func TestGaps_WindowStartUsesSegmentTZ(t *testing.T) {
 	// June → EDT (UTC-4). Local 09:00 → 13:00 UTC.
-	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto", 8)
+	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto")
 	days, _ := e.svc.ComputeGaps(context.Background(), e.periodID)
 	ws := days[0].WindowStart
 	if ws.Hour() != 13 || ws.Minute() != 0 {
@@ -112,7 +112,7 @@ func TestGaps_WindowStartUsesSegmentTZ(t *testing.T) {
 }
 
 func TestGaps_EventSplitsWindow(t *testing.T) {
-	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto", 8)
+	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto")
 	// Window 13:00–21:00Z. Event 15:00–16:00Z (1h) splits into two gaps.
 	e.addEvent(t, "mid", "2026-06-01T15:00:00Z", "2026-06-01T16:00:00Z")
 	days, _ := e.svc.ComputeGaps(context.Background(), e.periodID)
@@ -126,7 +126,7 @@ func TestGaps_EventSplitsWindow(t *testing.T) {
 }
 
 func TestGaps_OverlappingEventsUnioned(t *testing.T) {
-	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto", 8)
+	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto")
 	e.addEvent(t, "a", "2026-06-01T15:00:00Z", "2026-06-01T16:30:00Z")
 	e.addEvent(t, "b", "2026-06-01T16:00:00Z", "2026-06-01T17:00:00Z") // overlaps a
 	days, _ := e.svc.ComputeGaps(context.Background(), e.periodID)
@@ -138,7 +138,7 @@ func TestGaps_OverlappingEventsUnioned(t *testing.T) {
 }
 
 func TestGaps_EventOutsideWindowIgnored(t *testing.T) {
-	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto", 8)
+	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto")
 	// 06:00–07:00Z is before the 13:00Z window start.
 	e.addEvent(t, "early", "2026-06-01T06:00:00Z", "2026-06-01T07:00:00Z")
 	days, _ := e.svc.ComputeGaps(context.Background(), e.periodID)
@@ -148,7 +148,7 @@ func TestGaps_EventOutsideWindowIgnored(t *testing.T) {
 }
 
 func TestGaps_GapFillCounts(t *testing.T) {
-	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto", 8)
+	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto")
 	insertTimeEntry(t, e.q, e.periodID, "2026-06-01", "2026-06-01T13:00:00Z", "2026-06-01T15:00:00Z", sql.NullInt64{Int64: e.catID, Valid: true}, "", true)
 	days, _ := e.svc.ComputeGaps(context.Background(), e.periodID)
 	d := days[0]
@@ -161,7 +161,7 @@ func TestGaps_GapFillCounts(t *testing.T) {
 }
 
 func TestGaps_AllDayEventDoesNotOccupy(t *testing.T) {
-	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto", 8)
+	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto")
 	if _, err := e.q.UpsertEvent(context.Background(), sqlc.UpsertEventParams{
 		PeriodID: e.periodID, CalendarID: e.calID, Provider: service.ProviderGoogle, ExternalID: "holiday", Title: "Holiday",
 		Status: "accepted", Attendees: "[]", AllDay: 1,
@@ -178,7 +178,7 @@ func TestGaps_AllDayEventDoesNotOccupy(t *testing.T) {
 }
 
 func TestGaps_DeclinedEventExcluded(t *testing.T) {
-	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto", 8)
+	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto")
 	if _, err := e.q.UpsertEvent(context.Background(), sqlc.UpsertEventParams{
 		PeriodID: e.periodID, CalendarID: e.calID, Provider: service.ProviderGoogle, ExternalID: "decl", Title: "Declined",
 		Status: "declined", Attendees: "[]",
@@ -197,7 +197,7 @@ func TestGaps_DeclinedEventExcluded(t *testing.T) {
 func TestGaps_DSTSpringForward(t *testing.T) {
 	// US DST starts 2026-03-08. Window 09:00 local both days.
 	//   Mar 7 EST (UTC-5) → 14:00Z; Mar 8 EDT (UTC-4) → 13:00Z.
-	e := newGapEnv(t, "2026-03-07", "2026-03-08", "America/Toronto", 8)
+	e := newGapEnv(t, "2026-03-07", "2026-03-08", "America/Toronto")
 	days, err := e.svc.ComputeGaps(context.Background(), e.periodID)
 	if err != nil {
 		t.Fatal(err)
@@ -221,7 +221,7 @@ func TestGaps_DSTSpringForward(t *testing.T) {
 
 func TestGaps_MultiDayPeriodAndSegmentSwitch(t *testing.T) {
 	// Two segments: first 2 days Toronto, then switch to Vancouver (UTC-7 in June).
-	e := newGapEnv(t, "2026-06-01", "2026-06-03", "America/Toronto", 8)
+	e := newGapEnv(t, "2026-06-01", "2026-06-03", "America/Toronto")
 	if _, err := e.q.UpsertTzSegment(context.Background(), sqlc.UpsertTzSegmentParams{
 		PeriodID: e.periodID, EffectiveFromDate: "2026-06-03", IanaTz: "America/Vancouver",
 	}); err != nil {

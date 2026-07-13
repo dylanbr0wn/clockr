@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -29,11 +27,16 @@ type DayTimeline struct {
 	GapHours     float64    `json:"gapHours"`
 }
 
-const defaultWindowStart = "09:00"
+// Temporary flat window stubs until ExpectedTime rewire (DYL-158). Match seed
+// default: 09:00 local, 480 expected minutes — not read from settings/period.
+const (
+	stubWindowStartHH       = 9
+	stubWindowStartMM       = 0
+	stubExpectedMinutesDay  = 480
+)
 
 // ComputeGaps builds the per-day timelines for a period: for each date it
-// resolves the active timezone segment, lays out a working window of
-// target_hours_per_day starting at the configured local start time, and
+// resolves the active timezone segment, lays out a working window, and
 // subtracts active timed events + gap fills to find the uncovered gaps.
 //
 // All-day events do not occupy time here (they are resolved via the review
@@ -55,10 +58,6 @@ func (s *Service) ComputeGaps(ctx context.Context, periodID int64) ([]DayTimelin
 		return nil, err
 	}
 	fills, err := s.ListTimeEntries(ctx, periodID)
-	if err != nil {
-		return nil, err
-	}
-	startHH, startMM, err := s.windowStart(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -97,9 +96,8 @@ func (s *Service) ComputeGaps(ctx context.Context, periodID int64) ([]DayTimelin
 		y, m, day := d.Date()
 		// Window in local wall-clock; time.Date normalizes minute overflow and is
 		// DST-correct (e.g. a 23h/25h day shifts the UTC instants accordingly).
-		ws := time.Date(y, m, day, startHH, startMM, 0, 0, loc)
-		totalMin := int(period.TargetHoursPerDay * 60)
-		we := time.Date(y, m, day, startHH, startMM+totalMin, 0, 0, loc)
+		ws := time.Date(y, m, day, stubWindowStartHH, stubWindowStartMM, 0, 0, loc)
+		we := time.Date(y, m, day, stubWindowStartHH, stubWindowStartMM+stubExpectedMinutesDay, 0, 0, loc)
 		win := Interval{Start: ws.UTC(), End: we.UTC()}
 
 		dayEvents := clipAll(eventSpans, win)
@@ -120,26 +118,6 @@ func (s *Service) ComputeGaps(ctx context.Context, periodID int64) ([]DayTimelin
 		})
 	}
 	return out, nil
-}
-
-// windowStart reads the configured local window start "HH:MM", falling back to
-// the default when unset.
-func (s *Service) windowStart(ctx context.Context) (hh, mm int, err error) {
-	raw, gerr := s.GetSetting(ctx, "window.start")
-	val := defaultWindowStart
-	if gerr == nil {
-		var parsed string
-		if json.Unmarshal([]byte(raw), &parsed) == nil && parsed != "" {
-			val = parsed
-		}
-	} else if !errors.Is(gerr, ErrNotFound) {
-		return 0, 0, gerr
-	}
-	t, perr := time.Parse("15:04", val)
-	if perr != nil {
-		return 0, 0, fmt.Errorf("parse window.start %q: %w", val, perr)
-	}
-	return t.Hour(), t.Minute(), nil
 }
 
 // activeSegment returns the segment governing dateStr: the latest segment whose

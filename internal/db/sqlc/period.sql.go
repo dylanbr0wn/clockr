@@ -11,17 +11,16 @@ import (
 )
 
 const createPeriod = `-- name: CreatePeriod :one
-INSERT INTO period (start_date, end_date, cadence, anchor_date, target_hours_per_day)
-VALUES (?, ?, ?, ?, ?)
-RETURNING id, start_date, end_date, cadence, anchor_date, target_hours_per_day, last_synced_at, created_at
+INSERT INTO period (start_date, end_date, cadence, anchor_date)
+VALUES (?, ?, ?, ?)
+RETURNING id, start_date, end_date, cadence, anchor_date, last_synced_at, created_at
 `
 
 type CreatePeriodParams struct {
-	StartDate         string  `json:"start_date"`
-	EndDate           string  `json:"end_date"`
-	Cadence           string  `json:"cadence"`
-	AnchorDate        string  `json:"anchor_date"`
-	TargetHoursPerDay float64 `json:"target_hours_per_day"`
+	StartDate  string `json:"start_date"`
+	EndDate    string `json:"end_date"`
+	Cadence    string `json:"cadence"`
+	AnchorDate string `json:"anchor_date"`
 }
 
 func (q *Queries) CreatePeriod(ctx context.Context, arg CreatePeriodParams) (Period, error) {
@@ -30,7 +29,6 @@ func (q *Queries) CreatePeriod(ctx context.Context, arg CreatePeriodParams) (Per
 		arg.EndDate,
 		arg.Cadence,
 		arg.AnchorDate,
-		arg.TargetHoursPerDay,
 	)
 	var i Period
 	err := row.Scan(
@@ -39,7 +37,6 @@ func (q *Queries) CreatePeriod(ctx context.Context, arg CreatePeriodParams) (Per
 		&i.EndDate,
 		&i.Cadence,
 		&i.AnchorDate,
-		&i.TargetHoursPerDay,
 		&i.LastSyncedAt,
 		&i.CreatedAt,
 	)
@@ -65,7 +62,7 @@ func (q *Queries) DeleteTzSegment(ctx context.Context, id int64) error {
 }
 
 const getPeriod = `-- name: GetPeriod :one
-SELECT id, start_date, end_date, cadence, anchor_date, target_hours_per_day, last_synced_at, created_at FROM period WHERE id = ?
+SELECT id, start_date, end_date, cadence, anchor_date, last_synced_at, created_at FROM period WHERE id = ?
 `
 
 func (q *Queries) GetPeriod(ctx context.Context, id int64) (Period, error) {
@@ -77,7 +74,6 @@ func (q *Queries) GetPeriod(ctx context.Context, id int64) (Period, error) {
 		&i.EndDate,
 		&i.Cadence,
 		&i.AnchorDate,
-		&i.TargetHoursPerDay,
 		&i.LastSyncedAt,
 		&i.CreatedAt,
 	)
@@ -85,7 +81,7 @@ func (q *Queries) GetPeriod(ctx context.Context, id int64) (Period, error) {
 }
 
 const getPeriodByRange = `-- name: GetPeriodByRange :one
-SELECT id, start_date, end_date, cadence, anchor_date, target_hours_per_day, last_synced_at, created_at FROM period WHERE start_date = ? AND end_date = ?
+SELECT id, start_date, end_date, cadence, anchor_date, last_synced_at, created_at FROM period WHERE start_date = ? AND end_date = ?
 `
 
 type GetPeriodByRangeParams struct {
@@ -102,7 +98,6 @@ func (q *Queries) GetPeriodByRange(ctx context.Context, arg GetPeriodByRangePara
 		&i.EndDate,
 		&i.Cadence,
 		&i.AnchorDate,
-		&i.TargetHoursPerDay,
 		&i.LastSyncedAt,
 		&i.CreatedAt,
 	)
@@ -110,7 +105,7 @@ func (q *Queries) GetPeriodByRange(ctx context.Context, arg GetPeriodByRangePara
 }
 
 const listPeriods = `-- name: ListPeriods :many
-SELECT id, start_date, end_date, cadence, anchor_date, target_hours_per_day, last_synced_at, created_at FROM period ORDER BY start_date DESC
+SELECT id, start_date, end_date, cadence, anchor_date, last_synced_at, created_at FROM period ORDER BY start_date DESC
 `
 
 func (q *Queries) ListPeriods(ctx context.Context) ([]Period, error) {
@@ -128,7 +123,6 @@ func (q *Queries) ListPeriods(ctx context.Context) ([]Period, error) {
 			&i.EndDate,
 			&i.Cadence,
 			&i.AnchorDate,
-			&i.TargetHoursPerDay,
 			&i.LastSyncedAt,
 			&i.CreatedAt,
 		); err != nil {
@@ -188,20 +182,6 @@ type TouchPeriodSyncedParams struct {
 
 func (q *Queries) TouchPeriodSynced(ctx context.Context, arg TouchPeriodSyncedParams) error {
 	_, err := q.db.ExecContext(ctx, touchPeriodSynced, arg.LastSyncedAt, arg.ID)
-	return err
-}
-
-const updatePeriodTarget = `-- name: UpdatePeriodTarget :exec
-UPDATE period SET target_hours_per_day = ? WHERE id = ?
-`
-
-type UpdatePeriodTargetParams struct {
-	TargetHoursPerDay float64 `json:"target_hours_per_day"`
-	ID                int64   `json:"id"`
-}
-
-func (q *Queries) UpdatePeriodTarget(ctx context.Context, arg UpdatePeriodTargetParams) error {
-	_, err := q.db.ExecContext(ctx, updatePeriodTarget, arg.TargetHoursPerDay, arg.ID)
 	return err
 }
 

@@ -140,14 +140,13 @@ type Overlay struct {
 }
 
 type Period struct {
-	ID                int64          `json:"id"`
-	StartDate         string         `json:"start_date"`
-	EndDate           string         `json:"end_date"`
-	Cadence           string         `json:"cadence"`
-	AnchorDate        string         `json:"anchor_date"`
-	TargetHoursPerDay float64        `json:"target_hours_per_day"`
-	LastSyncedAt      sql.NullString `json:"last_synced_at"`
-	CreatedAt         string         `json:"created_at"`
+	ID           int64          `json:"id"`
+	StartDate    string         `json:"start_date"`
+	EndDate      string         `json:"end_date"`
+	Cadence      string         `json:"cadence"`
+	AnchorDate   string         `json:"anchor_date"`
+	LastSyncedAt sql.NullString `json:"last_synced_at"`
+	CreatedAt    string         `json:"created_at"`
 }
 
 type ReviewItem struct {
@@ -162,6 +161,21 @@ type ReviewItem struct {
 	ConflictKey     string         `json:"conflict_key"`
 	DecisionAction  string         `json:"decision_action"`
 	DecisionPayload string         `json:"decision_payload"`
+}
+
+type ScheduleException struct {
+	ID              int64  `json:"id"`
+	Date            string `json:"date"`
+	Kind            string `json:"kind"`
+	ExpectedMinutes int64  `json:"expected_minutes"`
+	CreatedAt       string `json:"created_at"`
+}
+
+type ScheduleExceptionWindow struct {
+	ID                  int64 `json:"id"`
+	ScheduleExceptionID int64 `json:"schedule_exception_id"`
+	StartMinutes        int64 `json:"start_minutes"`
+	EndMinutes          int64 `json:"end_minutes"`
 }
 
 type SlackChannel struct {
@@ -205,4 +219,27 @@ type TzSegment struct {
 	PeriodID          int64  `json:"period_id"`
 	EffectiveFromDate string `json:"effective_from_date"`
 	IanaTz            string `json:"iana_tz"`
+}
+
+type WorkSchedule struct {
+	ID            int64          `json:"id"`
+	Timezone      string         `json:"timezone"`
+	WorkweekStart string         `json:"workweek_start"`
+	EffectiveFrom string         `json:"effective_from"`
+	EffectiveTo   sql.NullString `json:"effective_to"`
+	CreatedAt     string         `json:"created_at"`
+}
+
+type WorkScheduleDay struct {
+	ID              int64  `json:"id"`
+	WorkScheduleID  int64  `json:"work_schedule_id"`
+	Weekday         string `json:"weekday"`
+	ExpectedMinutes int64  `json:"expected_minutes"`
+}
+
+type WorkScheduleWindow struct {
+	ID                int64 `json:"id"`
+	WorkScheduleDayID int64 `json:"work_schedule_day_id"`
+	StartMinutes      int64 `json:"start_minutes"`
+	EndMinutes        int64 `json:"end_minutes"`
 }

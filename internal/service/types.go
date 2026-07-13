@@ -201,6 +201,9 @@ func toCategory(r sqlc.Category) Category {
 	}
 }
 
+// stubTargetHoursPerDay keeps gaps/export compiling until ExpectedTime rewire (DYL-158).
+const stubTargetHoursPerDay = 8.0
+
 func toPeriod(r sqlc.Period) Period {
 	return Period{
 		ID:                r.ID,
@@ -208,7 +211,7 @@ func toPeriod(r sqlc.Period) Period {
 		EndDate:           r.EndDate,
 		Cadence:           r.Cadence,
 		AnchorDate:        r.AnchorDate,
-		TargetHoursPerDay: r.TargetHoursPerDay,
+		TargetHoursPerDay: stubTargetHoursPerDay,
 		LastSyncedAt:      parseTimePtr(r.LastSyncedAt),
 	}
 }

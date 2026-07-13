@@ -97,6 +97,10 @@ func TestEnsureCurrentPeriodCreatesNextBiWeeklyPeriod(t *testing.T) {
 	if p.StartDate != "2026-06-15" || p.EndDate != "2026-06-28" {
 		t.Fatalf("unexpected current period: %+v", p)
 	}
+	// Flat target is no longer period authority; stub remains until ExpectedTime rewire.
+	if p.TargetHoursPerDay != 8 {
+		t.Fatalf("stub target hours = %v, want 8", p.TargetHoursPerDay)
+	}
 
 	segs, err := s.ListTzSegments(ctx, p.ID)
 	if err != nil {
@@ -200,15 +204,15 @@ func TestSetSetting(t *testing.T) {
 	s := newSvc(t)
 	ctx := context.Background()
 
-	if err := s.SetSetting(ctx, "period.target_hours", `7.5`); err != nil {
+	if err := s.SetSetting(ctx, "app.theme", `"dark"`); err != nil {
 		t.Fatal(err)
 	}
 
-	v, err := s.GetSetting(ctx, "period.target_hours")
+	v, err := s.GetSetting(ctx, "app.theme")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if v != `7.5` {
+	if v != `"dark"` {
 		t.Fatalf("unexpected setting value: %q", v)
 	}
 }

@@ -42,10 +42,6 @@ func (s *Service) EnsureCurrentPeriod(ctx context.Context, today string, ianaTz 
 	if err != nil {
 		return Period{}, err
 	}
-	targetHours, err := s.periodTargetHours(ctx, periods)
-	if err != nil {
-		return Period{}, err
-	}
 	anchor := periodAnchor(periods, today)
 	start, end := currentPeriodRange(todayDate, anchor, cadence)
 
@@ -61,11 +57,10 @@ func (s *Service) EnsureCurrentPeriod(ctx context.Context, today string, ianaTz 
 	}
 
 	row, err := s.q.CreatePeriod(ctx, sqlc.CreatePeriodParams{
-		StartDate:         start,
-		EndDate:           end,
-		Cadence:           cadence,
-		AnchorDate:        anchor,
-		TargetHoursPerDay: targetHours,
+		StartDate:  start,
+		EndDate:    end,
+		Cadence:    cadence,
+		AnchorDate: anchor,
 	})
 	if err != nil {
 		return Period{}, mapErr("ensure current period", err)
@@ -109,21 +104,6 @@ func (s *Service) periodCadence(ctx context.Context, periods []Period) (string, 
 		return "bi-weekly", nil
 	}
 	return cadence, nil
-}
-
-func (s *Service) periodTargetHours(ctx context.Context, periods []Period) (float64, error) {
-	if len(periods) > 0 && periods[0].TargetHoursPerDay > 0 {
-		return periods[0].TargetHoursPerDay, nil
-	}
-	raw, err := s.GetSetting(ctx, "period.target_hours")
-	if err != nil {
-		return 8, nil
-	}
-	var target float64
-	if json.Unmarshal([]byte(raw), &target) != nil || target <= 0 {
-		return 8, nil
-	}
-	return target, nil
 }
 
 func periodContains(period Period, day string) bool {

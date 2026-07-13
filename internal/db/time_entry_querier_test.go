@@ -27,11 +27,10 @@ func TestTimeEntryQuerier_CRUDRoundTrip(t *testing.T) {
 	q := sqlc.New(conn)
 
 	period, err := q.CreatePeriod(ctx, sqlc.CreatePeriodParams{
-		StartDate:         "2026-06-01",
-		EndDate:           "2026-06-14",
-		Cadence:           "bi-weekly",
-		AnchorDate:        "2026-06-01",
-		TargetHoursPerDay: 8,
+		StartDate:  "2026-06-01",
+		EndDate:    "2026-06-14",
+		Cadence:    "bi-weekly",
+		AnchorDate: "2026-06-01",
 	})
 	if err != nil {
 		t.Fatalf("create period: %v", err)

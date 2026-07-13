@@ -8,15 +8,12 @@ SELECT * FROM period WHERE start_date = ? AND end_date = ?;
 SELECT * FROM period ORDER BY start_date DESC;
 
 -- name: CreatePeriod :one
-INSERT INTO period (start_date, end_date, cadence, anchor_date, target_hours_per_day)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO period (start_date, end_date, cadence, anchor_date)
+VALUES (?, ?, ?, ?)
 RETURNING *;
 
 -- name: TouchPeriodSynced :exec
 UPDATE period SET last_synced_at = ? WHERE id = ?;
-
--- name: UpdatePeriodTarget :exec
-UPDATE period SET target_hours_per_day = ? WHERE id = ?;
 
 -- name: DeletePeriod :exec
 DELETE FROM period WHERE id = ?;

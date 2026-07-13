@@ -38,14 +38,11 @@ var defaultSettings = map[string]string{
 	"events.accepted":     `"include"`,
 	"events.tentative":    `"flag"`,
 	"events.all_day":      `"flag"`,
-	"app.theme":           `"system"`,
-	"period.cadence":      `"bi-weekly"`,
-	"period.target_hours": `8`,
-	// Default working-window start (local time-of-day). Window length = target hours.
-	"window.start":  `"09:00"`,
-	"ai.base_url":   `""`,
-	"ai.model":      `""`,
-	"ai.max_tokens": `512`,
+	"app.theme":      `"system"`,
+	"period.cadence": `"bi-weekly"`,
+	"ai.base_url":    `""`,
+	"ai.model":       `""`,
+	"ai.max_tokens":  `512`,
 }
 
 // Core seeds data that every install needs (categories + settings).
@@ -83,6 +80,67 @@ func Core(ctx context.Context, conn *sql.DB) error {
 			return fmt.Errorf("get setting %q: %w", k, err)
 		}
 	}
+
+	if err := seedDefaultWorkSchedule(ctx, q); err != nil {
+		return err
+	}
+	return nil
+}
+
+// seedDefaultWorkSchedule inserts the open-ended Mon–Fri 8h template when none exist.
+func seedDefaultWorkSchedule(ctx context.Context, q *sqlc.Queries) error {
+	n, err := q.CountWorkSchedules(ctx)
+	if err != nil {
+		return fmt.Errorf("count work schedules: %w", err)
+	}
+	if n > 0 {
+		return nil
+	}
+
+	sched, err := q.CreateWorkSchedule(ctx, sqlc.CreateWorkScheduleParams{
+		Timezone:      "America/Toronto",
+		WorkweekStart: "monday",
+		EffectiveFrom: "1970-01-01",
+		EffectiveTo:   sql.NullString{},
+	})
+	if err != nil {
+		return fmt.Errorf("create default work schedule: %w", err)
+	}
+
+	weekdays := []struct {
+		name    string
+		minutes int64
+		window  bool
+	}{
+		{"monday", 480, true},
+		{"tuesday", 480, true},
+		{"wednesday", 480, true},
+		{"thursday", 480, true},
+		{"friday", 480, true},
+		{"saturday", 0, false},
+		{"sunday", 0, false},
+	}
+	const windowStart, windowEnd = int64(9 * 60), int64(9*60 + 480)
+	for _, day := range weekdays {
+		row, err := q.CreateWorkScheduleDay(ctx, sqlc.CreateWorkScheduleDayParams{
+			WorkScheduleID:  sched.ID,
+			Weekday:         day.name,
+			ExpectedMinutes: day.minutes,
+		})
+		if err != nil {
+			return fmt.Errorf("create schedule day %q: %w", day.name, err)
+		}
+		if !day.window {
+			continue
+		}
+		if _, err := q.CreateWorkScheduleWindow(ctx, sqlc.CreateWorkScheduleWindowParams{
+			WorkScheduleDayID: row.ID,
+			StartMinutes:      windowStart,
+			EndMinutes:        windowEnd,
+		}); err != nil {
+			return fmt.Errorf("create schedule window for %q: %w", day.name, err)
+		}
+	}
 	return nil
 }
 
@@ -112,11 +170,10 @@ func Dev(ctx context.Context, conn *sql.DB) error {
 	var period sqlc.Period
 	if _, err := q.GetPeriodByRange(ctx, sqlc.GetPeriodByRangeParams{StartDate: start, EndDate: end}); errors.Is(err, sql.ErrNoRows) {
 		p, err := q.CreatePeriod(ctx, sqlc.CreatePeriodParams{
-			StartDate:         start,
-			EndDate:           end,
-			Cadence:           "bi-weekly",
-			AnchorDate:        start,
-			TargetHoursPerDay: 8,
+			StartDate:  start,
+			EndDate:    end,
+			Cadence:    "bi-weekly",
+			AnchorDate: start,
 		})
 		if err != nil {
 			return fmt.Errorf("seed period: %w", err)

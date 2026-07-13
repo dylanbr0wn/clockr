@@ -79,7 +79,7 @@ func TestListExportTemplates_SeedsMatrixBuiltin(t *testing.T) {
 }
 
 func TestBuildPeriodExport_EntriesAndRollups(t *testing.T) {
-	e := newGapEnv(t, "2026-06-01", "2026-06-02", "America/Toronto", 8)
+	e := newGapEnv(t, "2026-06-01", "2026-06-02", "America/Toronto")
 	ctx := context.Background()
 
 	cats, err := e.svc.ListCategories(ctx)
@@ -169,7 +169,7 @@ func TestBuildPeriodExport_EntriesAndRollups(t *testing.T) {
 }
 
 func TestRenderPeriodExport_MatrixCSVShape(t *testing.T) {
-	e := newGapEnv(t, "2026-06-01", "2026-06-02", "America/Toronto", 8)
+	e := newGapEnv(t, "2026-06-01", "2026-06-02", "America/Toronto")
 	ctx := context.Background()
 
 	cats, err := e.svc.ListCategories(ctx)
@@ -221,7 +221,7 @@ func TestRenderPeriodExport_MatrixCSVShape(t *testing.T) {
 }
 
 func TestRenderPeriodExport_FlatDailyCSVShape(t *testing.T) {
-	e := newGapEnv(t, "2026-06-01", "2026-06-02", "America/Toronto", 8)
+	e := newGapEnv(t, "2026-06-01", "2026-06-02", "America/Toronto")
 	ctx := context.Background()
 
 	cats, err := e.svc.ListCategories(ctx)
@@ -274,7 +274,7 @@ func TestRenderPeriodExport_FlatDailyCSVShape(t *testing.T) {
 }
 
 func TestRenderPeriodExport_DetailEntriesCSVShape(t *testing.T) {
-	e := newGapEnv(t, "2026-06-01", "2026-06-02", "America/Toronto", 8)
+	e := newGapEnv(t, "2026-06-01", "2026-06-02", "America/Toronto")
 	ctx := context.Background()
 
 	cats, err := e.svc.ListCategories(ctx)
@@ -327,7 +327,7 @@ func TestRenderPeriodExport_DetailEntriesCSVShape(t *testing.T) {
 }
 
 func TestBuildPeriodExport_EntryDescriptions(t *testing.T) {
-	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto", 8)
+	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto")
 	ctx := context.Background()
 
 	cats, err := e.svc.ListCategories(ctx)
@@ -391,7 +391,7 @@ func TestBuildPeriodExport_EntryDescriptions(t *testing.T) {
 }
 
 func TestRenderPeriodExport_TextSummaryShape(t *testing.T) {
-	e := newGapEnv(t, "2026-06-01", "2026-06-02", "America/Toronto", 8)
+	e := newGapEnv(t, "2026-06-01", "2026-06-02", "America/Toronto")
 	ctx := context.Background()
 
 	cats, err := e.svc.ListCategories(ctx)
@@ -458,7 +458,7 @@ func TestRenderPeriodExport_TextSummaryShape(t *testing.T) {
 }
 
 func TestRenderPeriodExport_TextSummaryEmptyDay(t *testing.T) {
-	e := newGapEnv(t, "2026-06-01", "2026-06-02", "America/Toronto", 8)
+	e := newGapEnv(t, "2026-06-01", "2026-06-02", "America/Toronto")
 	ctx := context.Background()
 
 	cats, err := e.svc.ListCategories(ctx)
@@ -486,7 +486,7 @@ func TestRenderPeriodExport_TextSummaryEmptyDay(t *testing.T) {
 }
 
 func TestBuildPeriodExport_UnassignedWithoutOverlay(t *testing.T) {
-	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto", 8)
+	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto")
 	e.addEvent(t, "bare", "2026-06-01T15:00:00Z", "2026-06-01T16:00:00Z")
 
 	model, err := e.svc.BuildPeriodExport(context.Background(), e.periodID)
@@ -514,7 +514,7 @@ func categoryMinutesByName(day service.ExportDayTotals) map[string]int {
 }
 
 func TestExportTemplateCRUD_CustomTabular(t *testing.T) {
-	e := newGapEnv(t, "2026-06-01", "2026-06-02", "America/Toronto", 8)
+	e := newGapEnv(t, "2026-06-01", "2026-06-02", "America/Toronto")
 	ctx := context.Background()
 
 	cats, err := e.svc.ListCategories(ctx)
@@ -646,7 +646,7 @@ func TestExportTemplateCRUD_CustomTabular(t *testing.T) {
 }
 
 func TestPreviewExport_DraftBody(t *testing.T) {
-	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto", 8)
+	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto")
 	ctx := context.Background()
 
 	cats, err := e.svc.ListCategories(ctx)
@@ -697,7 +697,7 @@ func TestPreviewExport_DraftBody(t *testing.T) {
 }
 
 func TestExportTemplateCRUD_CustomText(t *testing.T) {
-	e := newGapEnv(t, "2026-06-01", "2026-06-02", "America/Toronto", 8)
+	e := newGapEnv(t, "2026-06-01", "2026-06-02", "America/Toronto")
 	ctx := context.Background()
 
 	cats, err := e.svc.ListCategories(ctx)
