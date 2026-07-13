@@ -21,6 +21,8 @@ type Category struct {
 	Key          string `json:"key"`
 	Color        string `json:"color"`
 	IsDefaultGap bool   `json:"isDefaultGap"`
+	Archived     bool   `json:"archived"`
+	InUse        bool   `json:"inUse"`
 }
 
 // EventCategoryOverlay is a category decision attached to an imported event.
@@ -172,6 +174,7 @@ func toCategory(r sqlc.Category) Category {
 		Key:          r.Key,
 		Color:        r.Color,
 		IsDefaultGap: r.IsDefaultGap != 0,
+		Archived:     r.ArchivedAt.Valid,
 	}
 }
 

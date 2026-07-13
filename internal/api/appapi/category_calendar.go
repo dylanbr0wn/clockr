@@ -11,8 +11,14 @@ import (
 
 type CategoryService struct{ service *service.Service }
 
-func (s *CategoryService) ListCategories(ctx context.Context, _ *connect.Request[appv1.ListCategoriesRequest]) (*connect.Response[appv1.ListCategoriesResponse], error) {
-	items, err := s.service.ListCategories(ctx)
+func (s *CategoryService) ListCategories(ctx context.Context, req *connect.Request[appv1.ListCategoriesRequest]) (*connect.Response[appv1.ListCategoriesResponse], error) {
+	var items []service.Category
+	var err error
+	if req.Msg.IncludeArchived {
+		items, err = s.service.ListAllCategories(ctx)
+	} else {
+		items, err = s.service.ListCategories(ctx)
+	}
 	if err != nil {
 		return nil, mapServiceError(err)
 	}
@@ -77,6 +83,17 @@ func (s *CategoryService) DeleteCategory(ctx context.Context, req *connect.Reque
 		return nil, mapServiceError(err)
 	}
 	return connect.NewResponse(&appv1.DeleteCategoryResponse{}), nil
+}
+
+func (s *CategoryService) ArchiveCategory(ctx context.Context, req *connect.Request[appv1.ArchiveCategoryRequest]) (*connect.Response[appv1.ArchiveCategoryResponse], error) {
+	if err := requireID(req.Msg.Id, "id"); err != nil {
+		return nil, err
+	}
+	item, err := s.service.ArchiveCategory(ctx, req.Msg.Id)
+	if err != nil {
+		return nil, mapServiceError(err)
+	}
+	return connect.NewResponse(&appv1.ArchiveCategoryResponse{Category: toProtoCategory(item)}), nil
 }
 
 func (s *CategoryService) ListEventCategoryOverlays(ctx context.Context, req *connect.Request[appv1.ListEventCategoryOverlaysRequest]) (*connect.Response[appv1.ListEventCategoryOverlaysResponse], error) {
@@ -150,7 +167,16 @@ func (s *CalendarService) SyncPeriod(ctx context.Context, req *connect.Request[a
 }
 
 func toProtoCategory(item service.Category) *appv1.Category {
-	return &appv1.Category{Id: item.ID, Name: item.Name, Description: item.Description, Key: item.Key, Color: item.Color, IsDefaultGap: item.IsDefaultGap}
+	return &appv1.Category{
+		Id:           item.ID,
+		Name:         item.Name,
+		Description:  item.Description,
+		Key:          item.Key,
+		Color:        item.Color,
+		IsDefaultGap: item.IsDefaultGap,
+		Archived:     item.Archived,
+		InUse:        item.InUse,
+	}
 }
 
 func toProtoCalendars(items []service.Calendar) []*appv1.Calendar {

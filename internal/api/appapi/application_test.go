@@ -137,3 +137,69 @@ func TestPortableApplicationServicesShareOneConnectHandler(t *testing.T) {
 		t.Fatalf("invalid catalog code = %v", connect.CodeOf(err))
 	}
 }
+
+func TestArchiveCategoryHidesFromDefaultList(t *testing.T) {
+	t.Parallel()
+	conn, err := db.Open(filepath.Join(t.TempDir(), "shiet.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	if err := db.Migrate(conn); err != nil {
+		t.Fatal(err)
+	}
+	if err := seed.Core(context.Background(), conn); err != nil {
+		t.Fatal(err)
+	}
+
+	client := appv1connect.NewCategoryServiceClient(
+		&http.Client{Transport: handlerTransport{handler: appapi.NewHandler(appapi.Dependencies{Service: service.New(conn)})}},
+		"http://shiet.test",
+	)
+
+	created, err := client.CreateCategory(context.Background(), connect.NewRequest(&appv1.CreateCategoryRequest{Name: "Archive Me"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := created.Msg.Category.Id
+
+	archived, err := client.ArchiveCategory(context.Background(), connect.NewRequest(&appv1.ArchiveCategoryRequest{Id: id}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !archived.Msg.Category.Archived {
+		t.Fatal("expected archived=true")
+	}
+
+	active, err := client.ListCategories(context.Background(), connect.NewRequest(&appv1.ListCategoriesRequest{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, cat := range active.Msg.Categories {
+		if cat.Id == id {
+			t.Fatal("archived category still in default list")
+		}
+	}
+
+	all, err := client.ListCategories(context.Background(), connect.NewRequest(&appv1.ListCategoriesRequest{IncludeArchived: true}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, cat := range all.Msg.Categories {
+		if cat.Id == id {
+			found = true
+			if !cat.Archived {
+				t.Fatal("include_archived list missing archived flag")
+			}
+		}
+	}
+	if !found {
+		t.Fatal("archived category missing from include_archived list")
+	}
+
+	got, err := client.GetCategory(context.Background(), connect.NewRequest(&appv1.GetCategoryRequest{Id: id}))
+	if err != nil || !got.Msg.Category.Archived {
+		t.Fatalf("get archived: %#v err=%v", got, err)
+	}
+}

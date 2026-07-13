@@ -10,6 +10,34 @@ import (
 	"database/sql"
 )
 
+const archiveCategory = `-- name: ArchiveCategory :one
+UPDATE category
+SET archived_at = ?, is_default_gap = 0
+WHERE id = ?
+RETURNING id, name, is_default_gap, created_at, description, "key", color, archived_at
+`
+
+type ArchiveCategoryParams struct {
+	ArchivedAt sql.NullString `json:"archived_at"`
+	ID         int64          `json:"id"`
+}
+
+func (q *Queries) ArchiveCategory(ctx context.Context, arg ArchiveCategoryParams) (Category, error) {
+	row := q.db.QueryRowContext(ctx, archiveCategory, arg.ArchivedAt, arg.ID)
+	var i Category
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.IsDefaultGap,
+		&i.CreatedAt,
+		&i.Description,
+		&i.Key,
+		&i.Color,
+		&i.ArchivedAt,
+	)
+	return i, err
+}
+
 const clearDefaultGap = `-- name: ClearDefaultGap :exec
 UPDATE category SET is_default_gap = 0 WHERE is_default_gap = 1
 `
@@ -66,7 +94,7 @@ func (q *Queries) CountOverlayReferencesToCategory(ctx context.Context, category
 const createCategory = `-- name: CreateCategory :one
 INSERT INTO category (name, description, key, is_default_gap, color)
 VALUES (?, ?, ?, ?, ?)
-RETURNING id, name, is_default_gap, created_at, description, "key", color
+RETURNING id, name, is_default_gap, created_at, description, "key", color, archived_at
 `
 
 type CreateCategoryParams struct {
@@ -94,6 +122,7 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 		&i.Description,
 		&i.Key,
 		&i.Color,
+		&i.ArchivedAt,
 	)
 	return i, err
 }
@@ -108,7 +137,7 @@ func (q *Queries) DeleteCategory(ctx context.Context, id int64) error {
 }
 
 const getCategory = `-- name: GetCategory :one
-SELECT id, name, is_default_gap, created_at, description, "key", color FROM category WHERE id = ?
+SELECT id, name, is_default_gap, created_at, description, "key", color, archived_at FROM category WHERE id = ?
 `
 
 func (q *Queries) GetCategory(ctx context.Context, id int64) (Category, error) {
@@ -122,12 +151,13 @@ func (q *Queries) GetCategory(ctx context.Context, id int64) (Category, error) {
 		&i.Description,
 		&i.Key,
 		&i.Color,
+		&i.ArchivedAt,
 	)
 	return i, err
 }
 
 const getCategoryByKey = `-- name: GetCategoryByKey :one
-SELECT id, name, is_default_gap, created_at, description, "key", color FROM category WHERE key = ?
+SELECT id, name, is_default_gap, created_at, description, "key", color, archived_at FROM category WHERE key = ? AND archived_at IS NULL
 `
 
 func (q *Queries) GetCategoryByKey(ctx context.Context, key string) (Category, error) {
@@ -141,12 +171,13 @@ func (q *Queries) GetCategoryByKey(ctx context.Context, key string) (Category, e
 		&i.Description,
 		&i.Key,
 		&i.Color,
+		&i.ArchivedAt,
 	)
 	return i, err
 }
 
 const getDefaultGapCategory = `-- name: GetDefaultGapCategory :one
-SELECT id, name, is_default_gap, created_at, description, "key", color FROM category WHERE is_default_gap = 1
+SELECT id, name, is_default_gap, created_at, description, "key", color, archived_at FROM category WHERE is_default_gap = 1 AND archived_at IS NULL
 `
 
 func (q *Queries) GetDefaultGapCategory(ctx context.Context) (Category, error) {
@@ -160,12 +191,49 @@ func (q *Queries) GetDefaultGapCategory(ctx context.Context) (Category, error) {
 		&i.Description,
 		&i.Key,
 		&i.Color,
+		&i.ArchivedAt,
 	)
 	return i, err
 }
 
+const listAllCategories = `-- name: ListAllCategories :many
+SELECT id, name, is_default_gap, created_at, description, "key", color, archived_at FROM category ORDER BY name
+`
+
+func (q *Queries) ListAllCategories(ctx context.Context) ([]Category, error) {
+	rows, err := q.db.QueryContext(ctx, listAllCategories)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Category{}
+	for rows.Next() {
+		var i Category
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.IsDefaultGap,
+			&i.CreatedAt,
+			&i.Description,
+			&i.Key,
+			&i.Color,
+			&i.ArchivedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCategories = `-- name: ListCategories :many
-SELECT id, name, is_default_gap, created_at, description, "key", color FROM category ORDER BY name
+SELECT id, name, is_default_gap, created_at, description, "key", color, archived_at FROM category WHERE archived_at IS NULL ORDER BY name
 `
 
 func (q *Queries) ListCategories(ctx context.Context) ([]Category, error) {
@@ -185,6 +253,7 @@ func (q *Queries) ListCategories(ctx context.Context) ([]Category, error) {
 			&i.Description,
 			&i.Key,
 			&i.Color,
+			&i.ArchivedAt,
 		); err != nil {
 			return nil, err
 		}

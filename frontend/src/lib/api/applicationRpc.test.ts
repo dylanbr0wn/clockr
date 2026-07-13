@@ -17,6 +17,8 @@ describe("application RPC mapping", () => {
     expect(mapCategory(create(CategorySchema, { id: 42n, name: "Work" }))).toMatchObject({
       id: 42,
       name: "Work",
+      archived: false,
+      inUse: false,
     });
     expect(() =>
       mapCategory(create(CategorySchema, { id: BigInt(Number.MAX_SAFE_INTEGER) + 1n })),

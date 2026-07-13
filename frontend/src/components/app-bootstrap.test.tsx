@@ -25,6 +25,8 @@ const listCategoriesMock = vi.fn(async () => [
     key: "Work",
     color: "#0EA5E9",
     isDefaultGap: false,
+    archived: false,
+    inUse: false,
   },
 ]);
 
@@ -96,6 +98,8 @@ describe("useAppBootstrap", () => {
         key: "Work",
         color: "#0EA5E9",
         isDefaultGap: false,
+        archived: false,
+        inUse: false,
       },
     ]);
   });

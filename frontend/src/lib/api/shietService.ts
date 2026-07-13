@@ -49,6 +49,7 @@ import {
   createGapFillRPC,
   createManualEventRPC,
   deleteCategoryRPC,
+  archiveCategoryRPC,
   deleteExportTemplateRPC,
   deleteManualEventRPC,
   disconnectIntegrationRPC,
@@ -199,8 +200,10 @@ export function ensureCurrentPeriod(today: string, ianaTz: string) {
   );
 }
 
-export function listCategories() {
-  return readFromPortableBackend<Category[]>([], listCategoriesRPC);
+export function listCategories(includeArchived = false) {
+  return readFromPortableBackend<Category[]>([], () =>
+    listCategoriesRPC(includeArchived),
+  );
 }
 
 export function getCategory(id: number) {
@@ -217,6 +220,10 @@ export function updateCategory(input: UpdateCategoryInput) {
 
 export function deleteCategory(id: number) {
   return writeToPortableBackend(() => deleteCategoryRPC(id));
+}
+
+export function archiveCategory(id: number) {
+  return writeToPortableBackend(() => archiveCategoryRPC(id));
 }
 
 export function listEventCategoryOverlays(periodId: number) {

@@ -157,6 +157,116 @@ func TestDeleteCategoryBlocksReferencedCategory(t *testing.T) {
 	}
 }
 
+func TestArchiveCategoryHidesFromListButRemainsGettable(t *testing.T) {
+	s := newSvc(t)
+	ctx := context.Background()
+
+	created, err := s.CreateCategory(ctx, service.CreateCategoryInput{
+		Name: "Legacy Client",
+	})
+	if err != nil {
+		t.Fatalf("CreateCategory: %v", err)
+	}
+
+	archived, err := s.ArchiveCategory(ctx, created.ID)
+	if err != nil {
+		t.Fatalf("ArchiveCategory: %v", err)
+	}
+	if !archived.Archived {
+		t.Fatal("expected archived category")
+	}
+
+	active, err := s.ListCategories(ctx)
+	if err != nil {
+		t.Fatalf("ListCategories: %v", err)
+	}
+	for _, cat := range active {
+		if cat.ID == created.ID {
+			t.Fatalf("archived category %d still in active list", created.ID)
+		}
+	}
+
+	got, err := s.GetCategory(ctx, created.ID)
+	if err != nil {
+		t.Fatalf("GetCategory: %v", err)
+	}
+	if !got.Archived {
+		t.Fatal("GetCategory should return archived=true")
+	}
+	if got.Name != "Legacy Client" {
+		t.Fatalf("name = %q", got.Name)
+	}
+}
+
+func TestDeleteCategoryRemovesUnused(t *testing.T) {
+	s := newSvc(t)
+	ctx := context.Background()
+
+	created, err := s.CreateCategory(ctx, service.CreateCategoryInput{
+		Name: "Temporary",
+	})
+	if err != nil {
+		t.Fatalf("CreateCategory: %v", err)
+	}
+
+	if err := s.DeleteCategory(ctx, created.ID); err != nil {
+		t.Fatalf("DeleteCategory: %v", err)
+	}
+
+	if _, err := s.GetCategory(ctx, created.ID); !errors.Is(err, service.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound after delete, got %v", err)
+	}
+}
+
+func TestArchiveCategoryWhenReferencedKeepsHistoryJoin(t *testing.T) {
+	e := newSyncEnv(t)
+	ctx := context.Background()
+
+	created, err := e.svc.CreateCategory(ctx, service.CreateCategoryInput{
+		Name: "Billable",
+	})
+	if err != nil {
+		t.Fatalf("CreateCategory: %v", err)
+	}
+	mustOverlayWithCategory(t, e, "archive-ref", created.ID)
+
+	archived, err := e.svc.ArchiveCategory(ctx, created.ID)
+	if err != nil {
+		t.Fatalf("ArchiveCategory: %v", err)
+	}
+	if !archived.Archived {
+		t.Fatal("expected archived=true")
+	}
+
+	got, err := e.svc.GetCategory(ctx, created.ID)
+	if err != nil {
+		t.Fatalf("GetCategory: %v", err)
+	}
+	if got.Name != "Billable" {
+		t.Fatalf("name = %q", got.Name)
+	}
+
+	all, err := e.svc.ListAllCategories(ctx)
+	if err != nil {
+		t.Fatalf("ListAllCategories: %v", err)
+	}
+	found := false
+	for _, cat := range all {
+		if cat.ID == created.ID {
+			found = true
+			if !cat.Archived {
+				t.Fatal("ListAllCategories should mark archived")
+			}
+			if !cat.InUse {
+				t.Fatal("ListAllCategories should mark in-use when referenced")
+			}
+		}
+	}
+	if !found {
+		t.Fatal("archived category missing from ListAllCategories")
+	}
+}
+
 func TestSeededCategoriesHaveKeysAndDescriptions(t *testing.T) {
 	s := newSvc(t)
 	ctx := context.Background()

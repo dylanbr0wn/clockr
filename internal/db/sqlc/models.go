@@ -26,13 +26,14 @@ type Calendar struct {
 }
 
 type Category struct {
-	ID           int64  `json:"id"`
-	Name         string `json:"name"`
-	IsDefaultGap int64  `json:"is_default_gap"`
-	CreatedAt    string `json:"created_at"`
-	Description  string `json:"description"`
-	Key          string `json:"key"`
-	Color        string `json:"color"`
+	ID           int64          `json:"id"`
+	Name         string         `json:"name"`
+	IsDefaultGap int64          `json:"is_default_gap"`
+	CreatedAt    string         `json:"created_at"`
+	Description  string         `json:"description"`
+	Key          string         `json:"key"`
+	Color        string         `json:"color"`
+	ArchivedAt   sql.NullString `json:"archived_at"`
 }
 
 type Event struct {

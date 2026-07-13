@@ -9,6 +9,7 @@ import {
   createCategory,
   createManualEvent,
   deleteCategory,
+  archiveCategory,
   deleteManualEvent,
   disconnectGitHub,
   disconnectIntegration,
@@ -74,7 +75,8 @@ function parseJsonSetting<T>(raw: string | null | undefined, fallback: T): T {
 export const shietQueryKeys = {
   all: ["shiet"] as const,
   calendars: () => [...shietQueryKeys.all, "calendars"] as const,
-  categories: () => [...shietQueryKeys.all, "categories"] as const,
+  categories: (includeArchived = false) =>
+    [...shietQueryKeys.all, "categories", includeArchived ? "all" : "active"] as const,
   exportTemplates: () => [...shietQueryKeys.all, "exportTemplates"] as const,
   gapTimeline: (periodId: number) =>
     [...shietQueryKeys.period(periodId), "gapTimeline"] as const,
@@ -137,10 +139,10 @@ export function useCurrentPeriod(today: string, ianaTz: string) {
   });
 }
 
-export function useCategories() {
+export function useCategories(includeArchived = false) {
   return useQuery({
-    queryKey: shietQueryKeys.categories(),
-    queryFn: listCategories,
+    queryKey: shietQueryKeys.categories(includeArchived),
+    queryFn: () => listCategories(includeArchived),
   });
 }
 
@@ -233,7 +235,7 @@ export function usePreviewExport(
 
 function invalidateCategoryQueries(queryClient: ReturnType<typeof useQueryClient>) {
   void queryClient.invalidateQueries({
-    queryKey: shietQueryKeys.categories(),
+    queryKey: [...shietQueryKeys.all, "categories"],
   });
   void queryClient.invalidateQueries({
     queryKey: shietQueryKeys.calendars(),
@@ -270,6 +272,17 @@ export function useDeleteCategory() {
 
   return useMutation({
     mutationFn: deleteCategory,
+    onSuccess: () => {
+      invalidateCategoryQueries(queryClient);
+    },
+  });
+}
+
+export function useArchiveCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: archiveCategory,
     onSuccess: () => {
       invalidateCategoryQueries(queryClient);
     },

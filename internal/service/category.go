@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/dylanbr0wn/shiet/internal/ai"
 	"github.com/dylanbr0wn/shiet/internal/db/sqlc"
@@ -169,36 +170,40 @@ func (s *Service) DeleteCategory(ctx context.Context, id int64) error {
 		return failedPreconditionf("delete category: cannot delete the default-gap category")
 	}
 
-	ref := sql.NullInt64{Int64: id, Valid: true}
-
-	if count, err := s.q.CountOverlayReferencesToCategory(ctx, ref); err != nil {
-		return mapErr("delete category", err)
-	} else if count > 0 {
-		return fmt.Errorf("delete category: %w (overlay)", ErrCategoryInUse)
+	inUse, err := s.categoryInUse(ctx, id)
+	if err != nil {
+		return err
 	}
-
-	if count, err := s.q.CountMemoryReferencesToCategory(ctx, id); err != nil {
-		return mapErr("delete category", err)
-	} else if count > 0 {
-		return fmt.Errorf("delete category: %w (memory)", ErrCategoryInUse)
-	}
-
-	if count, err := s.q.CountCalendarReferencesToCategory(ctx, ref); err != nil {
-		return mapErr("delete category", err)
-	} else if count > 0 {
-		return fmt.Errorf("delete category: %w (calendar)", ErrCategoryInUse)
-	}
-
-	if count, err := s.q.CountGapFillReferencesToCategory(ctx, ref); err != nil {
-		return mapErr("delete category", err)
-	} else if count > 0 {
-		return fmt.Errorf("delete category: %w (gap fill)", ErrCategoryInUse)
+	if inUse {
+		return fmt.Errorf("delete category: %w", ErrCategoryInUse)
 	}
 
 	if err := s.q.DeleteCategory(ctx, id); err != nil {
 		return mapErr("delete category", err)
 	}
 	return nil
+}
+
+func (s *Service) ArchiveCategory(ctx context.Context, id int64) (Category, error) {
+	current, err := s.q.GetCategory(ctx, id)
+	if err != nil {
+		return Category{}, mapErr("archive category", err)
+	}
+	if current.IsDefaultGap != 0 {
+		return Category{}, failedPreconditionf("archive category: cannot archive the default-gap category")
+	}
+	if current.ArchivedAt.Valid {
+		return toCategory(current), nil
+	}
+
+	row, err := s.q.ArchiveCategory(ctx, sqlc.ArchiveCategoryParams{
+		ArchivedAt: sql.NullString{String: time.Now().UTC().Format(time.RFC3339), Valid: true},
+		ID:         id,
+	})
+	if err != nil {
+		return Category{}, mapErr("archive category", err)
+	}
+	return toCategory(row), nil
 }
 
 func categoryDefinitionsForAI(categories []Category) []ai.CategoryDefinition {

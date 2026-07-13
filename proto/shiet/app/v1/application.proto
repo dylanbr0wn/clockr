@@ -12,6 +12,7 @@ service CategoryService {
   rpc CreateCategory(CreateCategoryRequest) returns (CreateCategoryResponse);
   rpc UpdateCategory(UpdateCategoryRequest) returns (UpdateCategoryResponse);
   rpc DeleteCategory(DeleteCategoryRequest) returns (DeleteCategoryResponse);
+  rpc ArchiveCategory(ArchiveCategoryRequest) returns (ArchiveCategoryResponse);
   rpc ListEventCategoryOverlays(ListEventCategoryOverlaysRequest) returns (ListEventCategoryOverlaysResponse);
 }
 
@@ -78,8 +79,12 @@ message Category {
   string key = 4;
   string color = 5;
   bool is_default_gap = 6;
+  bool archived = 7;
+  bool in_use = 8;
 }
-message ListCategoriesRequest {}
+message ListCategoriesRequest {
+  bool include_archived = 1;
+}
 message ListCategoriesResponse { repeated Category categories = 1; }
 message GetCategoryRequest { int64 id = 1; }
 message GetCategoryResponse { Category category = 1; }
@@ -99,9 +104,11 @@ message UpdateCategoryRequest {
   bool is_default_gap = 6;
 }
 message DeleteCategoryRequest { int64 id = 1; }
+message ArchiveCategoryRequest { int64 id = 1; }
 message CreateCategoryResponse { Category category = 1; }
 message UpdateCategoryResponse { Category category = 1; }
 message DeleteCategoryResponse {}
+message ArchiveCategoryResponse { Category category = 1; }
 message EventCategoryOverlay {
   string provider = 1;
   string external_id = 2;

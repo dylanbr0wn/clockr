@@ -5,6 +5,8 @@ export interface Category {
   key: string;
   color: string;
   isDefaultGap: boolean;
+  archived: boolean;
+  inUse: boolean;
 }
 
 export interface CreateCategoryInput {

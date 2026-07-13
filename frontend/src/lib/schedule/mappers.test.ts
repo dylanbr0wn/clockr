@@ -32,6 +32,8 @@ const categoriesById = new Map<number, Category>([
     key: "Deep Work",
     color: "#8B5CF6",
     isDefaultGap: true,
+    archived: false,
+    inUse: false,
   }],
   [7, {
     id: 7,
@@ -40,6 +42,8 @@ const categoriesById = new Map<number, Category>([
     key: "Meetings",
     color: "#0EA5E9",
     isDefaultGap: false,
+    archived: false,
+    inUse: false,
   }],
 ]);
 

@@ -1,4 +1,4 @@
-import { AlertCircle, LoaderCircle, Pencil, Plus, Trash2 } from "lucide-react";
+import { AlertCircle, Archive, LoaderCircle, Pencil, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  useArchiveCategory,
   useCategories,
   useCreateCategory,
   useDeleteCategory,
@@ -222,10 +223,11 @@ function CategoryFormFields({
 }
 
 export function CategorySettings() {
-  const categoriesQuery = useCategories();
+  const categoriesQuery = useCategories(true);
   const createCategory = useCreateCategory();
   const updateCategory = useUpdateCategory();
   const deleteCategory = useDeleteCategory();
+  const archiveCategory = useArchiveCategory();
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -234,9 +236,12 @@ export function CategorySettings() {
 
   const categories = useMemo(
     () =>
-      [...(categoriesQuery.data ?? [])].sort((a, b) =>
-        a.name.localeCompare(b.name),
-      ),
+      [...(categoriesQuery.data ?? [])].sort((a, b) => {
+        if (a.archived !== b.archived) {
+          return a.archived ? 1 : -1;
+        }
+        return a.name.localeCompare(b.name);
+      }),
     [categoriesQuery.data],
   );
 
@@ -247,7 +252,8 @@ export function CategorySettings() {
   const isBusy =
     createCategory.isPending ||
     updateCategory.isPending ||
-    deleteCategory.isPending;
+    deleteCategory.isPending ||
+    archiveCategory.isPending;
 
   const openCreate = () => {
     setEditingCategory(null);
@@ -315,6 +321,21 @@ export function CategorySettings() {
     }
   };
 
+  const handleArchive = async (category: Category) => {
+    if (category.isDefaultGap) {
+      setFormError("Set another default-gap category before archiving this one.");
+      return;
+    }
+
+    try {
+      await archiveCategory.mutateAsync(category.id);
+    } catch (error) {
+      setFormError(
+        error instanceof Error ? error.message : "Unable to archive category",
+      );
+    }
+  };
+
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <SettingBlock
@@ -363,6 +384,11 @@ export function CategorySettings() {
                         Default gap
                       </span>
                     ) : null}
+                    {category.archived ? (
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                        Archived
+                      </span>
+                    ) : null}
                     {category.key !== category.name ? (
                       <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                         key: {category.key}
@@ -401,16 +427,30 @@ export function CategorySettings() {
                     >
                       <Pencil className="size-4" />
                     </Button>
-                    <Button
-                      type="button"
-                      size="icon-sm"
-                      variant="ghost"
-                      onClick={() => void handleDelete(category)}
-                      disabled={isBusy || category.isDefaultGap}
-                      aria-label={`Delete ${category.name}`}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+                    {!category.archived && category.inUse ? (
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="ghost"
+                        onClick={() => void handleArchive(category)}
+                        disabled={isBusy || category.isDefaultGap}
+                        aria-label={`Archive ${category.name}`}
+                      >
+                        <Archive className="size-4" />
+                      </Button>
+                    ) : null}
+                    {!category.inUse ? (
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="ghost"
+                        onClick={() => void handleDelete(category)}
+                        disabled={isBusy || category.isDefaultGap}
+                        aria-label={`Delete ${category.name}`}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    ) : null}
                   </div>
                 </ItemActions>
               </Item>

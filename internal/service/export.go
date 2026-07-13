@@ -169,7 +169,7 @@ func (s *Service) BuildPeriodExport(ctx context.Context, periodID int64) (Period
 	if err != nil {
 		return PeriodExportModel{}, err
 	}
-	categories, err := s.ListCategories(ctx)
+	categories, err := s.ListAllCategories(ctx)
 	if err != nil {
 		return PeriodExportModel{}, err
 	}

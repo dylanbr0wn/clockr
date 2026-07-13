@@ -93,8 +93,8 @@ function iso(timestamp: Timestamp | undefined, field: string) {
 
 const bigint = (value: number) => BigInt(value);
 
-export async function listCategoriesRPC() {
-  return (await categoryClient().listCategories({})).categories.map(mapCategory);
+export async function listCategoriesRPC(includeArchived = false) {
+  return (await categoryClient().listCategories({ includeArchived })).categories.map(mapCategory);
 }
 export async function getCategoryRPC(id: number) {
   const response = await categoryClient().getCategory({ id: bigint(id) });
@@ -113,6 +113,11 @@ export async function updateCategoryRPC(input: UpdateCategoryInput) {
 }
 export async function deleteCategoryRPC(id: number) {
   await categoryClient().deleteCategory({ id: bigint(id) });
+}
+export async function archiveCategoryRPC(id: number) {
+  const response = await categoryClient().archiveCategory({ id: bigint(id) });
+  if (!response.category) throw new Error("archive category response is missing category");
+  return mapCategory(response.category);
 }
 export async function listEventCategoryOverlaysRPC(periodId: number): Promise<EventCategoryOverlay[]> {
   const response = await categoryClient().listEventCategoryOverlays({ periodId: bigint(periodId) });
@@ -273,7 +278,16 @@ export async function listExportFieldCatalogRPC(grain: string, layout: string): 
 }
 
 export function mapCategory(item: WireCategory): Category {
-  return { id: safeInt(item.id, "category id"), name: item.name, description: item.description, key: item.key, color: item.color, isDefaultGap: item.isDefaultGap };
+  return {
+    id: safeInt(item.id, "category id"),
+    name: item.name,
+    description: item.description,
+    key: item.key,
+    color: item.color,
+    isDefaultGap: item.isDefaultGap,
+    archived: item.archived,
+    inUse: item.inUse,
+  };
 }
 function mapCalendar(item: WireCalendar): Calendar {
   return { id: safeInt(item.id, "calendar id"), provider: item.provider, externalId: item.externalId, name: item.name, isPrimary: item.isPrimary, selected: item.selected, ...(item.defaultCategoryId == null ? {} : { defaultCategoryId: safeInt(item.defaultCategoryId, "default category id") }) };
