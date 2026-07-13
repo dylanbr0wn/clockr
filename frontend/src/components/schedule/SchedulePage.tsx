@@ -79,8 +79,10 @@ export function SchedulePage() {
       />
       <GapSuggestDialog
         aiConfigured={schedule.aiConfigured}
-        aiLocal={schedule.aiLocal}
         categories={schedule.categories}
+        evidenceError={schedule.gapEvidenceError}
+        evidenceItems={schedule.gapEvidenceItems}
+        evidencePending={schedule.gapEvidencePending}
         gap={schedule.selectedGap}
         isSaving={schedule.gapSuggestSaving}
         isSuggesting={schedule.gapSuggestPending}

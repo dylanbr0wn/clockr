@@ -37,6 +37,7 @@ service ScheduleService {
   rpc ListTzSegments(ListTzSegmentsRequest) returns (ListTzSegmentsResponse);
   rpc ComputeGaps(ComputeGapsRequest) returns (ComputeGapsResponse);
   rpc SuggestGapFill(SuggestGapFillRequest) returns (SuggestGapFillResponse);
+  rpc ListGapEvidence(ListGapEvidenceRequest) returns (ListGapEvidenceResponse);
 }
 
 service SettingsService {
@@ -257,6 +258,9 @@ message ComputeGapsRequest { int64 period_id = 1; }
 message ComputeGapsResponse { repeated DayTimeline days = 1; }
 message SuggestGapFillRequest { google.protobuf.Timestamp start = 1; google.protobuf.Timestamp end = 2; }
 message SuggestGapFillResponse { string category = 1; string description = 2; int32 evidence_count = 3; }
+message ListGapEvidenceRequest { google.protobuf.Timestamp start = 1; google.protobuf.Timestamp end = 2; }
+message GapEvidenceItem { string provider = 1; string kind = 2; string summary = 3; string source = 4; }
+message ListGapEvidenceResponse { repeated GapEvidenceItem items = 1; }
 
 message GetSettingRequest { string key = 1; }
 message GetSettingResponse { string value = 1; }

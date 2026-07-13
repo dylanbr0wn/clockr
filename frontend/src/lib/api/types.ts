@@ -268,6 +268,13 @@ export interface GapSuggestion {
   evidenceCount: number;
 }
 
+export interface GapEvidenceItem {
+  provider: string;
+  kind: string;
+  summary: string;
+  source: string;
+}
+
 export interface TimeWindow {
   start: string;
   end: string;

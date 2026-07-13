@@ -2,6 +2,7 @@ import type {
   Category,
   DayTimeline,
   Event,
+  GapEvidenceItem,
   GapSuggestion,
   GapFill,
   Period,
@@ -92,10 +93,13 @@ export interface SchedulePageViewModel {
   setReviewQueueOpen: Dispatch<SetStateAction<boolean>>;
   selectedGap: SelectedGap | null;
   gapSuggestion: GapSuggestion | null;
+  gapEvidenceItems: GapEvidenceItem[];
   gapSuggestOpen: boolean;
   gapSuggestPending: boolean;
+  gapEvidencePending: boolean;
   gapSuggestSaving: boolean;
   gapSuggestError: unknown;
+  gapEvidenceError: unknown;
   aiConfigured: boolean;
   aiLocal: boolean;
   handleSelectGap: (gap: ScheduleGapOverlay) => void;

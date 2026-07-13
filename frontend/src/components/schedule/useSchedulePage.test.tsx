@@ -8,6 +8,7 @@ const mockState = vi.hoisted(() => {
   const createMutate = vi.fn();
   const createGapFillMutate = vi.fn();
   const suggestMutate = vi.fn();
+  const evidenceMutate = vi.fn();
   const updateMutate = vi.fn();
   const deleteMutate = vi.fn();
   const excludeMutate = vi.fn();
@@ -62,6 +63,7 @@ const mockState = vi.hoisted(() => {
     createMutate,
     createGapFillMutate,
     suggestMutate,
+    evidenceMutate,
     updateMutate,
     deleteMutate,
     excludeMutate,
@@ -115,6 +117,12 @@ vi.mock("@/lib/api", () => ({
     error: null,
     reset: vi.fn(),
   }),
+  useListGapEvidence: () => ({
+    mutate: mockState.evidenceMutate,
+    isPending: false,
+    error: null,
+    reset: vi.fn(),
+  }),
   useUpdateManualEvent: () => ({
     mutate: mockState.updateMutate,
     isPending: false,
@@ -139,6 +147,7 @@ describe("useSchedulePage", () => {
     mockState.createMutate.mockReset();
     mockState.createGapFillMutate.mockReset();
     mockState.suggestMutate.mockReset();
+    mockState.evidenceMutate.mockReset();
     mockState.updateMutate.mockReset();
     mockState.deleteMutate.mockReset();
     mockState.excludeMutate.mockReset();

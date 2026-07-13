@@ -2,11 +2,38 @@
 
 import { renderHook, act } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { GapSuggestion } from "@/lib/api";
+import type { GapEvidenceItem, GapSuggestion } from "@/lib/api";
 import { useScheduleGapSuggest } from "./useScheduleGapSuggest";
 
+function createMutations({
+  suggestMutate = vi.fn(),
+  evidenceMutate = vi.fn(),
+  suggestReset = vi.fn(),
+  evidenceReset = vi.fn(),
+}: {
+  suggestMutate?: ReturnType<typeof vi.fn>;
+  evidenceMutate?: ReturnType<typeof vi.fn>;
+  suggestReset?: ReturnType<typeof vi.fn>;
+  evidenceReset?: ReturnType<typeof vi.fn>;
+} = {}) {
+  return {
+    suggestGapFillMutation: {
+      isPending: false,
+      error: null,
+      mutate: suggestMutate,
+      reset: suggestReset,
+    },
+    listGapEvidenceMutation: {
+      isPending: false,
+      error: null,
+      mutate: evidenceMutate,
+      reset: evidenceReset,
+    },
+  };
+}
+
 describe("useScheduleGapSuggest", () => {
-  it("requests AI suggestion when selecting a gap", () => {
+  it("requests AI suggestion and evidence when selecting a gap", () => {
     const suggestMutate = vi.fn(
       (
         _payload: unknown,
@@ -19,18 +46,28 @@ describe("useScheduleGapSuggest", () => {
         });
       },
     );
+    const evidenceMutate = vi.fn(
+      (
+        _payload: unknown,
+        options?: { onSuccess?: (value: GapEvidenceItem[]) => void },
+      ) => {
+        options?.onSuccess?.([
+          {
+            provider: "github",
+            kind: "commit",
+            summary: "Merged PR #42",
+            source: "acme/widget",
+          },
+        ]);
+      },
+    );
     const createMutate = vi.fn();
 
     const { result } = renderHook(() =>
       useScheduleGapSuggest({
         activePeriodId: 12,
         aiConfigured: true,
-        suggestGapFillMutation: {
-          isPending: false,
-          error: null,
-          mutate: suggestMutate,
-          reset: vi.fn(),
-        },
+        ...createMutations({ suggestMutate, evidenceMutate }),
         createGapFillMutation: {
           isPending: false,
           mutate: createMutate,
@@ -51,16 +88,26 @@ describe("useScheduleGapSuggest", () => {
     });
 
     expect(suggestMutate).toHaveBeenCalledTimes(1);
+    expect(evidenceMutate).toHaveBeenCalledTimes(1);
     expect(result.current.selectedGap?.day).toBe("2026-07-08");
     expect(result.current.gapSuggestion).toEqual({
       category: "Deep Work",
       description: "Focus block",
       evidenceCount: 3,
     });
+    expect(result.current.gapEvidenceItems).toEqual([
+      {
+        provider: "github",
+        kind: "commit",
+        summary: "Merged PR #42",
+        source: "acme/widget",
+      },
+    ]);
   });
 
   it("creates gap fill and closes dialog on confirm", () => {
     const suggestReset = vi.fn();
+    const evidenceReset = vi.fn();
     const createMutate = vi.fn(
       (_payload: unknown, options?: { onSuccess?: () => void }) => {
         options?.onSuccess?.();
@@ -71,12 +118,7 @@ describe("useScheduleGapSuggest", () => {
       useScheduleGapSuggest({
         activePeriodId: 10,
         aiConfigured: false,
-        suggestGapFillMutation: {
-          isPending: false,
-          error: null,
-          mutate: vi.fn(),
-          reset: suggestReset,
-        },
+        ...createMutations({ suggestReset, evidenceReset }),
         createGapFillMutation: {
           isPending: false,
           mutate: createMutate,
@@ -116,5 +158,6 @@ describe("useScheduleGapSuggest", () => {
     );
     expect(result.current.gapSuggestOpen).toBe(false);
     expect(suggestReset).toHaveBeenCalledTimes(1);
+    expect(evidenceReset).toHaveBeenCalledTimes(1);
   });
 });

@@ -16,6 +16,14 @@ type GapSuggestion struct {
 	EvidenceCount int    `json:"evidenceCount"`
 }
 
+// ListGapEvidence returns aggregated activity evidence for a gap window.
+func (s *Service) ListGapEvidence(ctx context.Context, window TimeWindow) ([]ActivityEvidence, error) {
+	if !window.Start.Before(window.End) {
+		return nil, invalidInputf("list gap evidence: invalid time window")
+	}
+	return s.fetchGapEvidence(ctx, window)
+}
+
 // SuggestGapFill asks the configured model to propose a category and description
 // for an uncovered interval, using aggregated activity evidence as context.
 func (s *Service) SuggestGapFill(ctx context.Context, window TimeWindow) (GapSuggestion, error) {

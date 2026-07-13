@@ -13,6 +13,7 @@ import {
   useGapTimeline,
   useReviewDecisions,
   usePeriods,
+  useListGapEvidence,
   useSuggestGapFill,
   useTzSegments,
   useUpdateManualEvent,
@@ -26,6 +27,7 @@ export function useSchedulePageBaseQueries(today: string, currentTimeZone: strin
   const createManualEventMutation = useCreateManualEvent();
   const createGapFillMutation = useCreateGapFill();
   const suggestGapFillMutation = useSuggestGapFill();
+  const listGapEvidenceMutation = useListGapEvidence();
   const updateManualEventMutation = useUpdateManualEvent();
   const deleteManualEventMutation = useDeleteManualEvent();
   const excludeEventMutation = useExcludeEvent();
@@ -40,6 +42,7 @@ export function useSchedulePageBaseQueries(today: string, currentTimeZone: strin
     createManualEventMutation,
     createGapFillMutation,
     suggestGapFillMutation,
+    listGapEvidenceMutation,
     updateManualEventMutation,
     deleteManualEventMutation,
     excludeEventMutation,

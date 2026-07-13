@@ -30,9 +30,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Category, GapSuggestion } from "@/lib/api";
+import type { Category, GapEvidenceItem, GapSuggestion } from "@/lib/api";
 import { formatMinutes } from "@/lib/scheduler";
 import { errorMessage } from "@/lib/schedule";
+import { GapEvidencePreview } from "./GapEvidencePreview";
 
 const UNASSIGNED_CATEGORY_VALUE = "__unassigned__";
 
@@ -53,12 +54,14 @@ interface GapSuggestDialogProps {
   gap: SelectedGap | null;
   categories: Category[];
   aiConfigured: boolean;
-  aiLocal: boolean;
   open: boolean;
   isSuggesting: boolean;
   isSaving: boolean;
   suggestion: GapSuggestion | null;
   suggestError: unknown;
+  evidenceItems: GapEvidenceItem[];
+  evidencePending: boolean;
+  evidenceError: unknown;
   onOpenChange: (open: boolean) => void;
   onRetrySuggest: () => void;
   onConfirm: (values: GapSuggestConfirmValues) => void;
@@ -68,12 +71,14 @@ export function GapSuggestDialog({
   gap,
   categories,
   aiConfigured,
-  aiLocal,
   open,
   isSuggesting,
   isSaving,
   suggestion,
   suggestError,
+  evidenceItems,
+  evidencePending,
+  evidenceError,
   onOpenChange,
   onRetrySuggest,
   onConfirm,
@@ -133,6 +138,14 @@ export function GapSuggestDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {aiConfigured ? (
+          <GapEvidencePreview
+            items={evidenceItems}
+            isLoading={evidencePending}
+            error={evidenceError}
+          />
+        ) : null}
+
         {!aiConfigured ? (
           <Item variant="muted">
             <ItemContent>
@@ -176,18 +189,6 @@ export function GapSuggestDialog({
           </div>
         ) : (
           <form className="grid gap-4" onSubmit={handleSubmit}>
-            {suggestion && aiLocal && suggestion.evidenceCount > 0 && (
-              <Item variant="muted" size="sm">
-                <ItemContent>
-                  <ItemDescription>
-                    Based on {suggestion.evidenceCount} local activity item
-                    {suggestion.evidenceCount === 1 ? "" : "s"} in this
-                    interval.
-                  </ItemDescription>
-                </ItemContent>
-              </Item>
-            )}
-
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor="gap-suggest-description">Description</FieldLabel>

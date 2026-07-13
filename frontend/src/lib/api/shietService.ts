@@ -11,6 +11,7 @@ import type {
   EventCategoryOverlay,
   ExcludeEventInput,
   GapFill,
+  GapEvidenceItem,
   GitHubRepo,
   GoogleAuthStatus,
   IntegrationAuthStatus,
@@ -66,6 +67,7 @@ import {
   listExportFieldCatalogRPC,
   listExportTemplatesRPC,
   listGapFillsRPC,
+  listGapEvidenceRPC,
   listGitHubReposRPC,
   listIntegrationConnectionsRPC,
   listIntegrationProvidersRPC,
@@ -521,6 +523,10 @@ export function setCalendarDefaultCategory(
   categoryID: number | null,
 ) {
   return writeToPortableBackend(() => setCalendarDefaultCategoryRPC(calendarID, categoryID));
+}
+
+export function listGapEvidence(window: TimeWindow) {
+  return writeToPortableBackend(() => listGapEvidenceRPC(window));
 }
 
 export function suggestGapFill(window: TimeWindow) {

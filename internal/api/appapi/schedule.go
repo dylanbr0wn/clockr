@@ -201,6 +201,32 @@ func (s *ScheduleService) ComputeGaps(ctx context.Context, req *connect.Request[
 	return connect.NewResponse(&appv1.ComputeGapsResponse{Days: out}), nil
 }
 
+func (s *ScheduleService) ListGapEvidence(ctx context.Context, req *connect.Request[appv1.ListGapEvidenceRequest]) (*connect.Response[appv1.ListGapEvidenceResponse], error) {
+	if req.Msg.Start == nil || req.Msg.End == nil {
+		return nil, invalidArgument("start and end are required")
+	}
+	if err := req.Msg.Start.CheckValid(); err != nil {
+		return nil, invalidArgument("start must be a valid timestamp")
+	}
+	if err := req.Msg.End.CheckValid(); err != nil {
+		return nil, invalidArgument("end must be a valid timestamp")
+	}
+	items, err := s.service.ListGapEvidence(ctx, service.TimeWindow{Start: req.Msg.Start.AsTime(), End: req.Msg.End.AsTime()})
+	if err != nil {
+		return nil, mapServiceError(err)
+	}
+	out := make([]*appv1.GapEvidenceItem, len(items))
+	for i, item := range items {
+		out[i] = &appv1.GapEvidenceItem{
+			Provider: item.Provider,
+			Kind:     item.Kind,
+			Summary:  item.Summary,
+			Source:   item.Source,
+		}
+	}
+	return connect.NewResponse(&appv1.ListGapEvidenceResponse{Items: out}), nil
+}
+
 func (s *ScheduleService) SuggestGapFill(ctx context.Context, req *connect.Request[appv1.SuggestGapFillRequest]) (*connect.Response[appv1.SuggestGapFillResponse], error) {
 	if req.Msg.Start == nil || req.Msg.End == nil {
 		return nil, invalidArgument("start and end are required")

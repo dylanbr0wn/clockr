@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { GapSuggestion } from "@/lib/api";
+import type { GapEvidenceItem, GapSuggestion } from "@/lib/api";
 import type { ScheduleGapOverlay } from "@/lib/schedule";
 import type { SelectedGap } from "./GapSuggestDialog";
 
@@ -9,6 +9,16 @@ interface SuggestGapFillMutation {
   mutate: (
     payload: { start: string; end: string },
     options?: { onSuccess?: (suggestion: GapSuggestion) => void },
+  ) => void;
+  reset: () => void;
+}
+
+interface ListGapEvidenceMutation {
+  isPending: boolean;
+  error: unknown;
+  mutate: (
+    payload: { start: string; end: string },
+    options?: { onSuccess?: (items: GapEvidenceItem[]) => void },
   ) => void;
   reset: () => void;
 }
@@ -32,6 +42,7 @@ interface UseScheduleGapSuggestParams {
   activePeriodId: number | undefined;
   aiConfigured: boolean;
   suggestGapFillMutation: SuggestGapFillMutation;
+  listGapEvidenceMutation: ListGapEvidenceMutation;
   createGapFillMutation: CreateGapFillMutation;
   resetKey: number | undefined;
 }
@@ -40,25 +51,36 @@ export function useScheduleGapSuggest({
   activePeriodId,
   aiConfigured,
   suggestGapFillMutation,
+  listGapEvidenceMutation,
   createGapFillMutation,
   resetKey,
 }: UseScheduleGapSuggestParams) {
   const [selectedGap, setSelectedGap] = useState<SelectedGap | null>(null);
   const [gapSuggestion, setGapSuggestion] = useState<GapSuggestion | null>(null);
+  const [gapEvidenceItems, setGapEvidenceItems] = useState<GapEvidenceItem[]>(
+    [],
+  );
 
   const requestGapSuggestion = (gap: SelectedGap) => {
+    const window = {
+      start: gap.gapWindowStart,
+      end: gap.gapWindowEnd,
+    };
+
     setGapSuggestion(null);
-    suggestGapFillMutation.mutate(
-      {
-        start: gap.gapWindowStart,
-        end: gap.gapWindowEnd,
+    setGapEvidenceItems([]);
+
+    listGapEvidenceMutation.mutate(window, {
+      onSuccess: (items) => {
+        setGapEvidenceItems(items);
       },
-      {
-        onSuccess: (suggestion) => {
-          setGapSuggestion(suggestion);
-        },
+    });
+
+    suggestGapFillMutation.mutate(window, {
+      onSuccess: (suggestion) => {
+        setGapSuggestion(suggestion);
       },
-    );
+    });
   };
 
   const handleSelectGap = (overlay: ScheduleGapOverlay) => {
@@ -71,6 +93,7 @@ export function useScheduleGapSuggest({
     };
     setSelectedGap(gap);
     setGapSuggestion(null);
+    setGapEvidenceItems([]);
 
     if (aiConfigured) {
       requestGapSuggestion(gap);
@@ -80,7 +103,9 @@ export function useScheduleGapSuggest({
   const handleCloseGapSuggest = () => {
     setSelectedGap(null);
     setGapSuggestion(null);
+    setGapEvidenceItems([]);
     suggestGapFillMutation.reset();
+    listGapEvidenceMutation.reset();
   };
 
   const handleRetryGapSuggest = () => {
@@ -118,6 +143,7 @@ export function useScheduleGapSuggest({
   const resetGapSuggestState = () => {
     setSelectedGap(null);
     setGapSuggestion(null);
+    setGapEvidenceItems([]);
   };
 
   useEffect(() => {
@@ -127,10 +153,13 @@ export function useScheduleGapSuggest({
   return {
     selectedGap,
     gapSuggestion,
+    gapEvidenceItems,
     gapSuggestOpen: selectedGap !== null,
     gapSuggestPending: suggestGapFillMutation.isPending,
+    gapEvidencePending: listGapEvidenceMutation.isPending,
     gapSuggestSaving: createGapFillMutation.isPending,
     gapSuggestError: suggestGapFillMutation.error,
+    gapEvidenceError: listGapEvidenceMutation.error,
     handleSelectGap,
     handleCloseGapSuggest,
     handleRetryGapSuggest,

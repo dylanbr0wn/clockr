@@ -77,6 +77,79 @@ func TestAggregateEvidence(t *testing.T) {
 	}
 }
 
+func TestListGapEvidenceReturnsAggregatedItems(t *testing.T) {
+	start := time.Date(2026, 6, 2, 13, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 6, 2, 14, 0, 0, 0, time.UTC)
+	window := service.TimeWindow{Start: start, End: end}
+
+	github := &stubEvidenceProvider{
+		provider: service.ProviderGitHub,
+		items: []service.ActivityEvidence{{
+			Provider: service.ProviderGitHub,
+			Kind:     "commit",
+			Start:    start.Add(10 * time.Minute),
+			End:      start.Add(15 * time.Minute),
+			Summary:  "Merged PR #42",
+			Source:   "acme/widget",
+		}},
+	}
+	slack := &stubEvidenceProvider{
+		provider: service.ProviderSlack,
+		items: []service.ActivityEvidence{{
+			Provider: service.ProviderSlack,
+			Kind:     "message",
+			Start:    start.Add(5 * time.Minute),
+			End:      start.Add(6 * time.Minute),
+			Summary:  "Discussed deployment",
+			Source:   "#deploys",
+		}},
+	}
+
+	s := newSvc(t)
+	s.SetEvidence(service.EvidenceConfig{
+		Providers: []service.EvidenceProvider{github, slack},
+	})
+
+	got, err := s.ListGapEvidence(context.Background(), window)
+	if err != nil {
+		t.Fatalf("ListGapEvidence: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("want 2 evidence items, got %d", len(got))
+	}
+	if got[0].Provider != service.ProviderSlack {
+		t.Fatalf("expected slack evidence first, got %s", got[0].Provider)
+	}
+	if got[0].Source != "#deploys" {
+		t.Fatalf("source = %q want #deploys", got[0].Source)
+	}
+}
+
+func TestListGapEvidenceEmptyWhenNoProviders(t *testing.T) {
+	s := newSvc(t)
+	start := time.Date(2026, 6, 2, 13, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 6, 2, 14, 0, 0, 0, time.UTC)
+
+	got, err := s.ListGapEvidence(context.Background(), service.TimeWindow{Start: start, End: end})
+	if err != nil {
+		t.Fatalf("ListGapEvidence: %v", err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("want empty evidence, got %d items", len(got))
+	}
+}
+
+func TestListGapEvidenceRequiresValidWindow(t *testing.T) {
+	s := newSvc(t)
+	start := time.Date(2026, 6, 2, 14, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 6, 2, 13, 0, 0, 0, time.UTC)
+
+	_, err := s.ListGapEvidence(context.Background(), service.TimeWindow{Start: start, End: end})
+	if err == nil {
+		t.Fatal("expected error for invalid window")
+	}
+}
+
 func TestSuggestGapFillUsesEvidence(t *testing.T) {
 	var capturedUserPrompt string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
