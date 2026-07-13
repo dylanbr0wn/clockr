@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, cleanup } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { IntegrationDetail } from "./IntegrationDetail";
 
 vi.mock("@tanstack/react-router", () => ({
@@ -65,11 +65,31 @@ vi.mock("@/lib/api", () => ({
     isPending: false,
     mutateAsync: vi.fn(),
   }),
+  useRefreshBitbucketResources: () => ({
+    isPending: false,
+    mutateAsync: vi.fn(),
+  }),
   useSlackChannels: () => ({
     data: [],
     isLoading: false,
   }),
   useSetSlackChannelSelected: () => ({
+    isPending: false,
+    mutateAsync: vi.fn(),
+  }),
+  useBitbucketWorkspaces: () => ({
+    data: [],
+    isLoading: false,
+  }),
+  useBitbucketRepos: () => ({
+    data: [],
+    isLoading: false,
+  }),
+  useSetBitbucketWorkspaceSelected: () => ({
+    isPending: false,
+    mutateAsync: vi.fn(),
+  }),
+  useSetBitbucketRepoSelected: () => ({
     isPending: false,
     mutateAsync: vi.fn(),
   }),
@@ -90,6 +110,10 @@ function createWrapper() {
 
   return Wrapper;
 }
+
+afterEach(() => {
+  cleanup();
+});
 
 describe("IntegrationDetail", () => {
   it("renders Google connect shell and calendar config slot", () => {
@@ -130,6 +154,21 @@ describe("IntegrationDetail", () => {
     expect(screen.getByText("Channels")).toBeTruthy();
     expect(
       screen.getByText("Connect a Slack workspace to see channels here."),
+    ).toBeTruthy();
+  });
+
+  it("renders Bitbucket connect shell and workspace/repo config slots", () => {
+    render(<IntegrationDetail providerId="bitbucket" />, {
+      wrapper: createWrapper(),
+    });
+
+    expect(screen.getByText("Bitbucket")).toBeTruthy();
+    expect(screen.getByText("Connect with Bitbucket")).toBeTruthy();
+    expect(screen.getByText("Connected Accounts")).toBeTruthy();
+    expect(screen.getByText("Workspaces")).toBeTruthy();
+    expect(screen.getByText("Repositories")).toBeTruthy();
+    expect(
+      screen.getByText("Connect a Bitbucket account to see workspaces here."),
     ).toBeTruthy();
   });
 
