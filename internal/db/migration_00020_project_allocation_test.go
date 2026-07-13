@@ -20,8 +20,8 @@ func TestMigrateProjectAllocation_AddsProjectAndDefaults(t *testing.T) {
 
 	ctx := context.Background()
 
-	if err := db.MigrateTo(conn, 18); err != nil {
-		t.Fatalf("migrate to v18: %v", err)
+	if err := db.MigrateTo(conn, 19); err != nil {
+		t.Fatalf("migrate to v19: %v", err)
 	}
 
 	var periodID int64
