@@ -25,7 +25,7 @@ INSERT INTO time_entry (
     source_revision,
     method
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, period_id, start_instant, end_instant, duration_minutes, local_work_date, category_id, description, attestation, source_kind, source_id, source_revision, method, created_at, updated_at
+RETURNING id, period_id, start_instant, end_instant, duration_minutes, local_work_date, category_id, description, attestation, source_kind, source_id, source_revision, method, created_at, updated_at, work_type, project_id, billable_status
 `
 
 type CreateTimeEntryParams struct {
@@ -75,6 +75,9 @@ func (q *Queries) CreateTimeEntry(ctx context.Context, arg CreateTimeEntryParams
 		&i.Method,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.WorkType,
+		&i.ProjectID,
+		&i.BillableStatus,
 	)
 	return i, err
 }
@@ -97,7 +100,7 @@ func (q *Queries) DeleteTimeEntry(ctx context.Context, arg DeleteTimeEntryParams
 }
 
 const getTimeEntry = `-- name: GetTimeEntry :one
-SELECT id, period_id, start_instant, end_instant, duration_minutes, local_work_date, category_id, description, attestation, source_kind, source_id, source_revision, method, created_at, updated_at FROM time_entry WHERE id = ? AND period_id = ?
+SELECT id, period_id, start_instant, end_instant, duration_minutes, local_work_date, category_id, description, attestation, source_kind, source_id, source_revision, method, created_at, updated_at, work_type, project_id, billable_status FROM time_entry WHERE id = ? AND period_id = ?
 `
 
 type GetTimeEntryParams struct {
@@ -124,12 +127,15 @@ func (q *Queries) GetTimeEntry(ctx context.Context, arg GetTimeEntryParams) (Tim
 		&i.Method,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.WorkType,
+		&i.ProjectID,
+		&i.BillableStatus,
 	)
 	return i, err
 }
 
 const listTimeEntriesForDay = `-- name: ListTimeEntriesForDay :many
-SELECT id, period_id, start_instant, end_instant, duration_minutes, local_work_date, category_id, description, attestation, source_kind, source_id, source_revision, method, created_at, updated_at FROM time_entry WHERE period_id = ? AND local_work_date = ? ORDER BY start_instant
+SELECT id, period_id, start_instant, end_instant, duration_minutes, local_work_date, category_id, description, attestation, source_kind, source_id, source_revision, method, created_at, updated_at, work_type, project_id, billable_status FROM time_entry WHERE period_id = ? AND local_work_date = ? ORDER BY start_instant
 `
 
 type ListTimeEntriesForDayParams struct {
@@ -162,6 +168,9 @@ func (q *Queries) ListTimeEntriesForDay(ctx context.Context, arg ListTimeEntries
 			&i.Method,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.WorkType,
+			&i.ProjectID,
+			&i.BillableStatus,
 		); err != nil {
 			return nil, err
 		}
@@ -177,7 +186,7 @@ func (q *Queries) ListTimeEntriesForDay(ctx context.Context, arg ListTimeEntries
 }
 
 const listTimeEntriesForPeriod = `-- name: ListTimeEntriesForPeriod :many
-SELECT id, period_id, start_instant, end_instant, duration_minutes, local_work_date, category_id, description, attestation, source_kind, source_id, source_revision, method, created_at, updated_at FROM time_entry WHERE period_id = ? ORDER BY local_work_date, start_instant
+SELECT id, period_id, start_instant, end_instant, duration_minutes, local_work_date, category_id, description, attestation, source_kind, source_id, source_revision, method, created_at, updated_at, work_type, project_id, billable_status FROM time_entry WHERE period_id = ? ORDER BY local_work_date, start_instant
 `
 
 func (q *Queries) ListTimeEntriesForPeriod(ctx context.Context, periodID int64) ([]TimeEntry, error) {
@@ -205,6 +214,9 @@ func (q *Queries) ListTimeEntriesForPeriod(ctx context.Context, periodID int64) 
 			&i.Method,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.WorkType,
+			&i.ProjectID,
+			&i.BillableStatus,
 		); err != nil {
 			return nil, err
 		}
@@ -229,7 +241,7 @@ UPDATE time_entry SET
     description       = ?,
     updated_at        = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
 WHERE id = ? AND period_id = ?
-RETURNING id, period_id, start_instant, end_instant, duration_minutes, local_work_date, category_id, description, attestation, source_kind, source_id, source_revision, method, created_at, updated_at
+RETURNING id, period_id, start_instant, end_instant, duration_minutes, local_work_date, category_id, description, attestation, source_kind, source_id, source_revision, method, created_at, updated_at, work_type, project_id, billable_status
 `
 
 type UpdateTimeEntryParams struct {
@@ -271,6 +283,9 @@ func (q *Queries) UpdateTimeEntry(ctx context.Context, arg UpdateTimeEntryParams
 		&i.Method,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.WorkType,
+		&i.ProjectID,
+		&i.BillableStatus,
 	)
 	return i, err
 }
@@ -283,7 +298,7 @@ UPDATE time_entry SET
     local_work_date   = ?,
     updated_at        = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
 WHERE id = ? AND period_id = ?
-RETURNING id, period_id, start_instant, end_instant, duration_minutes, local_work_date, category_id, description, attestation, source_kind, source_id, source_revision, method, created_at, updated_at
+RETURNING id, period_id, start_instant, end_instant, duration_minutes, local_work_date, category_id, description, attestation, source_kind, source_id, source_revision, method, created_at, updated_at, work_type, project_id, billable_status
 `
 
 type UpdateTimeEntrySpanParams struct {
@@ -321,6 +336,9 @@ func (q *Queries) UpdateTimeEntrySpan(ctx context.Context, arg UpdateTimeEntrySp
 		&i.Method,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.WorkType,
+		&i.ProjectID,
+		&i.BillableStatus,
 	)
 	return i, err
 }

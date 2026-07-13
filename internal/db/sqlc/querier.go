@@ -11,14 +11,17 @@ import (
 
 type Querier interface {
 	ArchiveCategory(ctx context.Context, arg ArchiveCategoryParams) (Category, error)
+	ArchiveProject(ctx context.Context, arg ArchiveProjectParams) (Project, error)
 	ClearDefaultGap(ctx context.Context) error
 	CountCalendarReferencesToCategory(ctx context.Context, defaultCategoryID sql.NullInt64) (int64, error)
 	CountMemoryReferencesToCategory(ctx context.Context, categoryID int64) (int64, error)
 	CountOverlayReferencesToCategory(ctx context.Context, categoryID sql.NullInt64) (int64, error)
 	CountTimeEntryReferencesToCategory(ctx context.Context, categoryID sql.NullInt64) (int64, error)
+	CountTimeEntryReferencesToProject(ctx context.Context, projectID sql.NullInt64) (int64, error)
 	CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error)
 	CreateExportTemplate(ctx context.Context, arg CreateExportTemplateParams) (ExportTemplate, error)
 	CreatePeriod(ctx context.Context, arg CreatePeriodParams) (Period, error)
+	CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error)
 	CreateReviewItem(ctx context.Context, arg CreateReviewItemParams) (ReviewItem, error)
 	CreateSubmission(ctx context.Context, arg CreateSubmissionParams) (Submission, error)
 	CreateTimeEntry(ctx context.Context, arg CreateTimeEntryParams) (TimeEntry, error)
@@ -31,6 +34,7 @@ type Querier interface {
 	DeleteIntegrationConnection(ctx context.Context, arg DeleteIntegrationConnectionParams) error
 	DeleteOverlay(ctx context.Context, id int64) error
 	DeletePeriod(ctx context.Context, id int64) error
+	DeleteProject(ctx context.Context, id int64) error
 	DeleteSlackChannelsByAccount(ctx context.Context, accountID string) error
 	DeleteTimeEntry(ctx context.Context, arg DeleteTimeEntryParams) (int64, error)
 	DeleteTzSegment(ctx context.Context, id int64) error
@@ -51,6 +55,8 @@ type Querier interface {
 	GetOverlay(ctx context.Context, arg GetOverlayParams) (Overlay, error)
 	GetPeriod(ctx context.Context, id int64) (Period, error)
 	GetPeriodByRange(ctx context.Context, arg GetPeriodByRangeParams) (Period, error)
+	GetProject(ctx context.Context, id int64) (Project, error)
+	GetProjectByKey(ctx context.Context, key string) (Project, error)
 	GetReviewItem(ctx context.Context, id int64) (ReviewItem, error)
 	GetReviewItemByConflictKey(ctx context.Context, arg GetReviewItemByConflictKeyParams) (ReviewItem, error)
 	GetSetting(ctx context.Context, key string) (string, error)
@@ -58,6 +64,7 @@ type Querier interface {
 	GetTimeEntry(ctx context.Context, arg GetTimeEntryParams) (TimeEntry, error)
 	ListAllCategories(ctx context.Context) ([]Category, error)
 	ListAllEventsForPeriod(ctx context.Context, periodID int64) ([]Event, error)
+	ListAllProjects(ctx context.Context) ([]Project, error)
 	ListBitbucketRepos(ctx context.Context) ([]BitbucketRepo, error)
 	ListBitbucketReposByAccount(ctx context.Context, accountID string) ([]BitbucketRepo, error)
 	ListBitbucketWorkspaces(ctx context.Context) ([]BitbucketWorkspace, error)
@@ -75,6 +82,7 @@ type Querier interface {
 	ListOpenReviewItems(ctx context.Context, periodID int64) ([]ReviewItem, error)
 	ListOverlaysForPeriod(ctx context.Context, periodID int64) ([]Overlay, error)
 	ListPeriods(ctx context.Context) ([]Period, error)
+	ListProjects(ctx context.Context) ([]Project, error)
 	ListSelectedBitbucketRepos(ctx context.Context) ([]BitbucketRepo, error)
 	ListSelectedCalendars(ctx context.Context) ([]Calendar, error)
 	ListSelectedGitHubRepos(ctx context.Context) ([]GithubRepo, error)
@@ -105,6 +113,7 @@ type Querier interface {
 	UpdateExportTemplate(ctx context.Context, arg UpdateExportTemplateParams) (ExportTemplate, error)
 	UpdateIntegrationConnectionStatus(ctx context.Context, arg UpdateIntegrationConnectionStatusParams) error
 	UpdatePeriodTarget(ctx context.Context, arg UpdatePeriodTargetParams) error
+	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)
 	UpdateTimeEntry(ctx context.Context, arg UpdateTimeEntryParams) (TimeEntry, error)
 	UpdateTimeEntrySpan(ctx context.Context, arg UpdateTimeEntrySpanParams) (TimeEntry, error)
 	UpsertBitbucketRepo(ctx context.Context, arg UpsertBitbucketRepoParams) (BitbucketRepo, error)
