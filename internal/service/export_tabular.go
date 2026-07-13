@@ -18,19 +18,23 @@ const (
 
 // Tabular field identifiers (layout-only; category identity is name/key).
 const (
-	ExportFieldDate         = "date"
-	ExportFieldCategoryName = "category_name"
-	ExportFieldCategoryKey  = "category_key"
-	ExportFieldHours        = "hours"
-	ExportFieldMinutes      = "minutes"
-	ExportFieldStart        = "start"
-	ExportFieldEnd          = "end"
-	ExportFieldTitle        = "title"
-	ExportFieldDescription  = "description"
-	ExportFieldSource       = "source"
-	ExportFieldDayActual    = "day_actual_hours"
-	ExportFieldDayTarget    = "day_target_hours"
-	ExportFieldTotal        = "total"
+	ExportFieldDate           = "date"
+	ExportFieldCategoryName   = "category_name"
+	ExportFieldCategoryKey    = "category_key"
+	ExportFieldHours          = "hours"
+	ExportFieldMinutes        = "minutes"
+	ExportFieldStart          = "start"
+	ExportFieldEnd            = "end"
+	ExportFieldTitle          = "title"
+	ExportFieldDescription    = "description"
+	ExportFieldSource         = "source"
+	ExportFieldWorkType       = "work_type"
+	ExportFieldProjectName    = "project_name"
+	ExportFieldProjectKey     = "project_key"
+	ExportFieldBillableStatus = "billable_status"
+	ExportFieldDayActual      = "day_actual_hours"
+	ExportFieldDayTarget      = "day_target_hours"
+	ExportFieldTotal          = "total"
 )
 
 // TabularColumnSpec is one selected column in a declarative tabular template.
@@ -84,6 +88,10 @@ func DefaultTabularSpec(grain, layout string) TabularTemplateSpec {
 			{Field: ExportFieldHours, Header: "Hours"},
 			{Field: ExportFieldTitle, Header: "Title"},
 			{Field: ExportFieldDescription, Header: "Description"},
+			{Field: ExportFieldWorkType, Header: "Work type"},
+			{Field: ExportFieldProjectName, Header: "Project"},
+			{Field: ExportFieldProjectKey, Header: "Project key"},
+			{Field: ExportFieldBillableStatus, Header: "Billable"},
 		}
 	case layout == ExportLayoutMatrix:
 		spec.Columns = []TabularColumnSpec{
@@ -131,6 +139,10 @@ func fieldCatalog(grain, layout string) []ExportFieldInfo {
 			{Field: ExportFieldTitle, Label: "Title", Description: "Event title or time-entry note"},
 			{Field: ExportFieldDescription, Label: "Description", Description: "Event or time-entry work notes"},
 			{Field: ExportFieldSource, Label: "Source", Description: "event or time_entry"},
+			{Field: ExportFieldWorkType, Label: "Work type", Description: "Time-entry work type (empty for calendar events)"},
+			{Field: ExportFieldProjectName, Label: "Project name", Description: "Time-entry project name (empty for calendar events)"},
+			{Field: ExportFieldProjectKey, Label: "Project key", Description: "Time-entry project key (empty for calendar events)"},
+			{Field: ExportFieldBillableStatus, Label: "Billable status", Description: "Time-entry billable status (empty for calendar events)"},
 		}
 	case layout == ExportLayoutMatrix:
 		return []ExportFieldInfo{
@@ -268,8 +280,18 @@ func defaultFieldHeader(field string) string {
 		return "End"
 	case ExportFieldTitle:
 		return "Title"
+	case ExportFieldDescription:
+		return "Description"
 	case ExportFieldSource:
 		return "Source"
+	case ExportFieldWorkType:
+		return "Work type"
+	case ExportFieldProjectName:
+		return "Project"
+	case ExportFieldProjectKey:
+		return "Project key"
+	case ExportFieldBillableStatus:
+		return "Billable"
 	case ExportFieldDayActual:
 		return "Day actual"
 	case ExportFieldDayTarget:
@@ -507,6 +529,14 @@ func detailField(field string, entry ExportEntry) string {
 		return entry.Description
 	case ExportFieldSource:
 		return entry.Source
+	case ExportFieldWorkType:
+		return entry.WorkType
+	case ExportFieldProjectName:
+		return entry.ProjectName
+	case ExportFieldProjectKey:
+		return entry.ProjectKey
+	case ExportFieldBillableStatus:
+		return entry.BillableStatus
 	default:
 		return ""
 	}

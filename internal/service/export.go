@@ -66,15 +66,19 @@ type ExportCategory struct {
 
 // ExportEntry is one timed interval contributing to the period export.
 type ExportEntry struct {
-	Source       string         `json:"source"` // event | time_entry
-	SourceID     int64          `json:"sourceId"`
-	Day          string         `json:"day"` // YYYY-MM-DD
-	StartMinutes int            `json:"startMinutes"`
-	EndMinutes   int            `json:"endMinutes"`
-	Minutes      int            `json:"minutes"`
-	Title        string         `json:"title"`
-	Description  string         `json:"description"`
-	Category     ExportCategory `json:"category"`
+	Source         string         `json:"source"` // event | time_entry
+	SourceID       int64          `json:"sourceId"`
+	Day            string         `json:"day"` // YYYY-MM-DD
+	StartMinutes   int            `json:"startMinutes"`
+	EndMinutes     int            `json:"endMinutes"`
+	Minutes        int            `json:"minutes"`
+	Title          string         `json:"title"`
+	Description    string         `json:"description"`
+	Category       ExportCategory `json:"category"`
+	WorkType       string         `json:"workType,omitempty"`       // time_entry only; empty for calendar events
+	ProjectName    string         `json:"projectName,omitempty"`    // time_entry only
+	ProjectKey     string         `json:"projectKey,omitempty"`     // time_entry only
+	BillableStatus string         `json:"billableStatus,omitempty"` // time_entry only
 }
 
 // ExportCategoryMinutes is minutes for one category within a day or period.
@@ -173,10 +177,18 @@ func (s *Service) BuildPeriodExport(ctx context.Context, periodID int64) (Period
 	if err != nil {
 		return PeriodExportModel{}, err
 	}
+	projects, err := s.ListAllProjects(ctx)
+	if err != nil {
+		return PeriodExportModel{}, err
+	}
 
 	catsByID := make(map[int64]Category, len(categories))
 	for _, c := range categories {
 		catsByID[c.ID] = c
+	}
+	projectsByID := make(map[int64]Project, len(projects))
+	for _, p := range projects {
+		projectsByID[p.ID] = p
 	}
 	overlayByKey := make(map[string]int64, len(overlays))
 	for _, o := range overlays {
@@ -196,7 +208,7 @@ func (s *Service) BuildPeriodExport(ctx context.Context, periodID int64) (Period
 		}
 	}
 	for _, te := range timeEntries {
-		entry, ok, err := timeEntryToExportEntry(te, segs, catsByID, locCache)
+		entry, ok, err := timeEntryToExportEntry(te, segs, catsByID, projectsByID, locCache)
 		if err != nil {
 			return PeriodExportModel{}, err
 		}
@@ -432,6 +444,7 @@ func timeEntryToExportEntry(
 	entry TimeEntry,
 	segs []TzSegment,
 	catsByID map[int64]Category,
+	projectsByID map[int64]Project,
 	locCache map[string]*time.Location,
 ) (ExportEntry, bool, error) {
 	start := parseTime(entry.Start)
@@ -471,17 +484,33 @@ func timeEntryToExportEntry(
 	if title == "" {
 		title = category.Name
 	}
+	projectName, projectKey := resolveExportProject(entry.ProjectID, projectsByID)
 	return ExportEntry{
-		Source:       "time_entry",
-		SourceID:     entry.ID,
-		Day:          day,
-		StartMinutes: startMinutes,
-		EndMinutes:   endMinutes,
-		Minutes:      endMinutes - startMinutes,
-		Title:        title,
-		Description:  entry.Description,
-		Category:     category,
+		Source:         "time_entry",
+		SourceID:       entry.ID,
+		Day:            day,
+		StartMinutes:   startMinutes,
+		EndMinutes:     endMinutes,
+		Minutes:        endMinutes - startMinutes,
+		Title:          title,
+		Description:    entry.Description,
+		Category:       category,
+		WorkType:       entry.WorkType,
+		ProjectName:    projectName,
+		ProjectKey:     projectKey,
+		BillableStatus: entry.BillableStatus,
 	}, true, nil
+}
+
+func resolveExportProject(projectID *int64, projectsByID map[int64]Project) (name, key string) {
+	if projectID == nil {
+		return "", ""
+	}
+	project, ok := projectsByID[*projectID]
+	if !ok {
+		return "", ""
+	}
+	return project.Name, project.Key
 }
 
 func zonedPosition(t time.Time, segs []TzSegment, locCache map[string]*time.Location) (day string, minutes int, err error) {

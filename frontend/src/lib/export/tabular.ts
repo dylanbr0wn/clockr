@@ -31,6 +31,10 @@ const DEFAULT_HEADERS: Record<string, string> = {
   title: "Title",
   description: "Description",
   source: "Source",
+  work_type: "Work type",
+  project_name: "Project",
+  project_key: "Project key",
+  billable_status: "Billable",
   day_actual_hours: "Day actual",
   day_target_hours: "Day target",
   total: "Total",
@@ -80,6 +84,26 @@ export function fieldCatalog(
         description: "Event or time-entry work notes",
       },
       { field: "source", label: "Source", description: "event or time_entry" },
+      {
+        field: "work_type",
+        label: "Work type",
+        description: "Time-entry work type (empty for calendar events)",
+      },
+      {
+        field: "project_name",
+        label: "Project name",
+        description: "Time-entry project name (empty for calendar events)",
+      },
+      {
+        field: "project_key",
+        label: "Project key",
+        description: "Time-entry project key (empty for calendar events)",
+      },
+      {
+        field: "billable_status",
+        label: "Billable status",
+        description: "Time-entry billable status (empty for calendar events)",
+      },
     ];
   }
   if (layout === "matrix") {
@@ -140,9 +164,19 @@ export function defaultTabularSpec(
   const columns = fieldCatalog(grain, resolvedLayout)
     .filter((field) => {
       if (grain === "detail") {
-        return ["start", "end", "category_name", "category_key", "hours", "title", "description"].includes(
-          field.field,
-        );
+        return [
+          "start",
+          "end",
+          "category_name",
+          "category_key",
+          "hours",
+          "title",
+          "description",
+          "work_type",
+          "project_name",
+          "project_key",
+          "billable_status",
+        ].includes(field.field);
       }
       if (resolvedLayout === "matrix") {
         return ["category_name", "total"].includes(field.field);

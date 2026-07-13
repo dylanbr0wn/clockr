@@ -230,7 +230,20 @@ func (s *ExportService) BuildPeriodExport(ctx context.Context, req *connect.Requ
 	}
 	entries := make([]*appv1.ExportEntry, len(model.Entries))
 	for i, item := range model.Entries {
-		entries[i] = &appv1.ExportEntry{Source: item.Source, SourceId: item.SourceID, Day: item.Day, StartMinutes: int32(item.StartMinutes), EndMinutes: int32(item.EndMinutes), Minutes: int32(item.Minutes), Title: item.Title, Category: toProtoExportCategory(item.Category)}
+		entries[i] = &appv1.ExportEntry{
+			Source:         item.Source,
+			SourceId:       item.SourceID,
+			Day:            item.Day,
+			StartMinutes:   int32(item.StartMinutes),
+			EndMinutes:     int32(item.EndMinutes),
+			Minutes:        int32(item.Minutes),
+			Title:          item.Title,
+			Category:       toProtoExportCategory(item.Category),
+			WorkType:       item.WorkType,
+			ProjectName:    item.ProjectName,
+			ProjectKey:     item.ProjectKey,
+			BillableStatus: item.BillableStatus,
+		}
 	}
 	daily := make([]*appv1.ExportDayTotals, len(model.DailyTotals))
 	for i, item := range model.DailyTotals {

@@ -472,6 +472,11 @@ message ExportEntry {
   int32 minutes = 6;
   string title = 7;
   ExportCategory category = 8;
+  // Allocation dims are populated for time_entry rows; empty for calendar events.
+  string work_type = 9;
+  string project_name = 10;
+  string project_key = 11;
+  string billable_status = 12;
 }
 message ExportCategoryMinutes { ExportCategory category = 1; int32 minutes = 2; }
 message ExportDayTotals {

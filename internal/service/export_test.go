@@ -316,10 +316,158 @@ func TestRenderPeriodExport_DetailEntriesCSVShape(t *testing.T) {
 	}
 
 	want := strings.Join([]string{
-		"Start,End,Category,Key,Hours,Title,Description",
-		"2026-06-01T11:00,2026-06-01T13:00,Meetings," + meetings.Key + ",2.00,meet-1,Google notes",
-		"2026-06-01T13:00,2026-06-01T15:00,Deep Work," + deepWork.Key + ",2.00,User notes,User notes",
-		"2026-06-02T10:00,2026-06-02T12:00,Deep Work," + deepWork.Key + ",2.00,Planning,Planning",
+		"Start,End,Category,Key,Hours,Title,Description,Work type,Project,Project key,Billable",
+		"2026-06-01T11:00,2026-06-01T13:00,Meetings," + meetings.Key + ",2.00,meet-1,Google notes,,,,",
+		"2026-06-01T13:00,2026-06-01T15:00,Deep Work," + deepWork.Key + ",2.00,User notes,User notes,worked,,,unset",
+		"2026-06-02T10:00,2026-06-02T12:00,Deep Work," + deepWork.Key + ",2.00,Planning,Planning,worked,,,unset",
+	}, "\n")
+	if render.Content != want {
+		t.Fatalf("csv mismatch\ngot:\n%s\nwant:\n%s", render.Content, want)
+	}
+}
+
+func TestBuildPeriodExport_AllocationFieldsOnTimeEntriesOnly(t *testing.T) {
+	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto")
+	ctx := context.Background()
+
+	cats, err := e.svc.ListCategories(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var deepWork service.Category
+	for _, c := range cats {
+		if c.Name == "Deep Work" {
+			deepWork = c
+		}
+	}
+	if deepWork.ID == 0 {
+		t.Fatal("seeded Deep Work category missing")
+	}
+
+	project, err := e.svc.CreateProject(ctx, service.CreateProjectInput{Name: "Apollo", Key: "apollo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	projectID := project.ID
+	catID := deepWork.ID
+
+	e.addEvent(t, "meet-1", "2026-06-01T15:00:00Z", "2026-06-01T17:00:00Z")
+	if _, err := e.q.UpsertOverlay(ctx, sqlc.UpsertOverlayParams{
+		PeriodID:   e.periodID,
+		Provider:   service.ProviderGoogle,
+		ExternalID: "meet-1",
+		CategoryID: sql.NullInt64{Int64: deepWork.ID, Valid: true},
+		Kind:       "category",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.svc.CreateTimeEntry(ctx, service.TimeEntryInput{
+		PeriodID:       e.periodID,
+		Day:            "2026-06-01",
+		StartMinutes:   13 * 60,
+		EndMinutes:     15 * 60,
+		CategoryID:     &catID,
+		Description:    "Feature work",
+		WorkType:       "worked",
+		ProjectID:      &projectID,
+		BillableStatus: "billable",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	model, err := e.svc.BuildPeriodExport(ctx, e.periodID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(model.Entries) != 2 {
+		t.Fatalf("entries = %d want 2", len(model.Entries))
+	}
+
+	var eventEntry, timeEntry *service.ExportEntry
+	for i := range model.Entries {
+		switch model.Entries[i].Source {
+		case "event":
+			eventEntry = &model.Entries[i]
+		case "time_entry":
+			timeEntry = &model.Entries[i]
+		}
+	}
+	if eventEntry == nil || timeEntry == nil {
+		t.Fatalf("missing entry kinds: %+v", model.Entries)
+	}
+
+	if eventEntry.WorkType != "" || eventEntry.ProjectName != "" || eventEntry.ProjectKey != "" || eventEntry.BillableStatus != "" {
+		t.Fatalf("event allocation should be empty: %+v", eventEntry)
+	}
+	if timeEntry.WorkType != "worked" {
+		t.Fatalf("time_entry work_type = %q want worked", timeEntry.WorkType)
+	}
+	if timeEntry.ProjectName != "Apollo" || timeEntry.ProjectKey != "apollo" {
+		t.Fatalf("time_entry project = %q/%q want Apollo/apollo", timeEntry.ProjectName, timeEntry.ProjectKey)
+	}
+	if timeEntry.BillableStatus != "billable" {
+		t.Fatalf("time_entry billable_status = %q want billable", timeEntry.BillableStatus)
+	}
+}
+
+func TestRenderPeriodExport_DetailEntriesCSVAllocationColumns(t *testing.T) {
+	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto")
+	ctx := context.Background()
+
+	cats, err := e.svc.ListCategories(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var deepWork service.Category
+	for _, c := range cats {
+		if c.Name == "Deep Work" {
+			deepWork = c
+		}
+	}
+	if deepWork.ID == 0 {
+		t.Fatal("seeded Deep Work category missing")
+	}
+
+	project, err := e.svc.CreateProject(ctx, service.CreateProjectInput{Name: "Apollo", Key: "apollo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	projectID := project.ID
+	catID := deepWork.ID
+
+	e.addEvent(t, "meet-1", "2026-06-01T15:00:00Z", "2026-06-01T17:00:00Z", "Calendar notes")
+	if _, err := e.q.UpsertOverlay(ctx, sqlc.UpsertOverlayParams{
+		PeriodID:   e.periodID,
+		Provider:   service.ProviderGoogle,
+		ExternalID: "meet-1",
+		CategoryID: sql.NullInt64{Int64: deepWork.ID, Valid: true},
+		Kind:       "category",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.svc.CreateTimeEntry(ctx, service.TimeEntryInput{
+		PeriodID:       e.periodID,
+		Day:            "2026-06-01",
+		StartMinutes:   13 * 60,
+		EndMinutes:     15 * 60,
+		CategoryID:     &catID,
+		Description:    "Feature work",
+		WorkType:       "worked",
+		ProjectID:      &projectID,
+		BillableStatus: "billable",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	render, err := e.svc.RenderPeriodExport(ctx, e.periodID, service.ExportTemplateDetailEntriesCSV)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := strings.Join([]string{
+		"Start,End,Category,Key,Hours,Title,Description,Work type,Project,Project key,Billable",
+		"2026-06-01T11:00,2026-06-01T13:00,Deep Work," + deepWork.Key + ",2.00,meet-1,Calendar notes,,,,",
+		"2026-06-01T13:00,2026-06-01T15:00,Deep Work," + deepWork.Key + ",2.00,Feature work,Feature work,worked,Apollo,apollo,billable",
 	}, "\n")
 	if render.Content != want {
 		t.Fatalf("csv mismatch\ngot:\n%s\nwant:\n%s", render.Content, want)

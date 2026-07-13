@@ -401,6 +401,19 @@ export function mapPeriodExportModel(item: WirePeriodExportModel): PeriodExportM
   const category = (value: WirePeriodExportModel["periodTotals"][number]["category"]) => value ? ({ ...(value.id == null ? {} : { id: safeInt(value.id, "export category id") }), name: value.name, key: value.key, ...(value.color ? { color: value.color } : {}) }) : ({ name: "", key: "" });
   const totals = (values: WirePeriodExportModel["periodTotals"]) => values.map((value) => ({ category: category(value.category), minutes: value.minutes }));
   return { periodId: safeInt(item.periodId, "period id"), periodLabel: item.periodLabel, startDate: item.startDate, endDate: item.endDate, targetHoursPerDay: item.targetHoursPerDay, targetMinutes: item.targetMinutes, actualMinutes: item.actualMinutes, days: item.days,
-    entries: item.entries.map((entry) => ({ source: entry.source, sourceId: safeInt(entry.sourceId, "export source id"), day: entry.day, startMinutes: entry.startMinutes, endMinutes: entry.endMinutes, minutes: entry.minutes, title: entry.title, category: category(entry.category) })),
+    entries: item.entries.map((entry) => ({
+      source: entry.source,
+      sourceId: safeInt(entry.sourceId, "export source id"),
+      day: entry.day,
+      startMinutes: entry.startMinutes,
+      endMinutes: entry.endMinutes,
+      minutes: entry.minutes,
+      title: entry.title,
+      category: category(entry.category),
+      ...(entry.workType ? { workType: entry.workType } : {}),
+      ...(entry.projectName ? { projectName: entry.projectName } : {}),
+      ...(entry.projectKey ? { projectKey: entry.projectKey } : {}),
+      ...(entry.billableStatus ? { billableStatus: entry.billableStatus } : {}),
+    })),
     dailyTotals: item.dailyTotals.map((day) => ({ date: day.date, categories: totals(day.categories), actualMinutes: day.actualMinutes, targetMinutes: day.targetMinutes })), periodTotals: totals(item.periodTotals) };
 }

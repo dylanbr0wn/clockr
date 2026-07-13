@@ -363,6 +363,11 @@ export interface ExportEntry {
   minutes: number;
   title: string;
   category: ExportCategory;
+  /** Time-entry only; empty for calendar events. */
+  workType?: string;
+  projectName?: string;
+  projectKey?: string;
+  billableStatus?: string;
 }
 
 export interface ExportCategoryMinutes {
