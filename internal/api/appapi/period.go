@@ -104,6 +104,8 @@ func mapServiceError(err error) error {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("operation precondition is not satisfied"))
 	case errors.Is(err, service.ErrCategoryInUse):
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("category is in use"))
+	case errors.Is(err, service.ErrProjectInUse):
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("project is in use"))
 	case errors.Is(err, service.ErrExportTemplateBuiltin):
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("builtin export templates cannot be modified"))
 	case errors.Is(err, service.ErrCalendarSyncNotConfigured), errors.Is(err, service.ErrNoConnectedAccounts):

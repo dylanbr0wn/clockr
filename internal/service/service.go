@@ -44,6 +44,56 @@ func mapErr(what string, err error) error {
 	return fmt.Errorf("%s: %w", what, err)
 }
 
+// ── projects ──────────────────────────────────────────────────────────
+
+func (s *Service) ListProjects(ctx context.Context) ([]Project, error) {
+	rows, err := s.q.ListProjects(ctx)
+	if err != nil {
+		return nil, mapErr("list projects", err)
+	}
+	out := make([]Project, len(rows))
+	for i, r := range rows {
+		out[i] = toProject(r)
+	}
+	return out, nil
+}
+
+// ListAllProjects returns active and archived projects, with InUse set from
+// time_entry.project_id references.
+func (s *Service) ListAllProjects(ctx context.Context) ([]Project, error) {
+	rows, err := s.q.ListAllProjects(ctx)
+	if err != nil {
+		return nil, mapErr("list all projects", err)
+	}
+	out := make([]Project, len(rows))
+	for i, r := range rows {
+		proj := toProject(r)
+		inUse, err := s.projectInUse(ctx, proj.ID)
+		if err != nil {
+			return nil, err
+		}
+		proj.InUse = inUse
+		out[i] = proj
+	}
+	return out, nil
+}
+
+func (s *Service) GetProject(ctx context.Context, id int64) (Project, error) {
+	r, err := s.q.GetProject(ctx, id)
+	if err != nil {
+		return Project{}, mapErr("get project", err)
+	}
+	return toProject(r), nil
+}
+
+func (s *Service) projectInUse(ctx context.Context, id int64) (bool, error) {
+	count, err := s.q.CountTimeEntryReferencesToProject(ctx, sql.NullInt64{Int64: id, Valid: true})
+	if err != nil {
+		return false, mapErr("project in use", err)
+	}
+	return count > 0, nil
+}
+
 // ── categories ────────────────────────────────────────────────────────
 
 func (s *Service) ListCategories(ctx context.Context) ([]Category, error) {

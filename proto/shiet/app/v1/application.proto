@@ -16,6 +16,15 @@ service CategoryService {
   rpc ListEventCategoryOverlays(ListEventCategoryOverlaysRequest) returns (ListEventCategoryOverlaysResponse);
 }
 
+service ProjectService {
+  rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse);
+  rpc GetProject(GetProjectRequest) returns (GetProjectResponse);
+  rpc CreateProject(CreateProjectRequest) returns (CreateProjectResponse);
+  rpc UpdateProject(UpdateProjectRequest) returns (UpdateProjectResponse);
+  rpc DeleteProject(DeleteProjectRequest) returns (DeleteProjectResponse);
+  rpc ArchiveProject(ArchiveProjectRequest) returns (ArchiveProjectResponse);
+}
+
 service CalendarService {
   rpc ListCalendars(ListCalendarsRequest) returns (ListCalendarsResponse);
   rpc ListSelectedCalendars(ListSelectedCalendarsRequest) returns (ListSelectedCalendarsResponse);
@@ -124,6 +133,38 @@ message EventCategoryOverlay {
 }
 message ListEventCategoryOverlaysRequest { int64 period_id = 1; }
 message ListEventCategoryOverlaysResponse { repeated EventCategoryOverlay overlays = 1; }
+
+message Project {
+  int64 id = 1;
+  string name = 2;
+  string key = 3;
+  string color = 4;
+  bool archived = 5;
+  bool in_use = 6;
+}
+message ListProjectsRequest {
+  bool include_archived = 1;
+}
+message ListProjectsResponse { repeated Project projects = 1; }
+message GetProjectRequest { int64 id = 1; }
+message GetProjectResponse { Project project = 1; }
+message CreateProjectRequest {
+  string name = 1;
+  string key = 2;
+  string color = 3;
+}
+message UpdateProjectRequest {
+  int64 id = 1;
+  string name = 2;
+  string key = 3;
+  string color = 4;
+}
+message DeleteProjectRequest { int64 id = 1; }
+message ArchiveProjectRequest { int64 id = 1; }
+message CreateProjectResponse { Project project = 1; }
+message UpdateProjectResponse { Project project = 1; }
+message DeleteProjectResponse {}
+message ArchiveProjectResponse { Project project = 1; }
 
 message Calendar {
   int64 id = 1;

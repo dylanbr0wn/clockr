@@ -71,6 +71,20 @@ func TestPortableApplicationServicesShareOneConnectHandler(t *testing.T) {
 		}
 	}
 
+	projectClient := appv1connect.NewProjectServiceClient(httpClient, "http://shiet.test")
+	project, err := projectClient.CreateProject(context.Background(), connect.NewRequest(&appv1.CreateProjectRequest{Name: "Apollo", Key: "apollo"}))
+	if err != nil || project.Msg.Project == nil || project.Msg.Project.Id <= 0 {
+		t.Fatalf("create project: %#v err=%v", project, err)
+	}
+	_, err = projectClient.CreateProject(context.Background(), connect.NewRequest(&appv1.CreateProjectRequest{}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("empty project code = %v", connect.CodeOf(err))
+	}
+	projects, err := projectClient.ListProjects(context.Background(), connect.NewRequest(&appv1.ListProjectsRequest{}))
+	if err != nil || len(projects.Msg.Projects) == 0 {
+		t.Fatalf("list projects: %#v err=%v", projects, err)
+	}
+
 	settingsClient := appv1connect.NewSettingsServiceClient(httpClient, "http://shiet.test")
 	if _, err := settingsClient.SetSetting(context.Background(), connect.NewRequest(&appv1.SetSettingRequest{Key: "test.rpc", Value: `"yes"`})); err != nil {
 		t.Fatal(err)
@@ -200,6 +214,72 @@ func TestArchiveCategoryHidesFromDefaultList(t *testing.T) {
 
 	got, err := client.GetCategory(context.Background(), connect.NewRequest(&appv1.GetCategoryRequest{Id: id}))
 	if err != nil || !got.Msg.Category.Archived {
+		t.Fatalf("get archived: %#v err=%v", got, err)
+	}
+}
+
+func TestArchiveProjectHidesFromDefaultList(t *testing.T) {
+	t.Parallel()
+	conn, err := db.Open(filepath.Join(t.TempDir(), "shiet.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	if err := db.Migrate(conn); err != nil {
+		t.Fatal(err)
+	}
+	if err := seed.Core(context.Background(), conn); err != nil {
+		t.Fatal(err)
+	}
+
+	client := appv1connect.NewProjectServiceClient(
+		&http.Client{Transport: handlerTransport{handler: appapi.NewHandler(appapi.Dependencies{Service: service.New(conn)})}},
+		"http://shiet.test",
+	)
+
+	created, err := client.CreateProject(context.Background(), connect.NewRequest(&appv1.CreateProjectRequest{Name: "Archive Me"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := created.Msg.Project.Id
+
+	archived, err := client.ArchiveProject(context.Background(), connect.NewRequest(&appv1.ArchiveProjectRequest{Id: id}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !archived.Msg.Project.Archived {
+		t.Fatal("expected archived=true")
+	}
+
+	active, err := client.ListProjects(context.Background(), connect.NewRequest(&appv1.ListProjectsRequest{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, project := range active.Msg.Projects {
+		if project.Id == id {
+			t.Fatal("archived project still in default list")
+		}
+	}
+
+	all, err := client.ListProjects(context.Background(), connect.NewRequest(&appv1.ListProjectsRequest{IncludeArchived: true}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, project := range all.Msg.Projects {
+		if project.Id == id {
+			found = true
+			if !project.Archived {
+				t.Fatal("include_archived list missing archived flag")
+			}
+		}
+	}
+	if !found {
+		t.Fatal("archived project missing from include_archived list")
+	}
+
+	got, err := client.GetProject(context.Background(), connect.NewRequest(&appv1.GetProjectRequest{Id: id}))
+	if err != nil || !got.Msg.Project.Archived {
 		t.Fatalf("get archived: %#v err=%v", got, err)
 	}
 }

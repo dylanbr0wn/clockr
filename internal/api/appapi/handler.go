@@ -36,6 +36,8 @@ func NewHandler(deps Dependencies) http.Handler {
 	mount(path, handler)
 	path, handler = appv1connect.NewCategoryServiceHandler(&CategoryService{service: deps.Service})
 	mount(path, handler)
+	path, handler = appv1connect.NewProjectServiceHandler(&ProjectService{service: deps.Service})
+	mount(path, handler)
 	path, handler = appv1connect.NewCalendarServiceHandler(&CalendarService{service: deps.Service, syncPeriod: deps.SyncPeriod})
 	mount(path, handler)
 	path, handler = appv1connect.NewScheduleServiceHandler(&ScheduleService{service: deps.Service})

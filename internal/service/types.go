@@ -25,6 +25,16 @@ type Category struct {
 	InUse        bool   `json:"inUse"`
 }
 
+// Project is a work allocation master (client/engagement style), independent of Category.
+type Project struct {
+	ID       int64  `json:"id"`
+	Name     string `json:"name"`
+	Key      string `json:"key"`
+	Color    string `json:"color,omitempty"`
+	Archived bool   `json:"archived"`
+	InUse    bool   `json:"inUse"`
+}
+
 // EventCategoryOverlay is a category decision attached to an imported event.
 type EventCategoryOverlay struct {
 	Provider   string `json:"provider"`
@@ -203,6 +213,20 @@ func toCategory(r sqlc.Category) Category {
 
 // stubTargetHoursPerDay keeps gaps/export compiling until ExpectedTime rewire (DYL-158).
 const stubTargetHoursPerDay = 8.0
+
+func toProject(r sqlc.Project) Project {
+	color := ""
+	if r.Color.Valid {
+		color = r.Color.String
+	}
+	return Project{
+		ID:       r.ID,
+		Name:     r.Name,
+		Key:      r.Key,
+		Color:    color,
+		Archived: r.ArchivedAt.Valid,
+	}
+}
 
 func toPeriod(r sqlc.Period) Period {
 	return Period{
