@@ -101,7 +101,7 @@ func (s *Service) categoryInUse(ctx context.Context, id int64) (bool, error) {
 	} else if count > 0 {
 		return true, nil
 	}
-	if count, err := s.q.CountGapFillReferencesToCategory(ctx, ref); err != nil {
+	if count, err := s.q.CountTimeEntryReferencesToCategory(ctx, ref); err != nil {
 		return false, mapErr("category in use", err)
 	} else if count > 0 {
 		return true, nil
@@ -339,7 +339,7 @@ func (s *Service) GetEvent(ctx context.Context, id int64) (Event, error) {
 // ── gap fills ─────────────────────────────────────────────────────────
 
 func (s *Service) ListGapFills(ctx context.Context, periodID int64) ([]GapFill, error) {
-	rows, err := s.q.ListGapFillsForPeriod(ctx, periodID)
+	rows, err := s.q.ListTimeEntriesForPeriod(ctx, periodID)
 	if err != nil {
 		return nil, mapErr("list gap fills", err)
 	}

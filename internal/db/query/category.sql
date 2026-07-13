@@ -47,5 +47,5 @@ SELECT COUNT(*) FROM memory WHERE category_id = ?;
 -- name: CountCalendarReferencesToCategory :one
 SELECT COUNT(*) FROM calendar WHERE default_category_id = ?;
 
--- name: CountGapFillReferencesToCategory :one
-SELECT COUNT(*) FROM gap_fill WHERE category_id = ?;
+-- name: CountTimeEntryReferencesToCategory :one
+SELECT COUNT(*) FROM time_entry WHERE category_id = ?;

@@ -96,20 +96,6 @@ type ExportTemplate struct {
 	CreatedAt   string `json:"created_at"`
 }
 
-type GapFill struct {
-	ID          int64         `json:"id"`
-	PeriodID    int64         `json:"period_id"`
-	Day         string        `json:"day"`
-	StartUtc    string        `json:"start_utc"`
-	EndUtc      string        `json:"end_utc"`
-	CategoryID  sql.NullInt64 `json:"category_id"`
-	Note        string        `json:"note"`
-	Source      string        `json:"source"`
-	CreatedAt   string        `json:"created_at"`
-	UpdatedAt   string        `json:"updated_at"`
-	Description string        `json:"description"`
-}
-
 type GithubRepo struct {
 	ID         int64  `json:"id"`
 	AccountID  string `json:"account_id"`
@@ -194,6 +180,24 @@ type Submission struct {
 	Version     int64  `json:"version"`
 	FinalizedAt string `json:"finalized_at"`
 	FrozenBlob  string `json:"frozen_blob"`
+}
+
+type TimeEntry struct {
+	ID              int64          `json:"id"`
+	PeriodID        int64          `json:"period_id"`
+	StartInstant    string         `json:"start_instant"`
+	EndInstant      string         `json:"end_instant"`
+	DurationMinutes int64          `json:"duration_minutes"`
+	LocalWorkDate   string         `json:"local_work_date"`
+	CategoryID      sql.NullInt64  `json:"category_id"`
+	Description     string         `json:"description"`
+	Attestation     string         `json:"attestation"`
+	SourceKind      sql.NullString `json:"source_kind"`
+	SourceID        sql.NullString `json:"source_id"`
+	SourceRevision  sql.NullString `json:"source_revision"`
+	Method          sql.NullString `json:"method"`
+	CreatedAt       string         `json:"created_at"`
+	UpdatedAt       string         `json:"updated_at"`
 }
 
 type TzSegment struct {

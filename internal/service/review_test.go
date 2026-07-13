@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/dylanbr0wn/shiet/internal/db/sqlc"
 	"github.com/dylanbr0wn/shiet/internal/service"
 )
 
@@ -136,16 +135,7 @@ func TestResolveReviewDecision_NewInGapUseEvent(t *testing.T) {
 	e := newSyncEnv(t)
 	ctx := context.Background()
 
-	if _, err := e.q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
-		PeriodID:   e.periodID,
-		Day:        "2026-06-02",
-		StartUtc:   "2026-06-02T13:00:00Z",
-		EndUtc:     "2026-06-02T14:00:00Z",
-		CategoryID: sql.NullInt64{Int64: e.catID, Valid: true},
-		Source:     "gap",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	insertTimeEntry(t, e.q, e.periodID, "2026-06-02", "2026-06-02T13:00:00Z", "2026-06-02T14:00:00Z", sql.NullInt64{Int64: e.catID, Valid: true}, "", true)
 
 	inc := e.baseEvent()
 	inc.ExternalID = "evt-overlap"
@@ -186,16 +176,7 @@ func TestResolveReviewDecision_NewInGapKeepGapPersistsAcrossSync(t *testing.T) {
 	e := newSyncEnv(t)
 	ctx := context.Background()
 
-	if _, err := e.q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
-		PeriodID:   e.periodID,
-		Day:        "2026-06-02",
-		StartUtc:   "2026-06-02T13:00:00Z",
-		EndUtc:     "2026-06-02T14:00:00Z",
-		CategoryID: sql.NullInt64{Int64: e.catID, Valid: true},
-		Source:     "gap",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	insertTimeEntry(t, e.q, e.periodID, "2026-06-02", "2026-06-02T13:00:00Z", "2026-06-02T14:00:00Z", sql.NullInt64{Int64: e.catID, Valid: true}, "", true)
 
 	inc := e.baseEvent()
 	inc.ExternalID = "evt-overlap"

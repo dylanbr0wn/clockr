@@ -181,16 +181,7 @@ func TestSync_NewEventInFilledGapFlags(t *testing.T) {
 	ctx := context.Background()
 
 	// A gap fill covering 13:00–14:00.
-	if _, err := e.q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
-		PeriodID:   e.periodID,
-		Day:        "2026-06-02",
-		StartUtc:   "2026-06-02T13:00:00Z",
-		EndUtc:     "2026-06-02T14:00:00Z",
-		CategoryID: sql.NullInt64{Int64: e.catID, Valid: true},
-		Source:     "gap",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	insertTimeEntry(t, e.q, e.periodID, "2026-06-02", "2026-06-02T13:00:00Z", "2026-06-02T14:00:00Z", sql.NullInt64{Int64: e.catID, Valid: true}, "", true)
 
 	inc := e.baseEvent()
 	inc.ExternalID = "evt-overlap"

@@ -13,26 +13,26 @@ type Querier interface {
 	ArchiveCategory(ctx context.Context, arg ArchiveCategoryParams) (Category, error)
 	ClearDefaultGap(ctx context.Context) error
 	CountCalendarReferencesToCategory(ctx context.Context, defaultCategoryID sql.NullInt64) (int64, error)
-	CountGapFillReferencesToCategory(ctx context.Context, categoryID sql.NullInt64) (int64, error)
 	CountMemoryReferencesToCategory(ctx context.Context, categoryID int64) (int64, error)
 	CountOverlayReferencesToCategory(ctx context.Context, categoryID sql.NullInt64) (int64, error)
+	CountTimeEntryReferencesToCategory(ctx context.Context, categoryID sql.NullInt64) (int64, error)
 	CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error)
 	CreateExportTemplate(ctx context.Context, arg CreateExportTemplateParams) (ExportTemplate, error)
-	CreateGapFill(ctx context.Context, arg CreateGapFillParams) (GapFill, error)
 	CreatePeriod(ctx context.Context, arg CreatePeriodParams) (Period, error)
 	CreateReviewItem(ctx context.Context, arg CreateReviewItemParams) (ReviewItem, error)
 	CreateSubmission(ctx context.Context, arg CreateSubmissionParams) (Submission, error)
+	CreateTimeEntry(ctx context.Context, arg CreateTimeEntryParams) (TimeEntry, error)
 	DeleteBitbucketReposByAccount(ctx context.Context, accountID string) error
 	DeleteBitbucketWorkspacesByAccount(ctx context.Context, accountID string) error
 	DeleteCategory(ctx context.Context, id int64) error
 	DeleteEvent(ctx context.Context, id int64) error
 	DeleteExportTemplate(ctx context.Context, id int64) (int64, error)
-	DeleteGapFill(ctx context.Context, arg DeleteGapFillParams) (int64, error)
 	DeleteGitHubReposByAccount(ctx context.Context, accountID string) error
 	DeleteIntegrationConnection(ctx context.Context, arg DeleteIntegrationConnectionParams) error
 	DeleteOverlay(ctx context.Context, id int64) error
 	DeletePeriod(ctx context.Context, id int64) error
 	DeleteSlackChannelsByAccount(ctx context.Context, accountID string) error
+	DeleteTimeEntry(ctx context.Context, arg DeleteTimeEntryParams) (int64, error)
 	DeleteTzSegment(ctx context.Context, id int64) error
 	ExportTemplateKeyExists(ctx context.Context, key string) (int64, error)
 	ForgetMemory(ctx context.Context, matchKey string) error
@@ -55,6 +55,7 @@ type Querier interface {
 	GetReviewItemByConflictKey(ctx context.Context, arg GetReviewItemByConflictKeyParams) (ReviewItem, error)
 	GetSetting(ctx context.Context, key string) (string, error)
 	GetSlackChannel(ctx context.Context, id int64) (SlackChannel, error)
+	GetTimeEntry(ctx context.Context, arg GetTimeEntryParams) (TimeEntry, error)
 	ListAllCategories(ctx context.Context) ([]Category, error)
 	ListAllEventsForPeriod(ctx context.Context, periodID int64) ([]Event, error)
 	ListBitbucketRepos(ctx context.Context) ([]BitbucketRepo, error)
@@ -66,8 +67,6 @@ type Querier interface {
 	ListEventsByIcalUID(ctx context.Context, arg ListEventsByIcalUIDParams) ([]Event, error)
 	ListEventsForPeriod(ctx context.Context, periodID int64) ([]Event, error)
 	ListExportTemplates(ctx context.Context) ([]ExportTemplate, error)
-	ListGapFillsForDay(ctx context.Context, arg ListGapFillsForDayParams) ([]GapFill, error)
-	ListGapFillsForPeriod(ctx context.Context, periodID int64) ([]GapFill, error)
 	ListGitHubRepos(ctx context.Context) ([]GithubRepo, error)
 	ListGitHubReposByAccount(ctx context.Context, accountID string) ([]GithubRepo, error)
 	ListIntegrationConnections(ctx context.Context) ([]IntegrationConnection, error)
@@ -84,6 +83,8 @@ type Querier interface {
 	ListSlackChannels(ctx context.Context) ([]SlackChannel, error)
 	ListSlackChannelsByAccount(ctx context.Context, accountID string) ([]SlackChannel, error)
 	ListSubmissions(ctx context.Context, periodID int64) ([]Submission, error)
+	ListTimeEntriesForDay(ctx context.Context, arg ListTimeEntriesForDayParams) ([]TimeEntry, error)
+	ListTimeEntriesForPeriod(ctx context.Context, periodID int64) ([]TimeEntry, error)
 	ListTzSegments(ctx context.Context, periodID int64) ([]TzSegment, error)
 	NextSubmissionVersion(ctx context.Context, periodID int64) (int64, error)
 	// Train memory from a user correction; bump hit count on repeat.
@@ -102,10 +103,10 @@ type Querier interface {
 	TouchPeriodSynced(ctx context.Context, arg TouchPeriodSyncedParams) error
 	UpdateCategory(ctx context.Context, arg UpdateCategoryParams) error
 	UpdateExportTemplate(ctx context.Context, arg UpdateExportTemplateParams) (ExportTemplate, error)
-	UpdateGapFill(ctx context.Context, arg UpdateGapFillParams) (GapFill, error)
-	UpdateGapFillSpan(ctx context.Context, arg UpdateGapFillSpanParams) (GapFill, error)
 	UpdateIntegrationConnectionStatus(ctx context.Context, arg UpdateIntegrationConnectionStatusParams) error
 	UpdatePeriodTarget(ctx context.Context, arg UpdatePeriodTargetParams) error
+	UpdateTimeEntry(ctx context.Context, arg UpdateTimeEntryParams) (TimeEntry, error)
+	UpdateTimeEntrySpan(ctx context.Context, arg UpdateTimeEntrySpanParams) (TimeEntry, error)
 	UpsertBitbucketRepo(ctx context.Context, arg UpsertBitbucketRepoParams) (BitbucketRepo, error)
 	UpsertBitbucketWorkspace(ctx context.Context, arg UpsertBitbucketWorkspaceParams) (BitbucketWorkspace, error)
 	UpsertCalendar(ctx context.Context, arg UpsertCalendarParams) (Calendar, error)

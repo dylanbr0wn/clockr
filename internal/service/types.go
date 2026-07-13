@@ -315,17 +315,23 @@ func toReviewItem(r sqlc.ReviewItem) ReviewItem {
 	}
 }
 
-func toGapFill(r sqlc.GapFill) GapFill {
+func toGapFill(r sqlc.TimeEntry) GapFill {
+	// Bridge: GapFill API remains until Connect/UI rewire. Source is derived from
+	// optional provenance method; note mirrors description (note column dropped).
+	source := "manual"
+	if r.Method.Valid && r.Method.String == "gap_fill" {
+		source = "gap"
+	}
 	return GapFill{
 		ID:          r.ID,
 		PeriodID:    r.PeriodID,
-		Day:         r.Day,
-		Start:       r.StartUtc,
-		End:         r.EndUtc,
+		Day:         r.LocalWorkDate,
+		Start:       r.StartInstant,
+		End:         r.EndInstant,
 		CategoryID:  nullInt64Ptr(r.CategoryID),
-		Note:        r.Note,
+		Note:        r.Description,
 		Description: r.Description,
-		Source:      r.Source,
+		Source:      source,
 	}
 }
 

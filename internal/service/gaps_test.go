@@ -149,13 +149,7 @@ func TestGaps_EventOutsideWindowIgnored(t *testing.T) {
 
 func TestGaps_GapFillCounts(t *testing.T) {
 	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto", 8)
-	if _, err := e.q.CreateGapFill(context.Background(), sqlc.CreateGapFillParams{
-		PeriodID: e.periodID, Day: "2026-06-01",
-		StartUtc: "2026-06-01T13:00:00Z", EndUtc: "2026-06-01T15:00:00Z",
-		CategoryID: sql.NullInt64{Int64: e.catID, Valid: true}, Source: "gap",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	insertTimeEntry(t, e.q, e.periodID, "2026-06-01", "2026-06-01T13:00:00Z", "2026-06-01T15:00:00Z", sql.NullInt64{Int64: e.catID, Valid: true}, "", true)
 	days, _ := e.svc.ComputeGaps(context.Background(), e.periodID)
 	d := days[0]
 	if d.CoveredHours != 2 || d.GapHours != 6 {

@@ -54,16 +54,21 @@ func (s *Service) createGapFillEntry(ctx context.Context, action string, input M
 		categoryID = sql.NullInt64{Int64: *input.CategoryID, Valid: true}
 	}
 
-	row, err := s.q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
-		PeriodID:    input.PeriodID,
-		Day:         input.Day,
-		StartUtc:    span.start.Format(time.RFC3339),
-		EndUtc:      span.end.Format(time.RFC3339),
-		CategoryID:  categoryID,
-		Note:        strings.TrimSpace(input.Note),
-		Description: strings.TrimSpace(input.Description),
-		Source:      source,
-	})
+	params := sqlc.CreateTimeEntryParams{
+		PeriodID:        input.PeriodID,
+		StartInstant:    span.start.Format(time.RFC3339),
+		EndInstant:      span.end.Format(time.RFC3339),
+		DurationMinutes: durationMinutes(span.start, span.end),
+		LocalWorkDate:   input.Day,
+		CategoryID:      categoryID,
+		Description:     coalesceEntryDescription(input.Note, input.Description),
+		Attestation:     "confirmed",
+	}
+	if source == "gap" {
+		params.Method = sql.NullString{String: "gap_fill", Valid: true}
+	}
+
+	row, err := s.q.CreateTimeEntry(ctx, params)
 	if err != nil {
 		return GapFill{}, mapErr(action, err)
 	}
@@ -87,15 +92,15 @@ func (s *Service) UpdateManualEvent(ctx context.Context, input ManualEventUpdate
 		categoryID = sql.NullInt64{Int64: *input.CategoryID, Valid: true}
 	}
 
-	row, err := s.q.UpdateGapFill(ctx, sqlc.UpdateGapFillParams{
-		Day:         input.Day,
-		StartUtc:    span.start.Format(time.RFC3339),
-		EndUtc:      span.end.Format(time.RFC3339),
-		CategoryID:  categoryID,
-		Note:        strings.TrimSpace(input.Note),
-		Description: strings.TrimSpace(input.Description),
-		ID:          input.ID,
-		PeriodID:    input.PeriodID,
+	row, err := s.q.UpdateTimeEntry(ctx, sqlc.UpdateTimeEntryParams{
+		StartInstant:    span.start.Format(time.RFC3339),
+		EndInstant:      span.end.Format(time.RFC3339),
+		DurationMinutes: durationMinutes(span.start, span.end),
+		LocalWorkDate:   input.Day,
+		CategoryID:      categoryID,
+		Description:     coalesceEntryDescription(input.Note, input.Description),
+		ID:              input.ID,
+		PeriodID:        input.PeriodID,
 	})
 	if err != nil {
 		return GapFill{}, mapErr("update manual event", err)
@@ -112,7 +117,7 @@ func (s *Service) DeleteManualEvent(ctx context.Context, input ManualEventDelete
 		return fmt.Errorf("delete manual event: periodId is required")
 	}
 
-	rows, err := s.q.DeleteGapFill(ctx, sqlc.DeleteGapFillParams{
+	rows, err := s.q.DeleteTimeEntry(ctx, sqlc.DeleteTimeEntryParams{
 		ID:       input.ID,
 		PeriodID: input.PeriodID,
 	})
@@ -179,4 +184,15 @@ func (s *Service) manualEventSpan(ctx context.Context, action string, input Manu
 		start: time.Date(y, m, d, 0, input.StartMinutes, 0, 0, loc).UTC(),
 		end:   time.Date(y, m, d, 0, input.EndMinutes, 0, 0, loc).UTC(),
 	}, nil
+}
+
+func coalesceEntryDescription(note, description string) string {
+	if d := strings.TrimSpace(description); d != "" {
+		return d
+	}
+	return strings.TrimSpace(note)
+}
+
+func durationMinutes(start, end time.Time) int64 {
+	return int64(end.Sub(start) / time.Minute)
 }

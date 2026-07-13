@@ -58,17 +58,6 @@ func (q *Queries) CountCalendarReferencesToCategory(ctx context.Context, default
 	return count, err
 }
 
-const countGapFillReferencesToCategory = `-- name: CountGapFillReferencesToCategory :one
-SELECT COUNT(*) FROM gap_fill WHERE category_id = ?
-`
-
-func (q *Queries) CountGapFillReferencesToCategory(ctx context.Context, categoryID sql.NullInt64) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countGapFillReferencesToCategory, categoryID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const countMemoryReferencesToCategory = `-- name: CountMemoryReferencesToCategory :one
 SELECT COUNT(*) FROM memory WHERE category_id = ?
 `
@@ -86,6 +75,17 @@ SELECT COUNT(*) FROM overlay WHERE category_id = ?
 
 func (q *Queries) CountOverlayReferencesToCategory(ctx context.Context, categoryID sql.NullInt64) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countOverlayReferencesToCategory, categoryID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countTimeEntryReferencesToCategory = `-- name: CountTimeEntryReferencesToCategory :one
+SELECT COUNT(*) FROM time_entry WHERE category_id = ?
+`
+
+func (q *Queries) CountTimeEntryReferencesToCategory(ctx context.Context, categoryID sql.NullInt64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countTimeEntryReferencesToCategory, categoryID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

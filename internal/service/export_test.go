@@ -112,30 +112,10 @@ func TestBuildPeriodExport_EntriesAndRollups(t *testing.T) {
 	}
 
 	// Gap fill 13:00–15:00 EDT = 17:00–19:00Z → 2h Deep Work on day 1
-	if _, err := e.q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
-		PeriodID:   e.periodID,
-		Day:        "2026-06-01",
-		StartUtc:   "2026-06-01T17:00:00Z",
-		EndUtc:     "2026-06-01T19:00:00Z",
-		CategoryID: sql.NullInt64{Int64: deepWork.ID, Valid: true},
-		Note:       "Focus",
-		Source:     "manual",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	insertTimeEntry(t, e.q, e.periodID, "2026-06-01", "2026-06-01T17:00:00Z", "2026-06-01T19:00:00Z", sql.NullInt64{Int64: deepWork.ID, Valid: true}, "Focus", false)
 
 	// Gap fill day 2: 10:00–12:00 EDT = 14:00–16:00Z → 2h Deep Work
-	if _, err := e.q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
-		PeriodID:   e.periodID,
-		Day:        "2026-06-02",
-		StartUtc:   "2026-06-02T14:00:00Z",
-		EndUtc:     "2026-06-02T16:00:00Z",
-		CategoryID: sql.NullInt64{Int64: deepWork.ID, Valid: true},
-		Note:       "Planning",
-		Source:     "manual",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	insertTimeEntry(t, e.q, e.periodID, "2026-06-02", "2026-06-02T14:00:00Z", "2026-06-02T16:00:00Z", sql.NullInt64{Int64: deepWork.ID, Valid: true}, "Planning", false)
 
 	model, err := e.svc.BuildPeriodExport(ctx, e.periodID)
 	if err != nil {
@@ -216,26 +196,8 @@ func TestRenderPeriodExport_MatrixCSVShape(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
-		PeriodID:   e.periodID,
-		Day:        "2026-06-01",
-		StartUtc:   "2026-06-01T17:00:00Z",
-		EndUtc:     "2026-06-01T19:00:00Z",
-		CategoryID: sql.NullInt64{Int64: deepWork.ID, Valid: true},
-		Source:     "manual",
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := e.q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
-		PeriodID:   e.periodID,
-		Day:        "2026-06-02",
-		StartUtc:   "2026-06-02T14:00:00Z",
-		EndUtc:     "2026-06-02T16:00:00Z",
-		CategoryID: sql.NullInt64{Int64: deepWork.ID, Valid: true},
-		Source:     "manual",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	insertTimeEntry(t, e.q, e.periodID, "2026-06-01", "2026-06-01T17:00:00Z", "2026-06-01T19:00:00Z", sql.NullInt64{Int64: deepWork.ID, Valid: true}, "", false)
+	insertTimeEntry(t, e.q, e.periodID, "2026-06-02", "2026-06-02T14:00:00Z", "2026-06-02T16:00:00Z", sql.NullInt64{Int64: deepWork.ID, Valid: true}, "", false)
 
 	render, err := e.svc.RenderPeriodExport(ctx, e.periodID, service.ExportTemplateMatrixCSV)
 	if err != nil {
@@ -286,26 +248,8 @@ func TestRenderPeriodExport_FlatDailyCSVShape(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
-		PeriodID:   e.periodID,
-		Day:        "2026-06-01",
-		StartUtc:   "2026-06-01T17:00:00Z",
-		EndUtc:     "2026-06-01T19:00:00Z",
-		CategoryID: sql.NullInt64{Int64: deepWork.ID, Valid: true},
-		Source:     "manual",
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := e.q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
-		PeriodID:   e.periodID,
-		Day:        "2026-06-02",
-		StartUtc:   "2026-06-02T14:00:00Z",
-		EndUtc:     "2026-06-02T16:00:00Z",
-		CategoryID: sql.NullInt64{Int64: deepWork.ID, Valid: true},
-		Source:     "manual",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	insertTimeEntry(t, e.q, e.periodID, "2026-06-01", "2026-06-01T17:00:00Z", "2026-06-01T19:00:00Z", sql.NullInt64{Int64: deepWork.ID, Valid: true}, "", false)
+	insertTimeEntry(t, e.q, e.periodID, "2026-06-02", "2026-06-02T14:00:00Z", "2026-06-02T16:00:00Z", sql.NullInt64{Int64: deepWork.ID, Valid: true}, "", false)
 
 	render, err := e.svc.RenderPeriodExport(ctx, e.periodID, service.ExportTemplateFlatDailyCSV)
 	if err != nil {
@@ -357,29 +301,8 @@ func TestRenderPeriodExport_DetailEntriesCSVShape(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
-		PeriodID:    e.periodID,
-		Day:         "2026-06-01",
-		StartUtc:    "2026-06-01T17:00:00Z",
-		EndUtc:      "2026-06-01T19:00:00Z",
-		CategoryID:  sql.NullInt64{Int64: deepWork.ID, Valid: true},
-		Note:        "Focus",
-		Description: "User notes",
-		Source:      "manual",
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := e.q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
-		PeriodID:   e.periodID,
-		Day:        "2026-06-02",
-		StartUtc:   "2026-06-02T14:00:00Z",
-		EndUtc:     "2026-06-02T16:00:00Z",
-		CategoryID: sql.NullInt64{Int64: deepWork.ID, Valid: true},
-		Note:       "Planning",
-		Source:     "manual",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	insertTimeEntry(t, e.q, e.periodID, "2026-06-01", "2026-06-01T17:00:00Z", "2026-06-01T19:00:00Z", sql.NullInt64{Int64: deepWork.ID, Valid: true}, "User notes", false)
+	insertTimeEntry(t, e.q, e.periodID, "2026-06-02", "2026-06-02T14:00:00Z", "2026-06-02T16:00:00Z", sql.NullInt64{Int64: deepWork.ID, Valid: true}, "Planning", false)
 
 	render, err := e.svc.RenderPeriodExport(ctx, e.periodID, service.ExportTemplateDetailEntriesCSV)
 	if err != nil {
@@ -395,8 +318,8 @@ func TestRenderPeriodExport_DetailEntriesCSVShape(t *testing.T) {
 	want := strings.Join([]string{
 		"Start,End,Category,Key,Hours,Title,Description",
 		"2026-06-01T11:00,2026-06-01T13:00,Meetings," + meetings.Key + ",2.00,meet-1,Google notes",
-		"2026-06-01T13:00,2026-06-01T15:00,Deep Work," + deepWork.Key + ",2.00,Focus,User notes",
-		"2026-06-02T10:00,2026-06-02T12:00,Deep Work," + deepWork.Key + ",2.00,Planning,",
+		"2026-06-01T13:00,2026-06-01T15:00,Deep Work," + deepWork.Key + ",2.00,User notes,User notes",
+		"2026-06-02T10:00,2026-06-02T12:00,Deep Work," + deepWork.Key + ",2.00,Planning,Planning",
 	}, "\n")
 	if render.Content != want {
 		t.Fatalf("csv mismatch\ngot:\n%s\nwant:\n%s", render.Content, want)
@@ -431,18 +354,7 @@ func TestBuildPeriodExport_EntryDescriptions(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
-		PeriodID:    e.periodID,
-		Day:         "2026-06-01",
-		StartUtc:    "2026-06-01T17:00:00Z",
-		EndUtc:      "2026-06-01T19:00:00Z",
-		CategoryID:  sql.NullInt64{Int64: meetings.ID, Valid: true},
-		Note:        "Short title",
-		Description: "Longer work notes",
-		Source:      "manual",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	insertTimeEntry(t, e.q, e.periodID, "2026-06-01", "2026-06-01T17:00:00Z", "2026-06-01T19:00:00Z", sql.NullInt64{Int64: meetings.ID, Valid: true}, "Longer work notes", false)
 
 	model, err := e.svc.BuildPeriodExport(ctx, e.periodID)
 	if err != nil {
@@ -473,8 +385,8 @@ func TestBuildPeriodExport_EntryDescriptions(t *testing.T) {
 	if gapEntry.Description != "Longer work notes" {
 		t.Fatalf("gap description = %q want Longer work notes", gapEntry.Description)
 	}
-	if gapEntry.Title != "Short title" {
-		t.Fatalf("gap title = %q want Short title", gapEntry.Title)
+	if gapEntry.Title != "Longer work notes" {
+		t.Fatalf("gap title = %q want Longer work notes", gapEntry.Title)
 	}
 }
 
@@ -506,26 +418,8 @@ func TestRenderPeriodExport_TextSummaryShape(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
-		PeriodID:   e.periodID,
-		Day:        "2026-06-01",
-		StartUtc:   "2026-06-01T17:00:00Z",
-		EndUtc:     "2026-06-01T19:00:00Z",
-		CategoryID: sql.NullInt64{Int64: deepWork.ID, Valid: true},
-		Source:     "manual",
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := e.q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
-		PeriodID:   e.periodID,
-		Day:        "2026-06-02",
-		StartUtc:   "2026-06-02T14:00:00Z",
-		EndUtc:     "2026-06-02T16:00:00Z",
-		CategoryID: sql.NullInt64{Int64: deepWork.ID, Valid: true},
-		Source:     "manual",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	insertTimeEntry(t, e.q, e.periodID, "2026-06-01", "2026-06-01T17:00:00Z", "2026-06-01T19:00:00Z", sql.NullInt64{Int64: deepWork.ID, Valid: true}, "", false)
+	insertTimeEntry(t, e.q, e.periodID, "2026-06-02", "2026-06-02T14:00:00Z", "2026-06-02T16:00:00Z", sql.NullInt64{Int64: deepWork.ID, Valid: true}, "", false)
 
 	render, err := e.svc.RenderPeriodExport(ctx, e.periodID, service.ExportTemplateTextSummary)
 	if err != nil {
@@ -577,16 +471,7 @@ func TestRenderPeriodExport_TextSummaryEmptyDay(t *testing.T) {
 			deepWork = c
 		}
 	}
-	if _, err := e.q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
-		PeriodID:   e.periodID,
-		Day:        "2026-06-01",
-		StartUtc:   "2026-06-01T14:00:00Z",
-		EndUtc:     "2026-06-01T15:00:00Z",
-		CategoryID: sql.NullInt64{Int64: deepWork.ID, Valid: true},
-		Source:     "manual",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	insertTimeEntry(t, e.q, e.periodID, "2026-06-01", "2026-06-01T14:00:00Z", "2026-06-01T15:00:00Z", sql.NullInt64{Int64: deepWork.ID, Valid: true}, "", false)
 
 	render, err := e.svc.RenderPeriodExport(ctx, e.periodID, service.ExportTemplateTextSummary)
 	if err != nil {
@@ -642,16 +527,7 @@ func TestExportTemplateCRUD_CustomTabular(t *testing.T) {
 			deepWork = c
 		}
 	}
-	if _, err := e.q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
-		PeriodID:   e.periodID,
-		Day:        "2026-06-01",
-		StartUtc:   "2026-06-01T14:00:00Z",
-		EndUtc:     "2026-06-01T16:00:00Z",
-		CategoryID: sql.NullInt64{Int64: deepWork.ID, Valid: true},
-		Source:     "manual",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	insertTimeEntry(t, e.q, e.periodID, "2026-06-01", "2026-06-01T14:00:00Z", "2026-06-01T16:00:00Z", sql.NullInt64{Int64: deepWork.ID, Valid: true}, "", false)
 
 	body, err := json.Marshal(service.TabularTemplateSpec{
 		Version:   1,
@@ -834,16 +710,7 @@ func TestExportTemplateCRUD_CustomText(t *testing.T) {
 			deepWork = c
 		}
 	}
-	if _, err := e.q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
-		PeriodID:   e.periodID,
-		Day:        "2026-06-01",
-		StartUtc:   "2026-06-01T14:00:00Z",
-		EndUtc:     "2026-06-01T16:00:00Z",
-		CategoryID: sql.NullInt64{Int64: deepWork.ID, Valid: true},
-		Source:     "manual",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	insertTimeEntry(t, e.q, e.periodID, "2026-06-01", "2026-06-01T14:00:00Z", "2026-06-01T16:00:00Z", sql.NullInt64{Int64: deepWork.ID, Valid: true}, "", false)
 
 	body := "Custom: {{.PeriodLabel}} — {{duration .ActualMinutes}}"
 	created, err := e.svc.CreateExportTemplate(ctx, service.CreateExportTemplateInput{

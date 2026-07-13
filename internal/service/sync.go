@@ -82,7 +82,7 @@ func (s *Service) SyncEvents(ctx context.Context, periodID int64, incoming []Inc
 		baseByKey[eventKey(e.CalendarID, e.ExternalID, e.InstanceID)] = e
 	}
 
-	gaps, err := q.ListGapFillsForPeriod(ctx, periodID)
+	gaps, err := q.ListTimeEntriesForPeriod(ctx, periodID)
 	if err != nil {
 		return res, fmt.Errorf("load gap fills: %w", err)
 	}
@@ -170,7 +170,7 @@ func (s *Service) SyncEvents(ctx context.Context, periodID int64, incoming []Inc
 // handleNewEvent flags a new event when it conflicts / needs resolution, then
 // auto-categorizes from memory. Flags are mutually exclusive (gap takes
 // precedence) to keep the review queue quiet.
-func (s *Service) handleNewEvent(ctx context.Context, q *sqlc.Queries, periodID int64, inc IncomingEvent, eventID int64, gaps []sqlc.GapFill, res *SyncResult) error {
+func (s *Service) handleNewEvent(ctx context.Context, q *sqlc.Queries, periodID int64, inc IncomingEvent, eventID int64, gaps []sqlc.TimeEntry, res *SyncResult) error {
 	flagged, skipAuto, err := s.review().OnNewEvent(ctx, q, periodID, inc, eventID, gaps)
 	if err != nil {
 		return err

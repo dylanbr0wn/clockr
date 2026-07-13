@@ -467,7 +467,7 @@ func TestManualEventDescriptionRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fill.Note != "Title" || fill.Description != "Worked on feature X" {
+	if fill.Note != "Worked on feature X" || fill.Description != "Worked on feature X" {
 		t.Fatalf("unexpected create fill: %+v", fill)
 	}
 
@@ -507,7 +507,7 @@ func TestManualEventDescriptionRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if gapFill.Source != "gap" || gapFill.Note != "" || gapFill.Description != "AI suggested work" {
+	if gapFill.Source != "gap" || gapFill.Note != "AI suggested work" || gapFill.Description != "AI suggested work" {
 		t.Fatalf("unexpected gap fill: %+v", gapFill)
 	}
 }

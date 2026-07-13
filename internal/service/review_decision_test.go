@@ -57,16 +57,7 @@ func TestListReviewDecisions_SupportedKinds(t *testing.T) {
 			name: "new_in_gap",
 			setup: func(t *testing.T, e *syncEnv) {
 				ctx := context.Background()
-				if _, err := e.q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
-					PeriodID:   e.periodID,
-					Day:        "2026-06-02",
-					StartUtc:   "2026-06-02T13:00:00Z",
-					EndUtc:     "2026-06-02T14:00:00Z",
-					CategoryID: sql.NullInt64{Int64: e.catID, Valid: true},
-					Source:     "gap",
-				}); err != nil {
-					t.Fatal(err)
-				}
+				insertTimeEntry(t, e.q, e.periodID, "2026-06-02", "2026-06-02T13:00:00Z", "2026-06-02T14:00:00Z", sql.NullInt64{Int64: e.catID, Valid: true}, "", true)
 				inc := e.baseEvent()
 				inc.ExternalID = "evt-overlap"
 				inc.Start = tm("2026-06-02T13:30:00Z")

@@ -139,7 +139,7 @@ func (p reviewPolicy) OnVanishedCategorized(ctx context.Context, q *sqlc.Queries
 // OnNewEvent flags gap / all-day / tentative conflicts for a newly inserted
 // event and replays prior decisions. skipAuto is true when the event should
 // not receive memory / calendar-default / AI overlays (excluded by replay).
-func (p reviewPolicy) OnNewEvent(ctx context.Context, q *sqlc.Queries, periodID int64, inc IncomingEvent, eventID int64, gaps []sqlc.GapFill) (flagged int, skipAuto bool, err error) {
+func (p reviewPolicy) OnNewEvent(ctx context.Context, q *sqlc.Queries, periodID int64, inc IncomingEvent, eventID int64, gaps []sqlc.TimeEntry) (flagged int, skipAuto bool, err error) {
 	identity := eventIdentityFromIncoming(inc)
 	gapFingerprint, overlapsGap := overlappingGapFingerprint(inc, gaps)
 	switch {
@@ -344,14 +344,15 @@ func (p reviewPolicy) convertEventToManualFill(ctx context.Context, q *sqlc.Quer
 	if err != nil {
 		return err
 	}
-	if _, err := q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
-		PeriodID:   ev.PeriodID,
-		Day:        day,
-		StartUtc:   parseTime(ev.StartUtc.String).Format(time.RFC3339),
-		EndUtc:     parseTime(ev.EndUtc.String).Format(time.RFC3339),
-		CategoryID: categoryID,
-		Note:       ev.Title,
-		Source:     "manual",
+	if _, err := q.CreateTimeEntry(ctx, sqlc.CreateTimeEntryParams{
+		PeriodID:        ev.PeriodID,
+		StartInstant:    parseTime(ev.StartUtc.String).Format(time.RFC3339),
+		EndInstant:      parseTime(ev.EndUtc.String).Format(time.RFC3339),
+		DurationMinutes: durationMinutes(parseTime(ev.StartUtc.String), parseTime(ev.EndUtc.String)),
+		LocalWorkDate:   day,
+		CategoryID:      categoryID,
+		Description:     ev.Title,
+		Attestation:     "confirmed",
 	}); err != nil {
 		return mapErr("create manual copy of deleted event", err)
 	}
@@ -378,7 +379,7 @@ func (p reviewPolicy) applyNewInGap(ctx context.Context, q *sqlc.Queries, item s
 			Start: parseTime(ev.StartUtc.String),
 			End:   parseTime(ev.EndUtc.String),
 		}
-		fills, err := q.ListGapFillsForPeriod(ctx, item.PeriodID)
+		fills, err := q.ListTimeEntriesForPeriod(ctx, item.PeriodID)
 		if err != nil {
 			return mapErr("list gap fills", err)
 		}
@@ -492,9 +493,9 @@ func activeSQLCTzSegment(segs []sqlc.TzSegment, dateStr string) sqlc.TzSegment {
 
 // shrinkGapFillsForEvent removes or trims gap fills that overlap a timed event
 // so the event can be counted without double-counting the filled interval.
-func shrinkGapFillsForEvent(ctx context.Context, q *sqlc.Queries, periodID int64, event Interval, fills []sqlc.GapFill) error {
+func shrinkGapFillsForEvent(ctx context.Context, q *sqlc.Queries, periodID int64, event Interval, fills []sqlc.TimeEntry) error {
 	for _, fill := range fills {
-		gap := Interval{Start: parseTime(fill.StartUtc), End: parseTime(fill.EndUtc)}
+		gap := Interval{Start: parseTime(fill.StartInstant), End: parseTime(fill.EndInstant)}
 		if gap.Start.IsZero() || gap.End.IsZero() {
 			continue
 		}
@@ -504,58 +505,59 @@ func shrinkGapFillsForEvent(ctx context.Context, q *sqlc.Queries, periodID int64
 		}
 
 		if before == nil && after == nil {
-			if _, err := q.DeleteGapFill(ctx, sqlc.DeleteGapFillParams{ID: fill.ID, PeriodID: periodID}); err != nil {
+			if _, err := q.DeleteTimeEntry(ctx, sqlc.DeleteTimeEntryParams{ID: fill.ID, PeriodID: periodID}); err != nil {
 				return mapErr("delete gap fill", err)
 			}
 			continue
 		}
 
 		if before == nil && after != nil {
-			if _, err := q.UpdateGapFillSpan(ctx, sqlc.UpdateGapFillSpanParams{
-				StartUtc: after.Start.UTC().Format(time.RFC3339),
-				EndUtc:   after.End.UTC().Format(time.RFC3339),
-				ID:       fill.ID,
-				PeriodID: periodID,
-			}); err != nil {
+			if _, err := q.UpdateTimeEntrySpan(ctx, timeEntrySpanParams(periodID, fill.ID, after.Start, after.End, fill.LocalWorkDate)); err != nil {
 				return mapErr("update gap fill", err)
 			}
 			continue
 		}
 
 		if before != nil && after == nil {
-			if _, err := q.UpdateGapFillSpan(ctx, sqlc.UpdateGapFillSpanParams{
-				StartUtc: before.Start.UTC().Format(time.RFC3339),
-				EndUtc:   before.End.UTC().Format(time.RFC3339),
-				ID:       fill.ID,
-				PeriodID: periodID,
-			}); err != nil {
+			if _, err := q.UpdateTimeEntrySpan(ctx, timeEntrySpanParams(periodID, fill.ID, before.Start, before.End, fill.LocalWorkDate)); err != nil {
 				return mapErr("update gap fill", err)
 			}
 			continue
 		}
 
 		// Event sits in the middle: keep the leading segment, create a trailing fill.
-		if _, err := q.UpdateGapFillSpan(ctx, sqlc.UpdateGapFillSpanParams{
-			StartUtc: before.Start.UTC().Format(time.RFC3339),
-			EndUtc:   before.End.UTC().Format(time.RFC3339),
-			ID:       fill.ID,
-			PeriodID: periodID,
-		}); err != nil {
+		if _, err := q.UpdateTimeEntrySpan(ctx, timeEntrySpanParams(periodID, fill.ID, before.Start, before.End, fill.LocalWorkDate)); err != nil {
 			return mapErr("update gap fill", err)
 		}
-		if _, err := q.CreateGapFill(ctx, sqlc.CreateGapFillParams{
-			PeriodID:   periodID,
-			Day:        fill.Day,
-			StartUtc:   after.Start.UTC().Format(time.RFC3339),
-			EndUtc:     after.End.UTC().Format(time.RFC3339),
-			CategoryID: fill.CategoryID,
-			Note:       fill.Note,
-			Source:     fill.Source,
+		if _, err := q.CreateTimeEntry(ctx, sqlc.CreateTimeEntryParams{
+			PeriodID:        periodID,
+			StartInstant:    after.Start.UTC().Format(time.RFC3339),
+			EndInstant:      after.End.UTC().Format(time.RFC3339),
+			DurationMinutes: durationMinutes(after.Start, after.End),
+			LocalWorkDate:   fill.LocalWorkDate,
+			CategoryID:      fill.CategoryID,
+			Description:     fill.Description,
+			Attestation:     fill.Attestation,
+			SourceKind:      fill.SourceKind,
+			SourceID:        fill.SourceID,
+			SourceRevision:  fill.SourceRevision,
+			Method:          fill.Method,
 		}); err != nil {
 			return mapErr("create gap fill", err)
 		}
 	}
 	return nil
+}
+
+func timeEntrySpanParams(periodID, id int64, start, end time.Time, localWorkDate string) sqlc.UpdateTimeEntrySpanParams {
+	return sqlc.UpdateTimeEntrySpanParams{
+		StartInstant:    start.UTC().Format(time.RFC3339),
+		EndInstant:      end.UTC().Format(time.RFC3339),
+		DurationMinutes: durationMinutes(start, end),
+		LocalWorkDate:   localWorkDate,
+		ID:              id,
+		PeriodID:        periodID,
+	}
 }
 
 // splitAround decomposes gap into the portions before, overlapping, and after
@@ -606,15 +608,15 @@ func eventIdentityFromRow(ev sqlc.Event) string {
 	}, "|")
 }
 
-func overlappingGapFingerprint(inc IncomingEvent, gaps []sqlc.GapFill) (string, bool) {
+func overlappingGapFingerprint(inc IncomingEvent, gaps []sqlc.TimeEntry) (string, bool) {
 	if inc.Start == nil || inc.End == nil {
 		return "", false
 	}
 	s, e := inc.Start.UTC(), inc.End.UTC()
 	parts := []string{}
 	for _, g := range gaps {
-		gs := parseTime(g.StartUtc)
-		ge := parseTime(g.EndUtc)
+		gs := parseTime(g.StartInstant)
+		ge := parseTime(g.EndInstant)
 		if gs.IsZero() || ge.IsZero() {
 			continue
 		}
@@ -623,11 +625,15 @@ func overlappingGapFingerprint(inc IncomingEvent, gaps []sqlc.GapFill) (string, 
 			if g.CategoryID.Valid {
 				category = fmt.Sprint(g.CategoryID.Int64)
 			}
+			method := ""
+			if g.Method.Valid {
+				method = g.Method.String
+			}
 			parts = append(parts, strings.Join([]string{
-				g.StartUtc,
-				g.EndUtc,
+				g.StartInstant,
+				g.EndInstant,
 				category,
-				g.Source,
+				method,
 			}, "~"))
 		}
 	}
