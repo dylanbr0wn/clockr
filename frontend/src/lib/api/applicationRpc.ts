@@ -7,6 +7,7 @@ import {
   ExportService,
   IntegrationService,
   IntegrationKind as WireIntegrationKind,
+  ProjectService,
   ReviewActionRole,
   ReviewActionVariant,
   ScheduleService,
@@ -25,6 +26,7 @@ import {
   type IntegrationConnection as WireIntegrationConnection,
   type IntegrationDescriptor as WireIntegrationDescriptor,
   type GetIntegrationAuthStatusResponse as WireIntegrationAuthStatus,
+  type Project as WireProject,
   type ReviewDecision as WireReviewDecision,
   type SlackChannel as WireSlackChannel,
 } from "@/gen/shiet/app/v1/application_pb";
@@ -33,6 +35,7 @@ import type {
   Category,
   CreateCategoryInput,
   CreateExportTemplateInput,
+  CreateProjectInput,
   DayTimeline,
   Event,
   EventCategoryOverlay,
@@ -47,6 +50,7 @@ import type {
   IntegrationConnection,
   IntegrationKind,
   IntegrationProvider,
+  Project,
   TimeEntry,
   TimeEntryDeleteInput,
   TimeEntryInput,
@@ -66,16 +70,19 @@ import type {
   TzSegment,
   UpdateCategoryInput,
   UpdateExportTemplateInput,
+  UpdateProjectInput,
 } from "./types";
 import { rpcTransport } from "./rpcTransport";
 
 let category: ReturnType<typeof createClient<typeof CategoryService>> | undefined;
+let project: ReturnType<typeof createClient<typeof ProjectService>> | undefined;
 let calendar: ReturnType<typeof createClient<typeof CalendarService>> | undefined;
 let schedule: ReturnType<typeof createClient<typeof ScheduleService>> | undefined;
 let settings: ReturnType<typeof createClient<typeof SettingsService>> | undefined;
 let integration: ReturnType<typeof createClient<typeof IntegrationService>> | undefined;
 let exporting: ReturnType<typeof createClient<typeof ExportService>> | undefined;
 const categoryClient = () => (category ??= createClient(CategoryService, rpcTransport()));
+const projectClient = () => (project ??= createClient(ProjectService, rpcTransport()));
 const calendarClient = () => (calendar ??= createClient(CalendarService, rpcTransport()));
 const scheduleClient = () => (schedule ??= createClient(ScheduleService, rpcTransport()));
 const settingsClient = () => (settings ??= createClient(SettingsService, rpcTransport()));
@@ -133,6 +140,33 @@ export async function listEventCategoryOverlaysRPC(periodId: number): Promise<Ev
     ...(item.instanceId ? { instanceId: item.instanceId } : {}),
     categoryId: safeInt(item.categoryId, "category id"),
   }));
+}
+
+export async function listProjectsRPC(includeArchived = false) {
+  return (await projectClient().listProjects({ includeArchived })).projects.map(mapProject);
+}
+export async function getProjectRPC(id: number) {
+  const response = await projectClient().getProject({ id: bigint(id) });
+  if (!response.project) throw new Error("get project response is missing project");
+  return mapProject(response.project);
+}
+export async function createProjectRPC(input: CreateProjectInput) {
+  const response = await projectClient().createProject(input);
+  if (!response.project) throw new Error("create project response is missing project");
+  return mapProject(response.project);
+}
+export async function updateProjectRPC(input: UpdateProjectInput) {
+  const response = await projectClient().updateProject({ ...input, id: bigint(input.id) });
+  if (!response.project) throw new Error("update project response is missing project");
+  return mapProject(response.project);
+}
+export async function deleteProjectRPC(id: number) {
+  await projectClient().deleteProject({ id: bigint(id) });
+}
+export async function archiveProjectRPC(id: number) {
+  const response = await projectClient().archiveProject({ id: bigint(id) });
+  if (!response.project) throw new Error("archive project response is missing project");
+  return mapProject(response.project);
 }
 
 export async function listCalendarsRPC() {
@@ -307,6 +341,16 @@ export function mapCategory(item: WireCategory): Category {
     key: item.key,
     color: item.color,
     isDefaultGap: item.isDefaultGap,
+    archived: item.archived,
+    inUse: item.inUse,
+  };
+}
+export function mapProject(item: WireProject): Project {
+  return {
+    id: safeInt(item.id, "project id"),
+    name: item.name,
+    key: item.key,
+    color: item.color,
     archived: item.archived,
     inUse: item.inUse,
   };

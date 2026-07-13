@@ -13,6 +13,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
+import { Route as SettingsProjectsRouteImport } from './routes/settings/projects'
 import { Route as SettingsPrivacyRouteImport } from './routes/settings/privacy'
 import { Route as SettingsIntegrationsRouteImport } from './routes/settings/integrations'
 import { Route as SettingsGeneralRouteImport } from './routes/settings/general'
@@ -40,6 +41,11 @@ const IndexRoute = IndexRouteImport.update({
 const SettingsIndexRoute = SettingsIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsProjectsRoute = SettingsProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsPrivacyRoute = SettingsPrivacyRouteImport.update({
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/settings/general': typeof SettingsGeneralRoute
   '/settings/integrations': typeof SettingsIntegrationsRouteWithChildren
   '/settings/privacy': typeof SettingsPrivacyRoute
+  '/settings/projects': typeof SettingsProjectsRoute
   '/settings/': typeof SettingsIndexRoute
   '/settings/integrations/$providerId': typeof SettingsIntegrationsProviderIdRoute
   '/settings/integrations/': typeof SettingsIntegrationsIndexRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/settings/export': typeof SettingsExportRoute
   '/settings/general': typeof SettingsGeneralRoute
   '/settings/privacy': typeof SettingsPrivacyRoute
+  '/settings/projects': typeof SettingsProjectsRoute
   '/settings': typeof SettingsIndexRoute
   '/settings/integrations/$providerId': typeof SettingsIntegrationsProviderIdRoute
   '/settings/integrations': typeof SettingsIntegrationsIndexRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/settings/general': typeof SettingsGeneralRoute
   '/settings/integrations': typeof SettingsIntegrationsRouteWithChildren
   '/settings/privacy': typeof SettingsPrivacyRoute
+  '/settings/projects': typeof SettingsProjectsRoute
   '/settings/': typeof SettingsIndexRoute
   '/settings/integrations/$providerId': typeof SettingsIntegrationsProviderIdRoute
   '/settings/integrations/': typeof SettingsIntegrationsIndexRoute
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/settings/general'
     | '/settings/integrations'
     | '/settings/privacy'
+    | '/settings/projects'
     | '/settings/'
     | '/settings/integrations/$providerId'
     | '/settings/integrations/'
@@ -150,6 +160,7 @@ export interface FileRouteTypes {
     | '/settings/export'
     | '/settings/general'
     | '/settings/privacy'
+    | '/settings/projects'
     | '/settings'
     | '/settings/integrations/$providerId'
     | '/settings/integrations'
@@ -164,6 +175,7 @@ export interface FileRouteTypes {
     | '/settings/general'
     | '/settings/integrations'
     | '/settings/privacy'
+    | '/settings/projects'
     | '/settings/'
     | '/settings/integrations/$providerId'
     | '/settings/integrations/'
@@ -203,6 +215,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/settings/'
       preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/projects': {
+      id: '/settings/projects'
+      path: '/projects'
+      fullPath: '/settings/projects'
+      preLoaderRoute: typeof SettingsProjectsRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/privacy': {
@@ -284,6 +303,7 @@ interface SettingsRouteChildren {
   SettingsGeneralRoute: typeof SettingsGeneralRoute
   SettingsIntegrationsRoute: typeof SettingsIntegrationsRouteWithChildren
   SettingsPrivacyRoute: typeof SettingsPrivacyRoute
+  SettingsProjectsRoute: typeof SettingsProjectsRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
 
@@ -294,6 +314,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsGeneralRoute: SettingsGeneralRoute,
   SettingsIntegrationsRoute: SettingsIntegrationsRouteWithChildren,
   SettingsPrivacyRoute: SettingsPrivacyRoute,
+  SettingsProjectsRoute: SettingsProjectsRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }
 

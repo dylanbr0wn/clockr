@@ -26,6 +26,28 @@ export interface UpdateCategoryInput {
   isDefaultGap?: boolean;
 }
 
+export interface Project {
+  id: number;
+  name: string;
+  key: string;
+  color: string;
+  archived: boolean;
+  inUse: boolean;
+}
+
+export interface CreateProjectInput {
+  name: string;
+  key?: string;
+  color?: string;
+}
+
+export interface UpdateProjectInput {
+  id: number;
+  name: string;
+  key?: string;
+  color?: string;
+}
+
 export interface EventCategoryOverlay {
   provider: string;
   externalId: string;

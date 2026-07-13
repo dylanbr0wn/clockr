@@ -8,9 +8,12 @@ import {
   connectBitbucket,
   createGapTimeEntry,
   createCategory,
+  createProject,
   createTimeEntry,
   deleteCategory,
   archiveCategory,
+  archiveProject,
+  deleteProject,
   deleteTimeEntry,
   disconnectGitHub,
   disconnectIntegration,
@@ -25,6 +28,7 @@ import {
   listAIModels,
   listCalendars,
   listCategories,
+  listProjects,
   listEventCategoryOverlays,
   listEvents,
   listTimeEntries,
@@ -66,6 +70,7 @@ import {
   suggestGapFill,
   syncPeriod,
   updateCategory,
+  updateProject,
   updateTimeEntry,
   validateAIConfig,
 } from "./shietService";
@@ -88,6 +93,8 @@ export const shietQueryKeys = {
   calendars: () => [...shietQueryKeys.all, "calendars"] as const,
   categories: (includeArchived = false) =>
     [...shietQueryKeys.all, "categories", includeArchived ? "all" : "active"] as const,
+  projects: (includeArchived = false) =>
+    [...shietQueryKeys.all, "projects", includeArchived ? "all" : "active"] as const,
   exportTemplates: () => [...shietQueryKeys.all, "exportTemplates"] as const,
   gapTimeline: (periodId: number) =>
     [...shietQueryKeys.period(periodId), "gapTimeline"] as const,
@@ -303,6 +310,63 @@ export function useArchiveCategory() {
     mutationFn: archiveCategory,
     onSuccess: () => {
       invalidateCategoryQueries(queryClient);
+    },
+  });
+}
+
+export function useProjects(includeArchived = false) {
+  return useQuery({
+    queryKey: shietQueryKeys.projects(includeArchived),
+    queryFn: () => listProjects(includeArchived),
+  });
+}
+
+function invalidateProjectQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({
+    queryKey: [...shietQueryKeys.all, "projects"],
+  });
+}
+
+export function useCreateProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createProject,
+    onSuccess: () => {
+      invalidateProjectQueries(queryClient);
+    },
+  });
+}
+
+export function useUpdateProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateProject,
+    onSuccess: () => {
+      invalidateProjectQueries(queryClient);
+    },
+  });
+}
+
+export function useDeleteProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteProject,
+    onSuccess: () => {
+      invalidateProjectQueries(queryClient);
+    },
+  });
+}
+
+export function useArchiveProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: archiveProject,
+    onSuccess: () => {
+      invalidateProjectQueries(queryClient);
     },
   });
 }
