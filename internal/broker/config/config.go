@@ -16,10 +16,12 @@ const (
 	defaultHandoffTTL              = 2 * time.Minute
 	defaultDesktopHandoffURL       = "shiet://oauth/google/handoff"
 	defaultGitHubDesktopHandoffURL = "shiet://oauth/github/handoff"
-	defaultSlackDesktopHandoffURL  = "shiet://oauth/slack/handoff"
-	defaultGoogleScope             = "https://www.googleapis.com/auth/calendar.readonly"
-	defaultGitHubScope             = "repo"
-	defaultSlackScope              = "channels:history groups:history channels:read groups:read"
+	defaultSlackDesktopHandoffURL     = "shiet://oauth/slack/handoff"
+	defaultBitbucketDesktopHandoffURL = "shiet://oauth/bitbucket/handoff"
+	defaultGoogleScope               = "https://www.googleapis.com/auth/calendar.readonly"
+	defaultGitHubScope               = "repo"
+	defaultSlackScope                = "channels:history groups:history channels:read groups:read"
+	defaultBitbucketScope            = "account repository"
 )
 
 // Config holds the broker's environment-driven runtime configuration.
@@ -35,12 +37,16 @@ type Config struct {
 	SlackClientID           string
 	SlackClientSecret       string
 	SlackDesktopHandoffURL  string
+	BitbucketClientID          string
+	BitbucketClientSecret      string
+	BitbucketDesktopHandoffURL string
 	DatastoreDSN            string
 	StateTTL                time.Duration
 	HandoffTTL              time.Duration
 	GoogleScopes            []string
 	GitHubScopes            []string
 	SlackScopes             []string
+	BitbucketScopes         []string
 	AuthDisabled            bool
 	RefreshDisabled         bool
 	DisabledAppVersions     []string
@@ -61,12 +67,16 @@ func LoadFromEnv() (Config, error) {
 		SlackClientID:           os.Getenv("SHIET_BROKER_SLACK_CLIENT_ID"),
 		SlackClientSecret:       os.Getenv("SHIET_BROKER_SLACK_CLIENT_SECRET"),
 		SlackDesktopHandoffURL:  getenv("SHIET_BROKER_SLACK_DESKTOP_HANDOFF_URL", defaultSlackDesktopHandoffURL),
+		BitbucketClientID:          os.Getenv("SHIET_BROKER_BITBUCKET_CLIENT_ID"),
+		BitbucketClientSecret:      os.Getenv("SHIET_BROKER_BITBUCKET_CLIENT_SECRET"),
+		BitbucketDesktopHandoffURL: getenv("SHIET_BROKER_BITBUCKET_DESKTOP_HANDOFF_URL", defaultBitbucketDesktopHandoffURL),
 		DatastoreDSN:            os.Getenv("SHIET_BROKER_DATASTORE_DSN"),
 		StateTTL:                defaultStateTTL,
 		HandoffTTL:              defaultHandoffTTL,
 		GoogleScopes:            splitScopes(getenv("SHIET_BROKER_GOOGLE_SCOPES", defaultGoogleScope)),
 		GitHubScopes:            splitScopes(getenv("SHIET_BROKER_GITHUB_SCOPES", defaultGitHubScope)),
 		SlackScopes:             splitScopes(getenv("SHIET_BROKER_SLACK_SCOPES", defaultSlackScope)),
+		BitbucketScopes:         splitScopes(getenv("SHIET_BROKER_BITBUCKET_SCOPES", defaultBitbucketScope)),
 		AuthDisabled:            envTruthy("SHIET_BROKER_AUTH_DISABLED"),
 		RefreshDisabled:         envTruthy("SHIET_BROKER_REFRESH_DISABLED"),
 		DisabledAppVersions:     splitCSV(os.Getenv("SHIET_BROKER_DISABLED_APP_VERSIONS")),
@@ -135,6 +145,18 @@ func (c Config) Validate() error {
 	if slackID != "" && len(c.SlackScopes) == 0 {
 		problems = append(problems, "SHIET_BROKER_SLACK_SCOPES must include at least one scope")
 	}
+	bitbucketID := strings.TrimSpace(c.BitbucketClientID)
+	bitbucketSecret := strings.TrimSpace(c.BitbucketClientSecret)
+	if (bitbucketID == "") != (bitbucketSecret == "") {
+		if bitbucketID == "" {
+			problems = append(problems, "SHIET_BROKER_BITBUCKET_CLIENT_ID is required when Bitbucket OAuth is configured")
+		} else {
+			problems = append(problems, "SHIET_BROKER_BITBUCKET_CLIENT_SECRET is required when Bitbucket OAuth is configured")
+		}
+	}
+	if bitbucketID != "" && len(c.BitbucketScopes) == 0 {
+		problems = append(problems, "SHIET_BROKER_BITBUCKET_SCOPES must include at least one scope")
+	}
 	if c.StateTTL <= 0 || c.StateTTL > 10*time.Minute {
 		problems = append(problems, "SHIET_BROKER_STATE_TTL must be greater than 0 and at most 10m")
 	}
@@ -154,6 +176,11 @@ func (c Config) Validate() error {
 	}
 	if slackID != "" {
 		if _, err := parseDesktopHandoffURL(c.SlackDesktopHandoffURL, "SHIET_BROKER_SLACK_DESKTOP_HANDOFF_URL"); err != nil {
+			problems = append(problems, err.Error())
+		}
+	}
+	if bitbucketID != "" {
+		if _, err := parseDesktopHandoffURL(c.BitbucketDesktopHandoffURL, "SHIET_BROKER_BITBUCKET_DESKTOP_HANDOFF_URL"); err != nil {
 			problems = append(problems, err.Error())
 		}
 	}

@@ -108,6 +108,26 @@ export interface SlackChannel {
   selected: boolean;
 }
 
+export interface BitbucketWorkspace {
+  id: number;
+  accountId: string;
+  externalId: string;
+  slug: string;
+  name: string;
+  selected: boolean;
+}
+
+export interface BitbucketRepo {
+  id: number;
+  accountId: string;
+  workspaceUuid: string;
+  externalId: string;
+  name: string;
+  fullName: string;
+  private: boolean;
+  selected: boolean;
+}
+
 export interface SyncResult {
   added: number;
   updated: number;

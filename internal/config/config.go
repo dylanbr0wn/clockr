@@ -33,6 +33,8 @@ var (
 	ErrGitHubLocalCredentials = errors.New("local GitHub OAuth credentials are not configured")
 	ErrSlackBrokerConfig      = errors.New("Slack OAuth broker is not configured")
 	ErrSlackLocalCredentials  = errors.New("local Slack OAuth credentials are not configured")
+	ErrBitbucketBrokerConfig  = errors.New("Bitbucket OAuth broker is not configured")
+	ErrBitbucketLocalCredentials = errors.New("local Bitbucket OAuth credentials are not configured")
 )
 
 // Config holds typed app/runtime settings. User preferences (window start, AI
@@ -63,6 +65,12 @@ type Config struct {
 		ClientID      string `koanf:"client_id"`
 		ClientSecret  string `koanf:"client_secret"`
 	} `koanf:"slack"`
+	Bitbucket struct {
+		AuthMode      string `koanf:"auth_mode"`
+		BrokerBaseURL string `koanf:"broker_base_url"`
+		ClientID      string `koanf:"client_id"`
+		ClientSecret  string `koanf:"client_secret"`
+	} `koanf:"bitbucket"`
 }
 
 // envKeyMap maps legacy SHIET_* env vars to koanf dotted keys.
@@ -82,6 +90,10 @@ var envKeyMap = map[string]string{
 	"SHIET_SLACK_BROKER_BASE_URL":  "slack.broker_base_url",
 	"SHIET_SLACK_CLIENT_ID":        "slack.client_id",
 	"SHIET_SLACK_CLIENT_SECRET":    "slack.client_secret",
+	"SHIET_BITBUCKET_AUTH_MODE":       "bitbucket.auth_mode",
+	"SHIET_BITBUCKET_BROKER_BASE_URL": "bitbucket.broker_base_url",
+	"SHIET_BITBUCKET_CLIENT_ID":       "bitbucket.client_id",
+	"SHIET_BITBUCKET_CLIENT_SECRET":   "bitbucket.client_secret",
 }
 
 // Load reads configuration using the standard discovery order:
@@ -130,6 +142,9 @@ func load(configFiles []string) (Config, error) {
 		"slack": map[string]any{
 			"broker_base_url": defaultBrokerBaseURL,
 		},
+		"bitbucket": map[string]any{
+			"broker_base_url": defaultBrokerBaseURL,
+		},
 	}, "."), nil); err != nil {
 		return Config{}, fmt.Errorf("load defaults: %w", err)
 	}
@@ -172,10 +187,15 @@ func load(configFiles []string) (Config, error) {
 	cfg.Slack.BrokerBaseURL = strings.TrimSpace(cfg.Slack.BrokerBaseURL)
 	cfg.Slack.ClientID = strings.TrimSpace(cfg.Slack.ClientID)
 	cfg.Slack.ClientSecret = strings.TrimSpace(cfg.Slack.ClientSecret)
+	cfg.Bitbucket.AuthMode = strings.ToLower(strings.TrimSpace(cfg.Bitbucket.AuthMode))
+	cfg.Bitbucket.BrokerBaseURL = strings.TrimSpace(cfg.Bitbucket.BrokerBaseURL)
+	cfg.Bitbucket.ClientID = strings.TrimSpace(cfg.Bitbucket.ClientID)
+	cfg.Bitbucket.ClientSecret = strings.TrimSpace(cfg.Bitbucket.ClientSecret)
 
 	cfg.resolveGoogleAuthMode()
 	cfg.resolveGitHubAuthMode()
 	cfg.resolveSlackAuthMode()
+	cfg.resolveBitbucketAuthMode()
 
 	// Broker mode must not carry desktop OAuth credentials into runtime.
 	if cfg.UsesBrokerAuth() {
@@ -189,6 +209,10 @@ func load(configFiles []string) (Config, error) {
 	if cfg.UsesSlackBrokerAuth() {
 		cfg.Slack.ClientID = ""
 		cfg.Slack.ClientSecret = ""
+	}
+	if cfg.UsesBitbucketBrokerAuth() {
+		cfg.Bitbucket.ClientID = ""
+		cfg.Bitbucket.ClientSecret = ""
 	}
 
 	if err := cfg.Validate(); err != nil {
@@ -226,6 +250,10 @@ func (c *Config) resolveSlackAuthMode() {
 	c.Slack.AuthMode = resolveAuthMode(c.Slack.AuthMode, c.Slack.ClientID)
 }
 
+func (c *Config) resolveBitbucketAuthMode() {
+	c.Bitbucket.AuthMode = resolveAuthMode(c.Bitbucket.AuthMode, c.Bitbucket.ClientID)
+}
+
 // Validate checks Google auth mode settings. Broker mode requires an HTTPS
 // broker base URL and must not depend on a desktop Google client_secret.
 // Local/BYO mode requires a desktop client_id and preserves existing OAuth
@@ -252,7 +280,34 @@ func (c Config) Validate() error {
 	if err := c.validateGitHubAuth(); err != nil {
 		return err
 	}
-	return c.validateSlackAuth()
+	if err := c.validateSlackAuth(); err != nil {
+		return err
+	}
+	return c.validateBitbucketAuth()
+}
+
+func (c Config) validateBitbucketAuth() error {
+	switch strings.ToLower(strings.TrimSpace(c.Bitbucket.AuthMode)) {
+	case AuthModeBroker:
+		if err := validateBrokerURL(c.Bitbucket.BrokerBaseURL, "bitbucket.broker_base_url", "SHIET_BITBUCKET_BROKER_BASE_URL"); err != nil {
+			return fmt.Errorf("%w: %v", ErrBitbucketBrokerConfig, err)
+		}
+		return nil
+	case AuthModeLocal:
+		clientID := strings.TrimSpace(c.Bitbucket.ClientID)
+		clientSecret := strings.TrimSpace(c.Bitbucket.ClientSecret)
+		if clientID == "" {
+			return fmt.Errorf("%w: set bitbucket.client_id or SHIET_BITBUCKET_CLIENT_ID", ErrBitbucketLocalCredentials)
+		}
+		if clientSecret == "" {
+			return fmt.Errorf("%w: set bitbucket.client_secret or SHIET_BITBUCKET_CLIENT_SECRET for local/BYO Bitbucket OAuth; desktop apps cannot keep it confidential, so public builds must use broker mode", ErrBitbucketLocalCredentials)
+		}
+		return nil
+	case "":
+		return nil
+	default:
+		return fmt.Errorf("bitbucket.auth_mode %q is invalid (use %q or %q)", c.Bitbucket.AuthMode, AuthModeBroker, AuthModeLocal)
+	}
 }
 
 func (c Config) validateLog() error {
@@ -310,6 +365,12 @@ func (c Config) UsesGitHubBrokerAuth() bool {
 // secret-only OAuth broker.
 func (c Config) UsesSlackBrokerAuth() bool {
 	return strings.EqualFold(strings.TrimSpace(c.Slack.AuthMode), AuthModeBroker)
+}
+
+// UsesBitbucketBrokerAuth reports whether Bitbucket connect should use the hosted
+// secret-only OAuth broker.
+func (c Config) UsesBitbucketBrokerAuth() bool {
+	return strings.EqualFold(strings.TrimSpace(c.Bitbucket.AuthMode), AuthModeBroker)
 }
 
 func (c Config) validateGitHubAuth() error {

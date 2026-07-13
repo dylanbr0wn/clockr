@@ -35,6 +35,11 @@ export type ConnectActionsProps = ConnectActionsBase &
         oauthAvailable: boolean;
         onOAuthConnect: () => void;
       }
+    | {
+        provider: "bitbucket";
+        oauthAvailable: boolean;
+        onOAuthConnect: () => void;
+      }
   );
 
 export function ConnectActions(props: ConnectActionsProps) {
@@ -155,13 +160,17 @@ export function ConnectActions(props: ConnectActionsProps) {
           ) : (
             <>
               <MessagesSquare className="size-4" />
-              Connect with Slack
+              {props.provider === "bitbucket"
+                ? "Connect with Bitbucket"
+                : "Connect with Slack"}
             </>
           )}
         </Button>
       ) : (
         <p className="text-sm text-muted-foreground">
-          Slack OAuth is not configured for this build.
+          {props.provider === "bitbucket"
+            ? "Bitbucket OAuth is not configured for this build."
+            : "Slack OAuth is not configured for this build."}
         </p>
       )}
 

@@ -20,6 +20,10 @@
 #   SHIET_SLACK_BROKER_BASE_URL    -> slack.broker_base_url
 #   SHIET_SLACK_CLIENT_ID          -> slack.client_id
 #   SHIET_SLACK_CLIENT_SECRET      -> slack.client_secret
+#   SHIET_BITBUCKET_AUTH_MODE       -> bitbucket.auth_mode
+#   SHIET_BITBUCKET_BROKER_BASE_URL -> bitbucket.broker_base_url
+#   SHIET_BITBUCKET_CLIENT_ID       -> bitbucket.client_id
+#   SHIET_BITBUCKET_CLIENT_SECRET   -> bitbucket.client_secret
 #
 # Logging (shared zerolog stack; see docs/logging.md):
 # log.path defaults to a sibling of shiet.db under <UserConfigDir>/shiet/shiet.log.
@@ -48,6 +52,10 @@
 # slack.auth_mode mirrors GitHub (OAuth only; no PAT path):
 #   - broker (public default): the hosted broker owns the shared Slack app secret
 #   - local: BYO Slack app credentials when both client_id and client_secret are set
+#
+# bitbucket.auth_mode mirrors Slack (OAuth only; no PAT path):
+#   - broker (public default): the hosted broker owns the shared Bitbucket OAuth consumer secret
+#   - local: BYO Bitbucket OAuth consumer credentials when both client_id and client_secret are set
 
 db:
   path: ~/.config/shiet/shiet.db
@@ -69,6 +77,12 @@ github:
   client_secret: ""
 
 slack:
+  auth_mode: broker
+  broker_base_url: https://auth.shiet.app
+  client_id: ""
+  client_secret: ""
+
+bitbucket:
   auth_mode: broker
   broker_base_url: https://auth.shiet.app
   client_id: ""

@@ -10,6 +10,7 @@ import (
 	"github.com/dylanbr0wn/shiet/internal/ai"
 	"github.com/dylanbr0wn/shiet/internal/config"
 	"github.com/dylanbr0wn/shiet/internal/integration/connection"
+	"github.com/dylanbr0wn/shiet/internal/integration/bitbucket"
 	"github.com/dylanbr0wn/shiet/internal/integration/github"
 	"github.com/dylanbr0wn/shiet/internal/integration/google"
 	"github.com/dylanbr0wn/shiet/internal/integration/slack"
@@ -28,6 +29,7 @@ type App struct {
 	google   *google.Provider
 	github   *github.Provider
 	slack    *slack.Provider
+	bitbucket *bitbucket.Provider
 	registry *connection.Registry
 }
 
@@ -55,7 +57,7 @@ func (a *App) GetGoogleAuthStatus() GoogleAuthStatus {
 // live at bind time (Wails reflects bound instances up front).
 func NewApp(conn *sql.DB, cfg config.Config, logger zerolog.Logger) *App {
 	svc := service.New(conn)
-	googleProvider, githubProvider, slackProvider, registry := wireIntegrations(conn, svc, cfg)
+	googleProvider, githubProvider, slackProvider, bitbucketProvider, registry := wireIntegrations(conn, svc, cfg)
 	return &App{
 		conn:     conn,
 		log:      logger,
@@ -64,6 +66,7 @@ func NewApp(conn *sql.DB, cfg config.Config, logger zerolog.Logger) *App {
 		google:   googleProvider,
 		github:   githubProvider,
 		slack:    slackProvider,
+		bitbucket: bitbucketProvider,
 		registry: registry,
 	}
 }

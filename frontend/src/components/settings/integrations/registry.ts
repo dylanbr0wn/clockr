@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import type { IntegrationConnection } from "@/lib/api";
+import { BitbucketEvidenceConfig } from "./BitbucketEvidenceConfig";
 import { CalendarSourceConfig } from "./CalendarSourceConfig";
 import { GitHubEvidenceConfig } from "./GitHubEvidenceConfig";
 import { SlackEvidenceConfig } from "./SlackEvidenceConfig";
@@ -7,7 +8,7 @@ import type { IntegrationConfigSlotProps } from "./types";
 
 export type IntegrationKind = "calendar_source" | "activity_evidence";
 
-export type IntegrationProviderId = "google" | "github" | "slack";
+export type IntegrationProviderId = "google" | "github" | "slack" | "bitbucket";
 
 export type IntegrationCatalogEntry = {
   id: IntegrationProviderId;
@@ -65,6 +66,12 @@ export const integrationRegistry: IntegrationCatalogEntry[] = [
     displayName: "Slack",
     kind: "activity_evidence",
     ConfigSlot: SlackEvidenceConfig,
+  },
+  {
+    id: "bitbucket",
+    displayName: "Bitbucket",
+    kind: "activity_evidence",
+    ConfigSlot: BitbucketEvidenceConfig,
   },
 ];
 

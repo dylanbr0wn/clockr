@@ -891,6 +891,51 @@ func (s Server) postGoogleToken(ctx context.Context, form url.Values) (providerT
 	return tok, nil
 }
 
+func (s Server) postProviderToken(ctx context.Context, provider string, form url.Values) (providerTokenResponse, error) {
+	desc, ok := oauth.Lookup(provider)
+	if !ok {
+		return providerTokenResponse{}, fmt.Errorf("unknown provider %q", provider)
+	}
+	tokenURL := s.providerTokenURL(desc)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, strings.NewReader(form.Encode()))
+	if err != nil {
+		return providerTokenResponse{}, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if desc.AcceptJSON {
+		req.Header.Set("Accept", "application/json")
+	}
+
+	client := s.HTTPClient
+	if client == nil {
+		client = http.DefaultClient
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return providerTokenResponse{}, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return providerTokenResponse{}, err
+	}
+	var tok providerTokenResponse
+	if err := json.Unmarshal(body, &tok); err != nil {
+		return providerTokenResponse{}, err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 || tok.AccessToken == "" || tok.Error != "" {
+		code := tok.Error
+		if code == "" {
+			code = "token_request_failed"
+		}
+		return providerTokenResponse{}, &providerTokenError{Code: code, Desc: tok.ErrorDesc}
+	}
+	if tok.TokenType == "" {
+		tok.TokenType = "Bearer"
+	}
+	return tok, nil
+}
+
 func (s Server) buildHandoffURL(state store.OAuthState, handoffCode string) (string, error) {
 	base := strings.TrimSpace(state.DesktopHandoffRedirect)
 	if base == "" {
@@ -929,6 +974,10 @@ func (s Server) providerScopes(provider string) []string {
 		if len(s.Config.SlackScopes) > 0 {
 			return s.Config.SlackScopes
 		}
+	case oauth.ProviderBitbucket:
+		if len(s.Config.BitbucketScopes) > 0 {
+			return s.Config.BitbucketScopes
+		}
 	case oauth.ProviderGoogle:
 		if len(s.Config.GoogleScopes) > 0 {
 			return s.Config.GoogleScopes
@@ -952,6 +1001,13 @@ func (s Server) providerCredentials(provider string) (oauth.ClientCredentials, b
 	case oauth.ProviderSlack:
 		id := strings.TrimSpace(s.Config.SlackClientID)
 		secret := strings.TrimSpace(s.Config.SlackClientSecret)
+		if id == "" || secret == "" {
+			return oauth.ClientCredentials{}, false
+		}
+		return oauth.ClientCredentials{ClientID: id, ClientSecret: secret}, true
+	case oauth.ProviderBitbucket:
+		id := strings.TrimSpace(s.Config.BitbucketClientID)
+		secret := strings.TrimSpace(s.Config.BitbucketClientSecret)
 		if id == "" || secret == "" {
 			return oauth.ClientCredentials{}, false
 		}
@@ -1013,6 +1069,8 @@ func (s Server) desktopHandoffURLForProvider(provider string) string {
 		return strings.TrimSpace(s.Config.GitHubDesktopHandoffURL)
 	case oauth.ProviderSlack:
 		return strings.TrimSpace(s.Config.SlackDesktopHandoffURL)
+	case oauth.ProviderBitbucket:
+		return strings.TrimSpace(s.Config.BitbucketDesktopHandoffURL)
 	default:
 		return strings.TrimSpace(s.Config.DesktopHandoffURL)
 	}

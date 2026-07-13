@@ -14,6 +14,28 @@ type AppSetting struct {
 	UpdatedAt string `json:"updated_at"`
 }
 
+type BitbucketRepo struct {
+	ID            int64  `json:"id"`
+	AccountID     string `json:"account_id"`
+	WorkspaceUuid string `json:"workspace_uuid"`
+	ExternalID    string `json:"external_id"`
+	Name          string `json:"name"`
+	FullName      string `json:"full_name"`
+	Private       int64  `json:"private"`
+	Selected      int64  `json:"selected"`
+	CreatedAt     string `json:"created_at"`
+}
+
+type BitbucketWorkspace struct {
+	ID         int64  `json:"id"`
+	AccountID  string `json:"account_id"`
+	ExternalID string `json:"external_id"`
+	Slug       string `json:"slug"`
+	Name       string `json:"name"`
+	Selected   int64  `json:"selected"`
+	CreatedAt  string `json:"created_at"`
+}
+
 type Calendar struct {
 	ID                int64         `json:"id"`
 	Provider          string        `json:"provider"`

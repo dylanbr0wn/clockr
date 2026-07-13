@@ -244,6 +244,62 @@ func (s *Service) SetSlackChannelSelected(ctx context.Context, channelID int64, 
 	return nil
 }
 
+// ListBitbucketWorkspaces returns synced Bitbucket workspaces for evidence selection.
+func (s *Service) ListBitbucketWorkspaces(ctx context.Context) ([]BitbucketWorkspace, error) {
+	rows, err := s.q.ListBitbucketWorkspaces(ctx)
+	if err != nil {
+		return nil, mapErr("list bitbucket workspaces", err)
+	}
+	out := make([]BitbucketWorkspace, len(rows))
+	for i, r := range rows {
+		out[i] = toBitbucketWorkspace(r)
+	}
+	return out, nil
+}
+
+// SetBitbucketWorkspaceSelected toggles whether a workspace is included as an evidence source.
+func (s *Service) SetBitbucketWorkspaceSelected(ctx context.Context, workspaceID int64, selected bool) error {
+	sel := int64(0)
+	if selected {
+		sel = 1
+	}
+	if err := s.q.SetBitbucketWorkspaceSelected(ctx, sqlc.SetBitbucketWorkspaceSelectedParams{
+		Selected: sel,
+		ID:       workspaceID,
+	}); err != nil {
+		return mapErr("set bitbucket workspace selected", err)
+	}
+	return nil
+}
+
+// ListBitbucketRepos returns synced Bitbucket repositories for evidence selection.
+func (s *Service) ListBitbucketRepos(ctx context.Context) ([]BitbucketRepo, error) {
+	rows, err := s.q.ListBitbucketRepos(ctx)
+	if err != nil {
+		return nil, mapErr("list bitbucket repos", err)
+	}
+	out := make([]BitbucketRepo, len(rows))
+	for i, r := range rows {
+		out[i] = toBitbucketRepo(r)
+	}
+	return out, nil
+}
+
+// SetBitbucketRepoSelected toggles whether a repo is included as an evidence source.
+func (s *Service) SetBitbucketRepoSelected(ctx context.Context, repoID int64, selected bool) error {
+	sel := int64(0)
+	if selected {
+		sel = 1
+	}
+	if err := s.q.SetBitbucketRepoSelected(ctx, sqlc.SetBitbucketRepoSelectedParams{
+		Selected: sel,
+		ID:       repoID,
+	}); err != nil {
+		return mapErr("set bitbucket repo selected", err)
+	}
+	return nil
+}
+
 func (s *Service) ListSelectedCalendars(ctx context.Context) ([]Calendar, error) {
 	rows, err := s.q.ListSelectedCalendars(ctx)
 	if err != nil {

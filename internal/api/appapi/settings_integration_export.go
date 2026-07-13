@@ -7,6 +7,7 @@ import (
 	"connectrpc.com/connect"
 	appv1 "github.com/dylanbr0wn/shiet/gen/shiet/app/v1"
 	"github.com/dylanbr0wn/shiet/internal/integration/connection"
+	"github.com/dylanbr0wn/shiet/internal/integration/bitbucket"
 	"github.com/dylanbr0wn/shiet/internal/integration/github"
 	"github.com/dylanbr0wn/shiet/internal/integration/google"
 	"github.com/dylanbr0wn/shiet/internal/integration/slack"
@@ -39,11 +40,13 @@ func (s *SettingsService) SetSetting(ctx context.Context, req *connect.Request[a
 type IntegrationService struct {
 	service              *service.Service
 	listConnections      func(context.Context) ([]connection.Connection, error)
-	refreshGitHubRepos   func(context.Context, string) error
-	refreshSlackChannels func(context.Context, string) error
-	google               *google.Provider
-	github               *github.Provider
-	slack                *slack.Provider
+	refreshGitHubRepos        func(context.Context, string) error
+	refreshSlackChannels      func(context.Context, string) error
+	refreshBitbucketResources func(context.Context, string) error
+	google                    *google.Provider
+	github                    *github.Provider
+	slack                     *slack.Provider
+	bitbucket                 *bitbucket.Provider
 }
 
 func (s *IntegrationService) ListIntegrationConnections(ctx context.Context, _ *connect.Request[appv1.ListIntegrationConnectionsRequest]) (*connect.Response[appv1.ListIntegrationConnectionsResponse], error) {
@@ -129,6 +132,79 @@ func (s *IntegrationService) RefreshSlackChannels(ctx context.Context, req *conn
 		return nil, mapServiceError(err)
 	}
 	return connect.NewResponse(&appv1.RefreshSlackChannelsResponse{}), nil
+}
+
+func (s *IntegrationService) ListBitbucketWorkspaces(ctx context.Context, _ *connect.Request[appv1.ListBitbucketWorkspacesRequest]) (*connect.Response[appv1.ListBitbucketWorkspacesResponse], error) {
+	items, err := s.service.ListBitbucketWorkspaces(ctx)
+	if err != nil {
+		return nil, mapServiceError(err)
+	}
+	out := make([]*appv1.BitbucketWorkspace, len(items))
+	for i, item := range items {
+		out[i] = &appv1.BitbucketWorkspace{
+			Id:         item.ID,
+			AccountId:  item.AccountID,
+			ExternalId: item.ExternalID,
+			Slug:       item.Slug,
+			Name:       item.Name,
+			Selected:   item.Selected,
+		}
+	}
+	return connect.NewResponse(&appv1.ListBitbucketWorkspacesResponse{Workspaces: out}), nil
+}
+
+func (s *IntegrationService) SetBitbucketWorkspaceSelected(ctx context.Context, req *connect.Request[appv1.SetBitbucketWorkspaceSelectedRequest]) (*connect.Response[appv1.SetBitbucketWorkspaceSelectedResponse], error) {
+	if err := requireID(req.Msg.WorkspaceId, "workspace_id"); err != nil {
+		return nil, err
+	}
+	if err := s.service.SetBitbucketWorkspaceSelected(ctx, req.Msg.WorkspaceId, req.Msg.Selected); err != nil {
+		return nil, mapServiceError(err)
+	}
+	return connect.NewResponse(&appv1.SetBitbucketWorkspaceSelectedResponse{}), nil
+}
+
+func (s *IntegrationService) ListBitbucketRepos(ctx context.Context, _ *connect.Request[appv1.ListBitbucketReposRequest]) (*connect.Response[appv1.ListBitbucketReposResponse], error) {
+	items, err := s.service.ListBitbucketRepos(ctx)
+	if err != nil {
+		return nil, mapServiceError(err)
+	}
+	out := make([]*appv1.BitbucketRepo, len(items))
+	for i, item := range items {
+		out[i] = &appv1.BitbucketRepo{
+			Id:            item.ID,
+			AccountId:     item.AccountID,
+			WorkspaceUuid: item.WorkspaceUUID,
+			ExternalId:    item.ExternalID,
+			Name:          item.Name,
+			FullName:      item.FullName,
+			Private:       item.Private,
+			Selected:      item.Selected,
+		}
+	}
+	return connect.NewResponse(&appv1.ListBitbucketReposResponse{Repos: out}), nil
+}
+
+func (s *IntegrationService) SetBitbucketRepoSelected(ctx context.Context, req *connect.Request[appv1.SetBitbucketRepoSelectedRequest]) (*connect.Response[appv1.SetBitbucketRepoSelectedResponse], error) {
+	if err := requireID(req.Msg.RepoId, "repo_id"); err != nil {
+		return nil, err
+	}
+	if err := s.service.SetBitbucketRepoSelected(ctx, req.Msg.RepoId, req.Msg.Selected); err != nil {
+		return nil, mapServiceError(err)
+	}
+	return connect.NewResponse(&appv1.SetBitbucketRepoSelectedResponse{}), nil
+}
+
+func (s *IntegrationService) RefreshBitbucketResources(ctx context.Context, req *connect.Request[appv1.RefreshBitbucketResourcesRequest]) (*connect.Response[appv1.RefreshBitbucketResourcesResponse], error) {
+	if req.Msg.AccountId == "" {
+		return nil, invalidArgument("account_id is required")
+	}
+	if s.refreshBitbucketResources == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("Bitbucket refresh is unavailable"))
+	}
+	if err := s.refreshBitbucketResources(ctx, req.Msg.AccountId); err != nil {
+		return nil, mapServiceError(err)
+	}
+	return connect.NewResponse(&appv1.RefreshBitbucketResourcesResponse{}), nil
 }
 
 type ExportService struct{ service *service.Service }

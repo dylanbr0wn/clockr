@@ -57,6 +57,11 @@ service IntegrationService {
   rpc ListSlackChannels(ListSlackChannelsRequest) returns (ListSlackChannelsResponse);
   rpc SetSlackChannelSelected(SetSlackChannelSelectedRequest) returns (SetSlackChannelSelectedResponse);
   rpc RefreshSlackChannels(RefreshSlackChannelsRequest) returns (RefreshSlackChannelsResponse);
+  rpc ListBitbucketWorkspaces(ListBitbucketWorkspacesRequest) returns (ListBitbucketWorkspacesResponse);
+  rpc SetBitbucketWorkspaceSelected(SetBitbucketWorkspaceSelectedRequest) returns (SetBitbucketWorkspaceSelectedResponse);
+  rpc ListBitbucketRepos(ListBitbucketReposRequest) returns (ListBitbucketReposResponse);
+  rpc SetBitbucketRepoSelected(SetBitbucketRepoSelectedRequest) returns (SetBitbucketRepoSelectedResponse);
+  rpc RefreshBitbucketResources(RefreshBitbucketResourcesRequest) returns (RefreshBitbucketResourcesResponse);
 }
 
 service ExportService {
@@ -356,6 +361,34 @@ message SetSlackChannelSelectedRequest { int64 channel_id = 1; bool selected = 2
 message SetSlackChannelSelectedResponse {}
 message RefreshSlackChannelsRequest { string account_id = 1; }
 message RefreshSlackChannelsResponse {}
+message BitbucketWorkspace {
+  int64 id = 1;
+  string account_id = 2;
+  string external_id = 3;
+  string slug = 4;
+  string name = 5;
+  bool selected = 6;
+}
+message ListBitbucketWorkspacesRequest {}
+message ListBitbucketWorkspacesResponse { repeated BitbucketWorkspace workspaces = 1; }
+message SetBitbucketWorkspaceSelectedRequest { int64 workspace_id = 1; bool selected = 2; }
+message SetBitbucketWorkspaceSelectedResponse {}
+message BitbucketRepo {
+  int64 id = 1;
+  string account_id = 2;
+  string workspace_uuid = 3;
+  string external_id = 4;
+  string name = 5;
+  string full_name = 6;
+  bool private = 7;
+  bool selected = 8;
+}
+message ListBitbucketReposRequest {}
+message ListBitbucketReposResponse { repeated BitbucketRepo repos = 1; }
+message SetBitbucketRepoSelectedRequest { int64 repo_id = 1; bool selected = 2; }
+message SetBitbucketRepoSelectedResponse {}
+message RefreshBitbucketResourcesRequest { string account_id = 1; }
+message RefreshBitbucketResourcesResponse {}
 
 message ExportTemplate {
   int64 id = 1;

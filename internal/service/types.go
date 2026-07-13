@@ -84,6 +84,28 @@ type SlackChannel struct {
 	Selected   bool   `json:"selected"`
 }
 
+// BitbucketWorkspace is a synced Bitbucket workspace available as an evidence source.
+type BitbucketWorkspace struct {
+	ID         int64  `json:"id"`
+	AccountID  string `json:"accountId"`
+	ExternalID string `json:"externalId"`
+	Slug       string `json:"slug"`
+	Name       string `json:"name"`
+	Selected   bool   `json:"selected"`
+}
+
+// BitbucketRepo is a synced Bitbucket repository available as an evidence source.
+type BitbucketRepo struct {
+	ID            int64  `json:"id"`
+	AccountID     string `json:"accountId"`
+	WorkspaceUUID string `json:"workspaceUuid"`
+	ExternalID    string `json:"externalId"`
+	Name          string `json:"name"`
+	FullName      string `json:"fullName"`
+	Private       bool   `json:"private"`
+	Selected      bool   `json:"selected"`
+}
+
 // Attendee mirrors the fields shiet keeps from a Google Calendar attendee.
 type Attendee struct {
 	Email          string `json:"email"`
@@ -214,6 +236,30 @@ func toSlackChannel(r sqlc.SlackChannel) SlackChannel {
 		Name:       r.Name,
 		Private:    r.IsPrivate == 1,
 		Selected:   r.Selected == 1,
+	}
+}
+
+func toBitbucketWorkspace(r sqlc.BitbucketWorkspace) BitbucketWorkspace {
+	return BitbucketWorkspace{
+		ID:         r.ID,
+		AccountID:  r.AccountID,
+		ExternalID: r.ExternalID,
+		Slug:       r.Slug,
+		Name:       r.Name,
+		Selected:   r.Selected == 1,
+	}
+}
+
+func toBitbucketRepo(r sqlc.BitbucketRepo) BitbucketRepo {
+	return BitbucketRepo{
+		ID:            r.ID,
+		AccountID:     r.AccountID,
+		WorkspaceUUID: r.WorkspaceUuid,
+		ExternalID:    r.ExternalID,
+		Name:          r.Name,
+		FullName:      r.FullName,
+		Private:       r.Private == 1,
+		Selected:      r.Selected == 1,
 	}
 }
 

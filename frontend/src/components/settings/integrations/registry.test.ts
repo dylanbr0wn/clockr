@@ -5,7 +5,7 @@ import { integrationRegistry } from "./registry";
 
 describe("integrationRegistry", () => {
   it("registers all providers with ConfigSlot only", () => {
-    for (const id of ["google", "github", "slack"] as const) {
+    for (const id of ["google", "github", "slack", "bitbucket"] as const) {
       const entry = integrationRegistry.find((item) => item.id === id);
       expect(entry).toBeDefined();
       expect(entry?.ConfigSlot).toBeDefined();
@@ -16,7 +16,7 @@ describe("integrationRegistry", () => {
     const google = integrationRegistry.find((entry) => entry.id === "google");
     expect(google?.kind).toBe("calendar_source");
 
-    for (const id of ["github", "slack"] as const) {
+    for (const id of ["github", "slack", "bitbucket"] as const) {
       const entry = integrationRegistry.find((item) => item.id === id);
       expect(entry?.kind).toBe("activity_evidence");
     }

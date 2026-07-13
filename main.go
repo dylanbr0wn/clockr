@@ -75,9 +75,14 @@ func main() {
 					_, err := app.slack.SyncChannels(ctx, accountID)
 					return err
 				},
+				RefreshBitbucketResources: func(ctx context.Context, accountID string) error {
+					_, _, err := app.bitbucket.SyncWorkspacesRepos(ctx, accountID)
+					return err
+				},
 				Google: app.google,
 				GitHub: app.github,
 				Slack:  app.slack,
+				Bitbucket: app.bitbucket,
 			})),
 		},
 		Frameless:        false,

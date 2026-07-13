@@ -8,6 +8,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/dylanbr0wn/shiet/gen/shiet/app/v1/appv1connect"
 	"github.com/dylanbr0wn/shiet/internal/integration/connection"
+	"github.com/dylanbr0wn/shiet/internal/integration/bitbucket"
 	"github.com/dylanbr0wn/shiet/internal/integration/github"
 	"github.com/dylanbr0wn/shiet/internal/integration/google"
 	"github.com/dylanbr0wn/shiet/internal/integration/slack"
@@ -18,11 +19,13 @@ type Dependencies struct {
 	Service              *service.Service
 	SyncPeriod           func(context.Context, int64) (service.SyncResult, error)
 	ListConnections      func(context.Context) ([]connection.Connection, error)
-	RefreshGitHubRepos   func(context.Context, string) error
-	RefreshSlackChannels func(context.Context, string) error
-	Google               *google.Provider
-	GitHub               *github.Provider
-	Slack                *slack.Provider
+	RefreshGitHubRepos          func(context.Context, string) error
+	RefreshSlackChannels        func(context.Context, string) error
+	RefreshBitbucketResources   func(context.Context, string) error
+	Google                      *google.Provider
+	GitHub                      *github.Provider
+	Slack                       *slack.Provider
+	Bitbucket                   *bitbucket.Provider
 }
 
 func NewHandler(deps Dependencies) http.Handler {
@@ -42,11 +45,13 @@ func NewHandler(deps Dependencies) http.Handler {
 	path, handler = appv1connect.NewIntegrationServiceHandler(&IntegrationService{
 		service:              deps.Service,
 		listConnections:      deps.ListConnections,
-		refreshGitHubRepos:   deps.RefreshGitHubRepos,
-		refreshSlackChannels: deps.RefreshSlackChannels,
-		google:               deps.Google,
-		github:               deps.GitHub,
-		slack:                deps.Slack,
+		refreshGitHubRepos:        deps.RefreshGitHubRepos,
+		refreshSlackChannels:      deps.RefreshSlackChannels,
+		refreshBitbucketResources: deps.RefreshBitbucketResources,
+		google:                    deps.Google,
+		github:                    deps.GitHub,
+		slack:                     deps.Slack,
+		bitbucket:                 deps.Bitbucket,
 	})
 	mount(path, handler)
 	path, handler = appv1connect.NewExportServiceHandler(&ExportService{service: deps.Service})

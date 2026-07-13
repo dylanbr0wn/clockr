@@ -7,6 +7,7 @@ import (
 	"github.com/dylanbr0wn/shiet/internal/config"
 	"github.com/dylanbr0wn/shiet/internal/db/sqlc"
 	"github.com/dylanbr0wn/shiet/internal/integration/connection"
+	"github.com/dylanbr0wn/shiet/internal/integration/bitbucket"
 	"github.com/dylanbr0wn/shiet/internal/integration/github"
 	"github.com/dylanbr0wn/shiet/internal/integration/google"
 	"github.com/dylanbr0wn/shiet/internal/integration/secrets"
@@ -34,7 +35,7 @@ func (a connectionAdapter) ListByProvider(ctx context.Context, provider string) 
 	return out, nil
 }
 
-func wireIntegrations(conn *sql.DB, svc *service.Service, cfg config.Config) (*google.Provider, *github.Provider, *slack.Provider, *connection.Registry) {
+func wireIntegrations(conn *sql.DB, svc *service.Service, cfg config.Config) (*google.Provider, *github.Provider, *slack.Provider, *bitbucket.Provider, *connection.Registry) {
 	registry := connection.NewRegistry(conn)
 	store := secrets.NewKeyringStore()
 	queries := sqlc.New(conn)
@@ -42,6 +43,7 @@ func wireIntegrations(conn *sql.DB, svc *service.Service, cfg config.Config) (*g
 	auth := google.AuthSettingsFromConfig(cfg)
 	githubAuth := github.AuthSettingsFromConfig(cfg)
 	slackAuth := slack.AuthSettingsFromConfig(cfg)
+	bitbucketAuth := bitbucket.AuthSettingsFromConfig(cfg)
 	googleProvider := &google.Provider{
 		Config:        google.OAuthConfig(auth.ClientID, auth.ClientSecret),
 		AuthMode:      auth.Mode,
@@ -66,13 +68,21 @@ func wireIntegrations(conn *sql.DB, svc *service.Service, cfg config.Config) (*g
 		AuthMode:      slackAuth.Mode,
 		BrokerBaseURL: slackAuth.BrokerBaseURL,
 	}
+	bitbucketProvider := &bitbucket.Provider{
+		Config:        bitbucket.OAuthConfig(bitbucketAuth.ClientID, bitbucketAuth.ClientSecret),
+		Store:         store,
+		Registry:      registry,
+		Queries:       queries,
+		AuthMode:      bitbucketAuth.Mode,
+		BrokerBaseURL: bitbucketAuth.BrokerBaseURL,
+	}
 
 	svc.SetCalendarSync(service.CalendarSyncConfig{
 		Puller:      googleProvider,
 		Connections: connectionAdapter{reg: registry},
 	})
 	svc.SetEvidence(service.EvidenceConfig{
-		Providers: []service.EvidenceProvider{githubProvider, slackProvider},
+		Providers: []service.EvidenceProvider{githubProvider, slackProvider, bitbucketProvider},
 	})
-	return googleProvider, githubProvider, slackProvider, registry
+	return googleProvider, githubProvider, slackProvider, bitbucketProvider, registry
 }

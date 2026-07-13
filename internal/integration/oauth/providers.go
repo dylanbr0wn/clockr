@@ -5,9 +5,10 @@ import (
 )
 
 const (
-	ProviderGoogle = "google"
-	ProviderGitHub = "github"
-	ProviderSlack  = "slack"
+	ProviderGoogle    = "google"
+	ProviderGitHub    = "github"
+	ProviderSlack     = "slack"
+	ProviderBitbucket = "bitbucket"
 
 	googleCalendarReadScope = "https://www.googleapis.com/auth/calendar.readonly"
 )
@@ -57,5 +58,18 @@ func init() {
 		ScopeSplitComma: true,
 		ScopeParam:      "user_scope",
 		Capabilities:    Capabilities{Refresh: false, Revoke: true},
+	})
+	register(Provider{
+		ID:              ProviderBitbucket,
+		DisplayName:     "Bitbucket",
+		AuthURL:         "https://bitbucket.org/site/oauth2/authorize",
+		TokenURL:        "https://bitbucket.org/site/oauth2/access_token",
+		AuthStyle:       oauth2.AuthStyleInParams,
+		DefaultScopes:   []string{"account", "repository"},
+		AuthURLHost:     "bitbucket.org",
+		AuthURLPaths:    []string{"/site/oauth2/authorize"},
+		AcceptJSON:      true,
+		ScopeSplitComma: true,
+		Capabilities:    Capabilities{Refresh: true, Revoke: false},
 	})
 }

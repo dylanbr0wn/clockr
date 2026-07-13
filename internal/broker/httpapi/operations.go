@@ -226,10 +226,11 @@ func (s BrokerService) refreshToken(ctx context.Context, req *brokerv1.RefreshTo
 	if req.Provider == brokerv1.Provider_PROVIDER_GITHUB || req.Provider == brokerv1.Provider_PROVIDER_SLACK {
 		return nil, opError(codes.OperationNotSupported)
 	}
-	if req.Provider != brokerv1.Provider_PROVIDER_GOOGLE {
+	provider, ok := providerName(req.Provider)
+	if !ok {
 		return nil, opError(codes.ProviderNotConfigured)
 	}
-	if !s.providerConfigured("google") {
+	if !s.providerConfigured(provider) {
 		return nil, opError(codes.ProviderNotConfigured)
 	}
 	if s.Config.RefreshDisabled {
@@ -257,12 +258,32 @@ func (s BrokerService) refreshToken(ctx context.Context, req *brokerv1.RefreshTo
 	form := url.Values{}
 	form.Set("grant_type", "refresh_token")
 	form.Set("refresh_token", refreshToken)
-	form.Set("client_id", s.Config.GoogleClientID)
-	form.Set("client_secret", s.Config.GoogleClientSecret)
-	if len(req.Scopes) > 0 {
-		form.Set("scope", strings.Join(req.Scopes, " "))
+	switch req.Provider {
+	case brokerv1.Provider_PROVIDER_GOOGLE:
+		form.Set("client_id", s.Config.GoogleClientID)
+		form.Set("client_secret", s.Config.GoogleClientSecret)
+		if len(req.Scopes) > 0 {
+			form.Set("scope", strings.Join(req.Scopes, " "))
+		}
+	default:
+		creds, ok := s.providerCredentials(provider)
+		if !ok {
+			return nil, opError(codes.ProviderNotConfigured)
+		}
+		form.Set("client_id", creds.ClientID)
+		form.Set("client_secret", creds.ClientSecret)
 	}
-	token, err := s.postGoogleToken(ctx, form)
+
+	var (
+		token providerTokenResponse
+		err   error
+	)
+	switch req.Provider {
+	case brokerv1.Provider_PROVIDER_GOOGLE:
+		token, err = s.postGoogleToken(ctx, form)
+	default:
+		token, err = s.postProviderToken(ctx, provider, form)
+	}
 	if err != nil {
 		if !s.allow(ratelimit.Key(codes.LimitKeyRefreshFail, meta.ipBucket), limitRefreshFailure) {
 			s.Metrics.IncRateLimited(codes.SurfaceRefreshFailure)
@@ -273,6 +294,11 @@ func (s BrokerService) refreshToken(ctx context.Context, req *brokerv1.RefreshTo
 			s.Metrics.IncRefreshFailure(codes.OutcomeInvalidGrant)
 			s.Metrics.IncQuotaRisk(codes.QuotaInvalidGrant)
 			s.logInfo(codes.EventRefresh, "outcome", codes.OutcomeInvalidGrant, "ip_bucket", meta.ipBucket, "app_version", appVersion)
+			return nil, opError(codes.InvalidRefreshToken)
+		}
+		if req.Provider == brokerv1.Provider_PROVIDER_BITBUCKET {
+			s.Metrics.IncRefreshFailure(codes.OutcomeGoogleFailed)
+			s.logInfo(codes.EventRefresh, "outcome", codes.OutcomeGoogleFailed, "ip_bucket", meta.ipBucket, "app_version", appVersion)
 			return nil, opError(codes.InvalidRefreshToken)
 		}
 		s.Metrics.IncRefreshFailure(codes.OutcomeGoogleFailed)
@@ -351,6 +377,8 @@ func providerName(provider brokerv1.Provider) (string, bool) {
 		return "github", true
 	case brokerv1.Provider_PROVIDER_SLACK:
 		return "slack", true
+	case brokerv1.Provider_PROVIDER_BITBUCKET:
+		return "bitbucket", true
 	default:
 		return "", false
 	}

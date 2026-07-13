@@ -293,6 +293,8 @@ func brokerProvider(provider string) brokerv1.Provider {
 		return brokerv1.Provider_PROVIDER_GITHUB
 	case ProviderSlack:
 		return brokerv1.Provider_PROVIDER_SLACK
+	case ProviderBitbucket:
+		return brokerv1.Provider_PROVIDER_BITBUCKET
 	default:
 		return brokerv1.Provider_PROVIDER_GOOGLE
 	}

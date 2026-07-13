@@ -7,6 +7,7 @@ import {
   useIntegrationConnections,
   useRefreshGitHubRepos,
   useRefreshSlackChannels,
+  useRefreshBitbucketResources,
 } from "@/lib/api";
 import { SettingBlock } from "../SettingBlock";
 import { AuthModeDescription } from "./AuthModeDescription";
@@ -45,6 +46,13 @@ const PROVIDER_LABELS: Record<
     connectedDescription:
       "Connected Slack workspaces are used to list channels for evidence selection.",
   },
+  bitbucket: {
+    account: "Bitbucket account",
+    connected: "Connected Accounts",
+    empty: "No Bitbucket account connected yet.",
+    connectedDescription:
+      "Connected Bitbucket accounts are used to list workspaces and repositories for evidence selection.",
+  },
 };
 
 export function IntegrationConnectShell({
@@ -58,12 +66,16 @@ export function IntegrationConnectShell({
   const disconnectIntegration = useDisconnectIntegration();
   const refreshGitHubRepos = useRefreshGitHubRepos();
   const refreshSlackChannels = useRefreshSlackChannels();
+  const refreshBitbucketResources = useRefreshBitbucketResources();
 
   const githubAuthQuery = useIntegrationAuthStatus("github", {
     enabled: providerId === "github",
   });
   const slackAuthQuery = useIntegrationAuthStatus("slack", {
     enabled: providerId === "slack",
+  });
+  const bitbucketAuthQuery = useIntegrationAuthStatus("bitbucket", {
+    enabled: providerId === "bitbucket",
   });
 
   const [accountEmail, setAccountEmail] = useState("");
@@ -82,7 +94,8 @@ export function IntegrationConnectShell({
     connectIntegration.isPending ||
     disconnectIntegration.isPending ||
     (providerId === "github" && refreshGitHubRepos.isPending) ||
-    (providerId === "slack" && refreshSlackChannels.isPending);
+    (providerId === "slack" && refreshSlackChannels.isPending) ||
+    (providerId === "bitbucket" && refreshBitbucketResources.isPending);
 
   useEffect(() => {
     onBusyChange?.(connectBusy);
@@ -205,13 +218,43 @@ export function IntegrationConnectShell({
     }
   };
 
-  if (providerId !== "google" && providerId !== "github" && providerId !== "slack") {
+  const handleBitbucketOAuthConnect = async () => {
+    setConnectError(null);
+    try {
+      await connectIntegration.mutateAsync({
+        provider: "bitbucket",
+      });
+    } catch (error) {
+      handleConnectError(error, "connect");
+    }
+  };
+
+  const handleRefreshBitbucketResources = async (accountID: string) => {
+    setConnectError(null);
+    try {
+      await refreshBitbucketResources.mutateAsync(accountID);
+    } catch (error) {
+      setConnectError(
+        error instanceof Error
+          ? error.message
+          : "Unable to refresh Bitbucket resources",
+      );
+    }
+  };
+
+  if (
+    providerId !== "google" &&
+    providerId !== "github" &&
+    providerId !== "slack" &&
+    providerId !== "bitbucket"
+  ) {
     return null;
   }
 
   const githubAuthMode = githubAuthQuery.data?.mode ?? "broker";
   const githubOauthAvailable = githubAuthQuery.data?.oauthAvailable ?? true;
   const slackOauthAvailable = slackAuthQuery.data?.oauthAvailable ?? false;
+  const bitbucketOauthAvailable = bitbucketAuthQuery.data?.oauthAvailable ?? false;
 
   return (
     <>
@@ -248,11 +291,20 @@ export function IntegrationConnectShell({
             disabled={isDisabled}
             connectError={connectError}
           />
-        ) : (
+        ) : providerId === "slack" ? (
           <ConnectActions
             provider="slack"
             oauthAvailable={slackOauthAvailable}
             onOAuthConnect={() => void handleSlackOAuthConnect()}
+            isConnecting={connectIntegration.isPending}
+            disabled={isDisabled}
+            connectError={connectError}
+          />
+        ) : (
+          <ConnectActions
+            provider="bitbucket"
+            oauthAvailable={bitbucketOauthAvailable}
+            onOAuthConnect={() => void handleBitbucketOAuthConnect()}
             isConnecting={connectIntegration.isPending}
             disabled={isDisabled}
             connectError={connectError}
@@ -288,7 +340,13 @@ export function IntegrationConnectShell({
                           label: "Refresh channels",
                           onClick: (accountID) => void handleRefreshChannels(accountID),
                         }
-                      : undefined
+                      : providerId === "bitbucket"
+                        ? {
+                            label: "Refresh resources",
+                            onClick: (accountID) =>
+                              void handleRefreshBitbucketResources(accountID),
+                          }
+                        : undefined
                 }
               />
             ))}

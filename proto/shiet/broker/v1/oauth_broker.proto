@@ -18,6 +18,7 @@ enum Provider {
   PROVIDER_GOOGLE = 1;
   PROVIDER_GITHUB = 2;
   PROVIDER_SLACK = 3;
+  PROVIDER_BITBUCKET = 4;
 }
 
 message ApplicationMetadata {

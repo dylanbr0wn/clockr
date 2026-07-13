@@ -33,6 +33,11 @@ var entries = []Descriptor{
 		DisplayName: "Slack",
 		Kind:        appv1.IntegrationKind_INTEGRATION_KIND_ACTIVITY_EVIDENCE,
 	},
+	{
+		ID:          "bitbucket",
+		DisplayName: "Bitbucket",
+		Kind:        appv1.IntegrationKind_INTEGRATION_KIND_ACTIVITY_EVIDENCE,
+	},
 }
 
 // All returns catalog descriptors in stable id order.

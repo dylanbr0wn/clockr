@@ -22,6 +22,8 @@ type Querier interface {
 	CreatePeriod(ctx context.Context, arg CreatePeriodParams) (Period, error)
 	CreateReviewItem(ctx context.Context, arg CreateReviewItemParams) (ReviewItem, error)
 	CreateSubmission(ctx context.Context, arg CreateSubmissionParams) (Submission, error)
+	DeleteBitbucketReposByAccount(ctx context.Context, accountID string) error
+	DeleteBitbucketWorkspacesByAccount(ctx context.Context, accountID string) error
 	DeleteCategory(ctx context.Context, id int64) error
 	DeleteEvent(ctx context.Context, id int64) error
 	DeleteExportTemplate(ctx context.Context, id int64) (int64, error)
@@ -55,6 +57,10 @@ type Querier interface {
 	GetSlackChannel(ctx context.Context, id int64) (SlackChannel, error)
 	ListAllCategories(ctx context.Context) ([]Category, error)
 	ListAllEventsForPeriod(ctx context.Context, periodID int64) ([]Event, error)
+	ListBitbucketRepos(ctx context.Context) ([]BitbucketRepo, error)
+	ListBitbucketReposByAccount(ctx context.Context, accountID string) ([]BitbucketRepo, error)
+	ListBitbucketWorkspaces(ctx context.Context) ([]BitbucketWorkspace, error)
+	ListBitbucketWorkspacesByAccount(ctx context.Context, accountID string) ([]BitbucketWorkspace, error)
 	ListCalendars(ctx context.Context) ([]Calendar, error)
 	ListCategories(ctx context.Context) ([]Category, error)
 	ListEventsByIcalUID(ctx context.Context, arg ListEventsByIcalUIDParams) ([]Event, error)
@@ -70,6 +76,7 @@ type Querier interface {
 	ListOpenReviewItems(ctx context.Context, periodID int64) ([]ReviewItem, error)
 	ListOverlaysForPeriod(ctx context.Context, periodID int64) ([]Overlay, error)
 	ListPeriods(ctx context.Context) ([]Period, error)
+	ListSelectedBitbucketRepos(ctx context.Context) ([]BitbucketRepo, error)
 	ListSelectedCalendars(ctx context.Context) ([]Calendar, error)
 	ListSelectedGitHubRepos(ctx context.Context) ([]GithubRepo, error)
 	ListSelectedSlackChannels(ctx context.Context) ([]SlackChannel, error)
@@ -82,6 +89,8 @@ type Querier interface {
 	// Train memory from a user correction; bump hit count on repeat.
 	RememberCategory(ctx context.Context, arg RememberCategoryParams) (Memory, error)
 	ResolveReviewItem(ctx context.Context, arg ResolveReviewItemParams) error
+	SetBitbucketRepoSelected(ctx context.Context, arg SetBitbucketRepoSelectedParams) error
+	SetBitbucketWorkspaceSelected(ctx context.Context, arg SetBitbucketWorkspaceSelectedParams) error
 	SetCalendarDefaultCategory(ctx context.Context, arg SetCalendarDefaultCategoryParams) error
 	SetCalendarSelected(ctx context.Context, arg SetCalendarSelectedParams) error
 	SetDefaultGap(ctx context.Context, id int64) error
@@ -97,6 +106,8 @@ type Querier interface {
 	UpdateGapFillSpan(ctx context.Context, arg UpdateGapFillSpanParams) (GapFill, error)
 	UpdateIntegrationConnectionStatus(ctx context.Context, arg UpdateIntegrationConnectionStatusParams) error
 	UpdatePeriodTarget(ctx context.Context, arg UpdatePeriodTargetParams) error
+	UpsertBitbucketRepo(ctx context.Context, arg UpsertBitbucketRepoParams) (BitbucketRepo, error)
+	UpsertBitbucketWorkspace(ctx context.Context, arg UpsertBitbucketWorkspaceParams) (BitbucketWorkspace, error)
 	UpsertCalendar(ctx context.Context, arg UpsertCalendarParams) (Calendar, error)
 	// Re-sync entry point: insert a fact, or update mutable synced fields on re-pull.
 	// Never touches user decisions (those live in overlay), and preserves `active`.

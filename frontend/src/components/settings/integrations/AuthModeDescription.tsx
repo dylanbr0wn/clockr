@@ -53,6 +53,19 @@ function slackAuthDescription(status: IntegrationAuthStatus | undefined) {
   return `Auth: broker (${brokerHost(status)}). ${purpose} ${keychain}`;
 }
 
+function bitbucketAuthDescription(status: IntegrationAuthStatus | undefined) {
+  const keychain = "OAuth tokens stay in the OS keychain.";
+  const purpose =
+    "Connect Bitbucket to pick workspaces and repositories as read-only evidence sources for AI gap-fill.";
+  if (!status) {
+    return `${purpose} ${keychain}`;
+  }
+  if (status.mode === "local") {
+    return `Auth: local / BYO credentials. ${purpose} ${keychain}`;
+  }
+  return `Auth: broker (${brokerHost(status)}). ${purpose} ${keychain}`;
+}
+
 export function AuthModeDescription({
   provider,
 }: {
@@ -67,13 +80,18 @@ export function AuthModeDescription({
   const slackAuthQuery = useIntegrationAuthStatus("slack", {
     enabled: provider === "slack",
   });
+  const bitbucketAuthQuery = useIntegrationAuthStatus("bitbucket", {
+    enabled: provider === "bitbucket",
+  });
 
   const description =
     provider === "google"
       ? googleAuthDescription(googleAuthQuery.data)
       : provider === "github"
         ? githubAuthDescription(githubAuthQuery.data)
-        : slackAuthDescription(slackAuthQuery.data);
+        : provider === "slack"
+          ? slackAuthDescription(slackAuthQuery.data)
+          : bitbucketAuthDescription(bitbucketAuthQuery.data);
 
   return <>{description}</>;
 }

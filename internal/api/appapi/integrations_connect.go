@@ -66,6 +66,11 @@ func (s *IntegrationService) ConnectIntegration(ctx context.Context, req *connec
 			return nil, connect.NewError(connect.CodeUnimplemented, errors.New("Slack connect is unavailable"))
 		}
 		conn, err = s.slack.Connect(ctx)
+	case "bitbucket":
+		if s.bitbucket == nil {
+			return nil, connect.NewError(connect.CodeUnimplemented, errors.New("Bitbucket connect is unavailable"))
+		}
+		conn, err = s.bitbucket.Connect(ctx)
 	default:
 		return nil, invalidArgument("unknown provider " + provider)
 	}
@@ -104,6 +109,11 @@ func (s *IntegrationService) DisconnectIntegration(ctx context.Context, req *con
 			return nil, connect.NewError(connect.CodeUnimplemented, errors.New("Slack disconnect is unavailable"))
 		}
 		err = s.slack.Disconnect(ctx, req.Msg.AccountId)
+	case "bitbucket":
+		if s.bitbucket == nil {
+			return nil, connect.NewError(connect.CodeUnimplemented, errors.New("Bitbucket disconnect is unavailable"))
+		}
+		err = s.bitbucket.Disconnect(ctx, req.Msg.AccountId)
 	default:
 		return nil, invalidArgument("unknown provider " + provider)
 	}
@@ -130,6 +140,11 @@ func (s *IntegrationService) oauthAvailable(provider string) bool {
 			return false
 		}
 		return s.slack.OAuthAvailable()
+	case "bitbucket":
+		if s.bitbucket == nil {
+			return false
+		}
+		return s.bitbucket.OAuthAvailable()
 	default:
 		return false
 	}
@@ -158,6 +173,11 @@ func (s *IntegrationService) integrationAuthStatus(provider string) (*appv1.GetI
 			return nil, connect.NewError(connect.CodeUnimplemented, errors.New("Slack auth status is unavailable"))
 		}
 		return authStatusFromProvider(provider, s.slack.AuthMode, s.slack.BrokerBaseURL, s.slack.OAuthAvailable()), nil
+	case "bitbucket":
+		if s.bitbucket == nil {
+			return nil, connect.NewError(connect.CodeUnimplemented, errors.New("Bitbucket auth status is unavailable"))
+		}
+		return authStatusFromProvider(provider, s.bitbucket.AuthMode, s.bitbucket.BrokerBaseURL, s.bitbucket.OAuthAvailable()), nil
 	default:
 		return nil, invalidArgument("unknown provider " + provider)
 	}

@@ -5,6 +5,7 @@ import {
   connectGitHub,
   connectIntegration,
   connectSlack,
+  connectBitbucket,
   createGapFill,
   createCategory,
   createManualEvent,
@@ -14,6 +15,7 @@ import {
   disconnectGitHub,
   disconnectIntegration,
   disconnectSlack,
+  disconnectBitbucket,
   discoverLocalAIEndpoints,
   ensureCurrentPeriod,
   excludeEvent,
@@ -28,6 +30,8 @@ import {
   listGapFills,
   listGitHubRepos,
   listSlackChannels,
+  listBitbucketWorkspaces,
+  listBitbucketRepos,
   listExportTemplates,
   createExportTemplate,
   updateExportTemplate,
@@ -42,6 +46,7 @@ import {
   listTzSegments,
   refreshGitHubRepos,
   refreshSlackChannels,
+  refreshBitbucketResources,
   resolveReviewDecision,
   revealLogFolder,
   saveAIConfig,
@@ -51,6 +56,8 @@ import {
   setCalendarSelected,
   setGitHubRepoSelected,
   setSlackChannelSelected,
+  setBitbucketWorkspaceSelected,
+  setBitbucketRepoSelected,
   setSetting,
   suggestGapFill,
   syncPeriod,
@@ -115,6 +122,12 @@ export const shietQueryKeys = {
     [...shietQueryKeys.integrationAuthStatus("slack")] as const,
   slackOAuthAvailable: () =>
     [...shietQueryKeys.integrationAuthStatus("slack")] as const,
+  bitbucketWorkspaces: () => [...shietQueryKeys.all, "bitbucketWorkspaces"] as const,
+  bitbucketRepos: () => [...shietQueryKeys.all, "bitbucketRepos"] as const,
+  bitbucketAuthMode: () =>
+    [...shietQueryKeys.integrationAuthStatus("bitbucket")] as const,
+  bitbucketOAuthAvailable: () =>
+    [...shietQueryKeys.integrationAuthStatus("bitbucket")] as const,
   setting: (key: string) => [...shietQueryKeys.all, "settings", key] as const,
   aiDiscovery: () => [...shietQueryKeys.all, "ai", "discovery"] as const,
   aiClassification: (baseURL: string) =>
@@ -733,6 +746,14 @@ function invalidateProviderIntegrationQueries(
       queryKey: shietQueryKeys.slackChannels(),
     });
   }
+  if (provider === "bitbucket") {
+    void queryClient.invalidateQueries({
+      queryKey: shietQueryKeys.bitbucketWorkspaces(),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: shietQueryKeys.bitbucketRepos(),
+    });
+  }
 }
 
 export function useConnectIntegration() {
@@ -947,6 +968,97 @@ export function useRefreshSlackChannels() {
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: shietQueryKeys.slackChannels(),
+      });
+    },
+  });
+}
+
+export function useBitbucketWorkspaces() {
+  return useQuery({
+    queryKey: shietQueryKeys.bitbucketWorkspaces(),
+    queryFn: listBitbucketWorkspaces,
+  });
+}
+
+export function useBitbucketRepos() {
+  return useQuery({
+    queryKey: shietQueryKeys.bitbucketRepos(),
+    queryFn: listBitbucketRepos,
+  });
+}
+
+export function useConnectBitbucket() {
+  const queryClient = useQueryClient();
+  const refreshBitbucketQueries = () => {
+    invalidateProviderIntegrationQueries(queryClient, "bitbucket");
+  };
+
+  return useMutation({
+    mutationFn: () => connectBitbucket(),
+    onSettled: refreshBitbucketQueries,
+  });
+}
+
+export function useDisconnectBitbucket() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (accountID: string) => disconnectBitbucket(accountID),
+    onSuccess: () => {
+      invalidateProviderIntegrationQueries(queryClient, "bitbucket");
+    },
+  });
+}
+
+export function useSetBitbucketWorkspaceSelected() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      workspaceID,
+      selected,
+    }: {
+      workspaceID: number;
+      selected: boolean;
+    }) => setBitbucketWorkspaceSelected(workspaceID, selected),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.bitbucketWorkspaces(),
+      });
+    },
+  });
+}
+
+export function useSetBitbucketRepoSelected() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      repoID,
+      selected,
+    }: {
+      repoID: number;
+      selected: boolean;
+    }) => setBitbucketRepoSelected(repoID, selected),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.bitbucketRepos(),
+      });
+    },
+  });
+}
+
+export function useRefreshBitbucketResources() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (accountID: string) => refreshBitbucketResources(accountID),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.bitbucketWorkspaces(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.bitbucketRepos(),
       });
     },
   });

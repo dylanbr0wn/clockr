@@ -27,6 +27,10 @@ Required:
   routes).
 - `SHIET_BROKER_SLACK_CLIENT_SECRET`: Slack app client secret (required with the
   Slack client id).
+- `SHIET_BROKER_BITBUCKET_CLIENT_ID`: Bitbucket OAuth consumer client id
+  (required to enable Bitbucket routes).
+- `SHIET_BROKER_BITBUCKET_CLIENT_SECRET`: Bitbucket OAuth consumer client secret
+  (required with the Bitbucket client id).
 - `SHIET_BROKER_DATASTORE_DSN`: SQLite DSN for the broker datastore.
 
 Optional:
@@ -47,6 +51,10 @@ Optional:
   `shiet://oauth/slack/handoff`.
 - `SHIET_BROKER_SLACK_SCOPES`: space- or comma-separated Slack user scopes,
   default `channels:history groups:history channels:read groups:read`.
+- `SHIET_BROKER_BITBUCKET_DESKTOP_HANDOFF_URL`: Bitbucket desktop handoff URL,
+  default `shiet://oauth/bitbucket/handoff`.
+- `SHIET_BROKER_BITBUCKET_SCOPES`: space- or comma-separated Bitbucket OAuth
+  consumer scopes, default `account repository`.
 - `SHIET_BROKER_AUTH_DISABLED`: when `true`/`1`/`yes`/`on`, reject start,
   callback, and handoff with `auth_disabled`. RPCs use Connect
   `FailedPrecondition`; callbacks return an HTTP 403 page. Revoke stays enabled.
