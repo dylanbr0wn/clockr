@@ -283,3 +283,107 @@ func TestArchiveProjectHidesFromDefaultList(t *testing.T) {
 		t.Fatalf("get archived: %#v err=%v", got, err)
 	}
 }
+
+func TestTimeEntryAllocationFieldsRoundTrip(t *testing.T) {
+	t.Parallel()
+	conn, err := db.Open(filepath.Join(t.TempDir(), "shiet.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	if err := db.Migrate(conn); err != nil {
+		t.Fatal(err)
+	}
+	if err := seed.Core(context.Background(), conn); err != nil {
+		t.Fatal(err)
+	}
+	if err := seed.Dev(context.Background(), conn); err != nil {
+		t.Fatal(err)
+	}
+
+	httpClient := &http.Client{Transport: handlerTransport{handler: appapi.NewHandler(appapi.Dependencies{Service: service.New(conn)})}}
+	periodClient := appv1connect.NewPeriodServiceClient(httpClient, "http://shiet.test")
+	scheduleClient := appv1connect.NewScheduleServiceClient(httpClient, "http://shiet.test")
+	projectClient := appv1connect.NewProjectServiceClient(httpClient, "http://shiet.test")
+
+	periods, err := periodClient.ListPeriods(context.Background(), connect.NewRequest(&appv1.ListPeriodsRequest{}))
+	if err != nil || len(periods.Msg.Periods) == 0 {
+		t.Fatalf("list periods: %#v err=%v", periods, err)
+	}
+	periodID := periods.Msg.Periods[0].Id
+
+	project, err := projectClient.CreateProject(context.Background(), connect.NewRequest(&appv1.CreateProjectRequest{Name: "Ledger", Key: "ledger"}))
+	if err != nil || project.Msg.Project == nil {
+		t.Fatalf("create project: %#v err=%v", project, err)
+	}
+	projectID := project.Msg.Project.Id
+
+	created, err := scheduleClient.CreateTimeEntry(context.Background(), connect.NewRequest(&appv1.CreateTimeEntryRequest{
+		Input: &appv1.TimeEntryInput{
+			PeriodId:       periodID,
+			Day:            "2026-06-01",
+			StartMinutes:   540,
+			EndMinutes:     600,
+			WorkType:       "paid_leave",
+			ProjectId:      &projectID,
+			BillableStatus: "non_billable",
+			Description:    "PTO",
+		},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	listed, err := scheduleClient.ListTimeEntries(context.Background(), connect.NewRequest(&appv1.ListTimeEntriesRequest{PeriodId: periodID}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found *appv1.TimeEntry
+	for _, entry := range listed.Msg.TimeEntries {
+		if entry.Id == created.Msg.Id {
+			found = entry
+			break
+		}
+	}
+	if found == nil {
+		t.Fatal("created entry missing from list")
+	}
+	if found.WorkType != "paid_leave" || found.BillableStatus != "non_billable" {
+		t.Fatalf("allocation = work_type=%q billable=%q", found.WorkType, found.BillableStatus)
+	}
+	if found.ProjectId == nil || *found.ProjectId != projectID {
+		t.Fatalf("project_id = %v want %d", found.ProjectId, projectID)
+	}
+
+	defaults, err := scheduleClient.CreateTimeEntry(context.Background(), connect.NewRequest(&appv1.CreateTimeEntryRequest{
+		Input: &appv1.TimeEntryInput{
+			PeriodId:     periodID,
+			Day:          "2026-06-02",
+			StartMinutes: 540,
+			EndMinutes:   600,
+		},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := scheduleClient.GetTimeEntry(context.Background(), connect.NewRequest(&appv1.GetTimeEntryRequest{Id: defaults.Msg.Id, PeriodId: periodID}))
+	if err != nil || got.Msg.TimeEntry == nil {
+		t.Fatalf("get defaults: %#v err=%v", got, err)
+	}
+	if got.Msg.TimeEntry.WorkType != "worked" || got.Msg.TimeEntry.BillableStatus != "unset" || got.Msg.TimeEntry.ProjectId != nil {
+		t.Fatalf("defaults = %+v", got.Msg.TimeEntry)
+	}
+
+	_, err = scheduleClient.CreateTimeEntry(context.Background(), connect.NewRequest(&appv1.CreateTimeEntryRequest{
+		Input: &appv1.TimeEntryInput{
+			PeriodId:     periodID,
+			Day:          "2026-06-03",
+			StartMinutes: 540,
+			EndMinutes:   600,
+			WorkType:     "overtime",
+		},
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("invalid work_type code = %v", connect.CodeOf(err))
+	}
+}

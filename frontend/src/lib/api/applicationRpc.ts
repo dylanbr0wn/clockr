@@ -171,6 +171,9 @@ function timeEntryInput(input: TimeEntryInput) {
     startMinutes: input.startMinutes, endMinutes: input.endMinutes,
     ...(input.categoryId == null ? {} : { categoryId: bigint(input.categoryId) }),
     description: input.description ?? "",
+    workType: input.workType ?? "",
+    ...(input.projectId == null ? {} : { projectId: bigint(input.projectId) }),
+    billableStatus: input.billableStatus ?? "",
   };
 }
 export async function createTimeEntryRPC(input: TimeEntryInput): Promise<TimeEntryResult> {
@@ -324,7 +327,10 @@ function mapTimeEntry(item: WireTimeEntry): TimeEntry {
     end: item.end,
     durationMinutes: item.durationMinutes,
     attestation: item.attestation,
+    workType: item.workType,
+    billableStatus: item.billableStatus,
     ...(item.categoryId == null ? {} : { categoryId: safeInt(item.categoryId, "category id") }),
+    ...(item.projectId == null ? {} : { projectId: safeInt(item.projectId, "project id") }),
     ...(item.description ? { description: item.description } : {}),
     ...(item.method ? { method: item.method } : {}),
   };

@@ -195,6 +195,9 @@ type TimeEntry struct {
 	Description     string `json:"description,omitempty"`
 	Attestation     string `json:"attestation"` // draft | confirmed
 	Method          string `json:"method,omitempty"` // e.g. gap_fill when stamped
+	WorkType        string `json:"workType"`                   // worked | paid_leave | unpaid_leave | holiday | break | adjustment
+	ProjectID       *int64 `json:"projectId,omitempty"`        // optional FK → project
+	BillableStatus  string `json:"billableStatus"`             // unset | billable | non_billable
 }
 
 // ── converters from sqlc rows ─────────────────────────────────────────
@@ -356,6 +359,9 @@ func toTimeEntry(r sqlc.TimeEntry) TimeEntry {
 		Description:     r.Description,
 		Attestation:     r.Attestation,
 		Method:          method,
+		WorkType:        r.WorkType,
+		ProjectID:       nullInt64Ptr(r.ProjectID),
+		BillableStatus:  r.BillableStatus,
 	}
 }
 

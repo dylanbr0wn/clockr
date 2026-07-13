@@ -272,12 +272,15 @@ func timeEntryInput(input *appv1.TimeEntryInput) (service.TimeEntryInput, error)
 		return service.TimeEntryInput{}, invalidArgument("time entry minute range is invalid")
 	}
 	return service.TimeEntryInput{
-		PeriodID:     input.PeriodId,
-		Day:          input.Day,
-		StartMinutes: int(input.StartMinutes),
-		EndMinutes:   int(input.EndMinutes),
-		CategoryID:   input.CategoryId,
-		Description:  input.Description,
+		PeriodID:       input.PeriodId,
+		Day:            input.Day,
+		StartMinutes:   int(input.StartMinutes),
+		EndMinutes:     int(input.EndMinutes),
+		CategoryID:     input.CategoryId,
+		Description:    input.Description,
+		WorkType:       input.WorkType,
+		ProjectID:      input.ProjectId,
+		BillableStatus: input.BillableStatus,
 	}, nil
 }
 
@@ -308,6 +311,9 @@ func toProtoTimeEntry(item service.TimeEntry) *appv1.TimeEntry {
 		Description:     item.Description,
 		Attestation:     item.Attestation,
 		Method:          item.Method,
+		WorkType:        item.WorkType,
+		ProjectId:       item.ProjectID,
+		BillableStatus:  item.BillableStatus,
 	}
 }
 

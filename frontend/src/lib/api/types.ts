@@ -179,6 +179,9 @@ export interface TimeEntry {
   description?: string;
   attestation: string;
   method?: string;
+  workType: string;
+  projectId?: number;
+  billableStatus: string;
 }
 
 export interface TimeEntryInput {
@@ -188,6 +191,9 @@ export interface TimeEntryInput {
   endMinutes: number;
   categoryId?: number;
   description?: string;
+  workType?: string;
+  projectId?: number;
+  billableStatus?: string;
 }
 
 export interface TimeEntryUpdateInput extends TimeEntryInput {

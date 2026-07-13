@@ -353,6 +353,8 @@ func (p reviewPolicy) convertEventToManualFill(ctx context.Context, q *sqlc.Quer
 		CategoryID:      categoryID,
 		Description:     ev.Title,
 		Attestation:     "confirmed",
+		WorkType:        "worked",
+		BillableStatus:  "unset",
 	}); err != nil {
 		return mapErr("create manual copy of deleted event", err)
 	}
@@ -542,6 +544,9 @@ func shrinkGapFillsForEvent(ctx context.Context, q *sqlc.Queries, periodID int64
 			SourceID:        fill.SourceID,
 			SourceRevision:  fill.SourceRevision,
 			Method:          fill.Method,
+			WorkType:        fill.WorkType,
+			ProjectID:       fill.ProjectID,
+			BillableStatus:  fill.BillableStatus,
 		}); err != nil {
 			return mapErr("create gap fill", err)
 		}

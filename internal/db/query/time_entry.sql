@@ -20,8 +20,11 @@ INSERT INTO time_entry (
     source_kind,
     source_id,
     source_revision,
-    method
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    method,
+    work_type,
+    project_id,
+    billable_status
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: UpdateTimeEntry :one
@@ -32,6 +35,9 @@ UPDATE time_entry SET
     local_work_date   = ?,
     category_id       = ?,
     description       = ?,
+    work_type         = ?,
+    project_id        = ?,
+    billable_status   = ?,
     updated_at        = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
 WHERE id = ? AND period_id = ?
 RETURNING *;

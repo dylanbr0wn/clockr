@@ -56,6 +56,8 @@ func TestTimeEntryQuerier_CRUDRoundTrip(t *testing.T) {
 		Description:     "overnight on-call",
 		Attestation:     "confirmed",
 		Method:          sql.NullString{String: "gap_fill", Valid: true},
+		WorkType:        "worked",
+		BillableStatus:  "unset",
 	})
 	if err != nil {
 		t.Fatalf("create: %v", err)
@@ -107,6 +109,8 @@ func TestTimeEntryQuerier_CRUDRoundTrip(t *testing.T) {
 		LocalWorkDate:   localWorkDate,
 		CategoryID:      sql.NullInt64{},
 		Description:     "extended",
+		WorkType:        "worked",
+		BillableStatus:  "unset",
 		ID:              created.ID,
 		PeriodID:        period.ID,
 	})

@@ -23,8 +23,11 @@ INSERT INTO time_entry (
     source_kind,
     source_id,
     source_revision,
-    method
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    method,
+    work_type,
+    project_id,
+    billable_status
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING id, period_id, start_instant, end_instant, duration_minutes, local_work_date, category_id, description, attestation, source_kind, source_id, source_revision, method, created_at, updated_at, work_type, project_id, billable_status
 `
 
@@ -41,6 +44,9 @@ type CreateTimeEntryParams struct {
 	SourceID        sql.NullString `json:"source_id"`
 	SourceRevision  sql.NullString `json:"source_revision"`
 	Method          sql.NullString `json:"method"`
+	WorkType        string         `json:"work_type"`
+	ProjectID       sql.NullInt64  `json:"project_id"`
+	BillableStatus  string         `json:"billable_status"`
 }
 
 func (q *Queries) CreateTimeEntry(ctx context.Context, arg CreateTimeEntryParams) (TimeEntry, error) {
@@ -57,6 +63,9 @@ func (q *Queries) CreateTimeEntry(ctx context.Context, arg CreateTimeEntryParams
 		arg.SourceID,
 		arg.SourceRevision,
 		arg.Method,
+		arg.WorkType,
+		arg.ProjectID,
+		arg.BillableStatus,
 	)
 	var i TimeEntry
 	err := row.Scan(
@@ -239,6 +248,9 @@ UPDATE time_entry SET
     local_work_date   = ?,
     category_id       = ?,
     description       = ?,
+    work_type         = ?,
+    project_id        = ?,
+    billable_status   = ?,
     updated_at        = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
 WHERE id = ? AND period_id = ?
 RETURNING id, period_id, start_instant, end_instant, duration_minutes, local_work_date, category_id, description, attestation, source_kind, source_id, source_revision, method, created_at, updated_at, work_type, project_id, billable_status
@@ -251,6 +263,9 @@ type UpdateTimeEntryParams struct {
 	LocalWorkDate   string        `json:"local_work_date"`
 	CategoryID      sql.NullInt64 `json:"category_id"`
 	Description     string        `json:"description"`
+	WorkType        string        `json:"work_type"`
+	ProjectID       sql.NullInt64 `json:"project_id"`
+	BillableStatus  string        `json:"billable_status"`
 	ID              int64         `json:"id"`
 	PeriodID        int64         `json:"period_id"`
 }
@@ -263,6 +278,9 @@ func (q *Queries) UpdateTimeEntry(ctx context.Context, arg UpdateTimeEntryParams
 		arg.LocalWorkDate,
 		arg.CategoryID,
 		arg.Description,
+		arg.WorkType,
+		arg.ProjectID,
+		arg.BillableStatus,
 		arg.ID,
 		arg.PeriodID,
 	)
