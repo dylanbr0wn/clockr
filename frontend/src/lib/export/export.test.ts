@@ -95,6 +95,7 @@ describe("period export", () => {
         },
         actualMinutes: 240,
         targetMinutes: 480,
+        source: "weekday",
       },
       {
         date: "2026-06-02",
@@ -103,6 +104,47 @@ describe("period export", () => {
         },
         actualMinutes: 120,
         targetMinutes: 480,
+        source: "weekday",
+      },
+    ]);
+  });
+
+  it("carries exception source and kind onto daily totals", () => {
+    const summary = buildPeriodExportSummary([], period, {
+      expectedDays: [
+        {
+          date: "2026-06-01",
+          expectedMinutes: 0,
+          windows: [],
+          source: "exception",
+          exceptionKind: "holiday",
+        },
+        {
+          date: "2026-06-02",
+          expectedMinutes: 240,
+          windows: [],
+          source: "exception",
+          exceptionKind: "changed_hours",
+        },
+      ],
+    });
+
+    expect(summary.dailyTotals).toEqual([
+      {
+        date: "2026-06-01",
+        categories: {},
+        actualMinutes: 0,
+        targetMinutes: 0,
+        source: "exception",
+        exceptionKind: "holiday",
+      },
+      {
+        date: "2026-06-02",
+        categories: {},
+        actualMinutes: 0,
+        targetMinutes: 240,
+        source: "exception",
+        exceptionKind: "changed_hours",
       },
     ]);
   });

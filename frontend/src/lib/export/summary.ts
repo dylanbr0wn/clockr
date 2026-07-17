@@ -14,6 +14,10 @@ export interface DayCategoryHours {
   categories: Record<string, number>;
   actualMinutes: number;
   targetMinutes: number;
+  /** ExpectedTime resolver source (`weekday` | `exception`). */
+  source: string;
+  /** Present when source is `exception`. */
+  exceptionKind?: string;
 }
 
 export interface PeriodExportSummary {
@@ -47,10 +51,10 @@ function buildCategoryColorMap(
   return colors;
 }
 
-function expectedMinutesByDate(expectedDays: ExpectedTime[] = []) {
-  const byDate = new Map<string, number>();
+function expectedTimeByDate(expectedDays: ExpectedTime[] = []) {
+  const byDate = new Map<string, ExpectedTime>();
   for (const day of expectedDays) {
-    byDate.set(day.date, day.expectedMinutes);
+    byDate.set(day.date, day);
   }
   return byDate;
 }
@@ -75,7 +79,7 @@ export function buildPeriodExportSummary(
 
   const dayCount = periodDayCount(period);
   const days = buildDays(period.startDate, dayCount);
-  const expectedByDate = expectedMinutesByDate(options.expectedDays);
+  const expectedByDate = expectedTimeByDate(options.expectedDays);
   const actualMinutes = Object.values(periodTotals).reduce(
     (sum, minutes) => sum + minutes,
     0,
@@ -87,7 +91,8 @@ export function buildPeriodExportSummary(
       (sum, minutes) => sum + minutes,
       0,
     );
-    const dayTarget = expectedByDate.get(date) ?? 0;
+    const expected = expectedByDate.get(date);
+    const dayTarget = expected?.expectedMinutes ?? 0;
     targetMinutes += dayTarget;
 
     return {
@@ -95,6 +100,10 @@ export function buildPeriodExportSummary(
       categories,
       actualMinutes: dayActualMinutes,
       targetMinutes: dayTarget,
+      source: expected?.source ?? "",
+      ...(expected?.exceptionKind
+        ? { exceptionKind: expected.exceptionKind }
+        : {}),
     };
   });
 

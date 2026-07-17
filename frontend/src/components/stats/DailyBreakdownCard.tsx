@@ -17,6 +17,7 @@ import {
 import {
   sortedCategoryNames,
   varianceMinutes,
+  formatExpectedTimeSourceLabel,
   type PeriodExportSummary,
 } from "@/lib/export";
 import { formatVariance } from "@/lib/export/formatters";
@@ -66,6 +67,10 @@ export function DailyBreakdownCard({
                 day.actualMinutes,
                 day.targetMinutes,
               );
+              const sourceLabel = formatExpectedTimeSourceLabel(
+                day.source,
+                day.exceptionKind,
+              );
 
               return (
                 <Item key={day.date} variant="muted" size="sm">
@@ -74,6 +79,11 @@ export function DailyBreakdownCard({
                       <div>
                         <ItemTitle>{formatDateKey(day.date)}</ItemTitle>
                         <ItemDescription>{day.date}</ItemDescription>
+                        {sourceLabel ? (
+                          <ItemDescription className="mt-0.5">
+                            {sourceLabel}
+                          </ItemDescription>
+                        ) : null}
                       </div>
                       <div className="text-right">
                         <ItemTitle>
