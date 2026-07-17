@@ -28,6 +28,7 @@ import type {
   PeriodExportModel,
   ReviewDecision,
   ResolveReviewDecisionInput,
+  ScheduleException,
   SlackChannel,
   TimeWindow,
   TzSegment,
@@ -37,6 +38,9 @@ import type {
   UpdateExportTemplateInput,
   PreviewExportInput,
   ExportFieldInfo,
+  WorkSchedule,
+  WorkScheduleDay,
+  WorkingWindow,
 } from "./types";
 import {
   ensureCurrentPeriodRPC,
@@ -100,7 +104,14 @@ import {
   updateExportTemplateRPC,
   updateTimeEntryRPC,
 } from "./applicationRpc";
-import { expectedTimeForRangeRPC } from "./workScheduleRpc";
+import {
+  deleteScheduleExceptionRPC,
+  expectedTimeForRangeRPC,
+  listScheduleExceptionsRPC,
+  listWorkSchedulesRPC,
+  replaceActiveWorkScheduleRPC,
+  upsertScheduleExceptionRPC,
+} from "./workScheduleRpc";
 
 interface ShietApp {
   ClassifyAIEndpoint(baseURL: string): Promise<AIClassification>;
@@ -304,6 +315,38 @@ export function expectedTimeForRange(startDate: string, endDate: string) {
   return readFromPortableBackend<ExpectedTime[]>([], () =>
     expectedTimeForRangeRPC(startDate, endDate),
   );
+}
+
+export function listWorkSchedules() {
+  return readFromPortableBackend<WorkSchedule[]>([], () => listWorkSchedulesRPC());
+}
+
+export function replaceActiveWorkSchedule(input: {
+  timezone: string;
+  workweekStart: string;
+  effectiveFrom: string;
+  days: WorkScheduleDay[];
+}) {
+  return writeToPortableBackend(() => replaceActiveWorkScheduleRPC(input));
+}
+
+export function listScheduleExceptions() {
+  return readFromPortableBackend<ScheduleException[]>([], () =>
+    listScheduleExceptionsRPC(),
+  );
+}
+
+export function upsertScheduleException(input: {
+  date: string;
+  kind: string;
+  expectedMinutes: number;
+  windows?: WorkingWindow[];
+}) {
+  return writeToPortableBackend(() => upsertScheduleExceptionRPC(input));
+}
+
+export function deleteScheduleException(date: string) {
+  return writeToPortableBackend(() => deleteScheduleExceptionRPC(date));
 }
 
 export function getSetting(key: string) {

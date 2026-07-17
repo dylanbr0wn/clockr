@@ -1,4 +1,5 @@
 import {
+  CalendarClock,
   Download,
   Plug,
   Settings,
@@ -10,6 +11,7 @@ import {
 
 export type SettingsSectionId =
   | "general"
+  | "workSchedule"
   | "integrations"
   | "categories"
   | "ai"
@@ -23,6 +25,7 @@ export const settingsNavItems: Array<{
   ready: true;
 }> = [
   { id: "general", label: "General", icon: Settings, ready: true },
+  { id: "workSchedule", label: "Work Schedule", icon: CalendarClock, ready: true },
   { id: "integrations", label: "Integrations", icon: Plug, ready: true },
   { id: "categories", label: "Categories", icon: Tags, ready: true },
   { id: "ai", label: "AI Model", icon: Sparkles, ready: true },
