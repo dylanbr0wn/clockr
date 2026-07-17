@@ -74,8 +74,13 @@ import {
   updateTimeEntry,
   validateAIConfig,
   expectedTimeForRange,
+  listWorkSchedules,
+  replaceActiveWorkSchedule,
+  listScheduleExceptions,
+  upsertScheduleException,
+  deleteScheduleException,
 } from "./shietService";
-import type { TimeWindow } from "./types";
+import type { TimeWindow, WorkSchedule } from "./types";
 
 function parseJsonSetting<T>(raw: string | null | undefined, fallback: T): T {
   if (!raw) {
@@ -116,6 +121,9 @@ export const shietQueryKeys = {
     [...shietQueryKeys.period(periodId), "tzSegments"] as const,
   expectedTimeRange: (startDate: string, endDate: string) =>
     [...shietQueryKeys.all, "expectedTime", startDate, endDate] as const,
+  workSchedules: () => [...shietQueryKeys.all, "workSchedules"] as const,
+  scheduleExceptions: () =>
+    [...shietQueryKeys.all, "scheduleExceptions"] as const,
   selectedCalendars: () =>
     [...shietQueryKeys.calendars(), "selected"] as const,
   connections: () => [...shietQueryKeys.all, "connections"] as const,
@@ -412,6 +420,92 @@ export function useExpectedTimeForRange(
     enabled: Boolean(startDate && endDate),
     queryKey: shietQueryKeys.expectedTimeRange(startDate ?? "", endDate ?? ""),
     queryFn: () => expectedTimeForRange(startDate as string, endDate as string),
+  });
+}
+
+function pickActiveWorkSchedule(
+  schedules: WorkSchedule[] | undefined,
+): WorkSchedule | null {
+  if (!schedules?.length) {
+    return null;
+  }
+
+  const openEnded = schedules
+    .filter((schedule) => !schedule.effectiveTo)
+    .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom));
+  if (openEnded[0]) {
+    return openEnded[0];
+  }
+
+  return [...schedules].sort((a, b) =>
+    b.effectiveFrom.localeCompare(a.effectiveFrom),
+  )[0];
+}
+
+export function useWorkSchedules() {
+  return useQuery({
+    queryKey: shietQueryKeys.workSchedules(),
+    queryFn: listWorkSchedules,
+  });
+}
+
+export function useActiveWorkSchedule() {
+  const query = useWorkSchedules();
+  return {
+    ...query,
+    data: pickActiveWorkSchedule(query.data),
+  };
+}
+
+export function useReplaceActiveWorkSchedule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: replaceActiveWorkSchedule,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.workSchedules(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: [...shietQueryKeys.all, "expectedTime"],
+      });
+    },
+  });
+}
+
+export function useScheduleExceptions() {
+  return useQuery({
+    queryKey: shietQueryKeys.scheduleExceptions(),
+    queryFn: listScheduleExceptions,
+  });
+}
+
+export function useUpsertScheduleException() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: upsertScheduleException,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.scheduleExceptions(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: [...shietQueryKeys.all, "expectedTime"],
+      });
+    },
+  });
+}
+
+export function useDeleteScheduleException() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteScheduleException,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.scheduleExceptions(),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: [...shietQueryKeys.all, "expectedTime"],
+      });
+    },
   });
 }
 

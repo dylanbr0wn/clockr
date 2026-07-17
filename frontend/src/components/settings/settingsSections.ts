@@ -1,4 +1,5 @@
 import {
+  CalendarClock,
   Download,
   FolderKanban,
   Plug,
@@ -11,6 +12,7 @@ import {
 
 export type SettingsSectionId =
   | "general"
+  | "workSchedule"
   | "integrations"
   | "categories"
   | "projects"
@@ -25,6 +27,7 @@ export const settingsNavItems: Array<{
   ready: true;
 }> = [
   { id: "general", label: "General", icon: Settings, ready: true },
+  { id: "workSchedule", label: "Work Schedule", icon: CalendarClock, ready: true },
   { id: "integrations", label: "Integrations", icon: Plug, ready: true },
   { id: "categories", label: "Categories", icon: Tags, ready: true },
   { id: "projects", label: "Projects", icon: FolderKanban, ready: true },

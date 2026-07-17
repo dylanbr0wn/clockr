@@ -29,89 +29,6 @@ import { useJsonSetting } from "./useJsonSetting";
 type PeriodCadence = "weekly" | "bi-weekly" | "semi-monthly" | "monthly";
 type EventHandling = "include" | "exclude" | "flag";
 
-function EditableNumberSetting({
-  id,
-  label,
-  min,
-  max,
-  step,
-  value,
-  onCommit,
-}: {
-  id: string;
-  label: string;
-  min: number;
-  max: number;
-  step: number;
-  value: number;
-  onCommit: (value: number) => void;
-}) {
-  const [draft, setDraft] = useState(String(value));
-
-  useEffect(() => {
-    setDraft(String(value));
-  }, [value]);
-
-  const commitDraft = () => {
-    const parsed = Number(draft);
-    if (!Number.isFinite(parsed)) {
-      setDraft(String(value));
-      return;
-    }
-
-    const clamped = Math.min(Math.max(parsed, min), max);
-    setDraft(String(clamped));
-    onCommit(clamped);
-  };
-
-  return (
-    <Field>
-      <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <Input
-        id={id}
-        type="number"
-        min={min}
-        max={max}
-        step={step}
-        value={draft}
-        onBlur={commitDraft}
-        onChange={(event) => setDraft(event.target.value)}
-      />
-    </Field>
-  );
-}
-
-function EditableTimeSetting({
-  id,
-  label,
-  value,
-  onCommit,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onCommit: (value: string) => void;
-}) {
-  const [draft, setDraft] = useState(value);
-
-  useEffect(() => {
-    setDraft(value);
-  }, [value]);
-
-  return (
-    <Field>
-      <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <Input
-        id={id}
-        type="time"
-        value={draft}
-        onBlur={() => onCommit(draft)}
-        onChange={(event) => setDraft(event.target.value)}
-      />
-    </Field>
-  );
-}
-
 function EventHandlingSelect({
   label,
   value,
@@ -150,8 +67,6 @@ export function GeneralSettings() {
     "period.cadence",
     "bi-weekly",
   );
-  const targetHours = useJsonSetting<number>("period.target_hours", 8);
-  const windowStart = useJsonSetting<string>("window.start", "09:00");
   const acceptedEvents = useJsonSetting<EventHandling>(
     "events.accepted",
     "include",
@@ -190,24 +105,18 @@ export function GeneralSettings() {
   const isSaving =
     theme.isSaving ||
     cadence.isSaving ||
-    targetHours.isSaving ||
-    windowStart.isSaving ||
     acceptedEvents.isSaving ||
     tentativeEvents.isSaving ||
     declinedEvents.isSaving;
   const isLoading =
     theme.isLoading ||
     cadence.isLoading ||
-    targetHours.isLoading ||
-    windowStart.isLoading ||
     acceptedEvents.isLoading ||
     tentativeEvents.isLoading ||
     declinedEvents.isLoading;
   const error =
     theme.error ??
     cadence.error ??
-    targetHours.error ??
-    windowStart.error ??
     acceptedEvents.error ??
     tentativeEvents.error ??
     declinedEvents.error;
@@ -224,47 +133,30 @@ export function GeneralSettings() {
     <div className="mx-auto max-w-2xl space-y-6">
       <SettingBlock
         title="Period Defaults"
-        description="New periods use these values when shiet opens the current range."
+        description="New periods use this cadence when shiet opens the current range. Expected hours come from Work Schedule."
       >
-        <div className="grid gap-3 sm:grid-cols-3">
-          <Field>
-            <FieldLabel htmlFor="setting-period-cadence">Cadence</FieldLabel>
-            <Select
-              value={cadence.value}
-              onValueChange={(value) =>
-                cadence.setValue(value as PeriodCadence)
-              }
+        <Field className="max-w-xs">
+          <FieldLabel htmlFor="setting-period-cadence">Cadence</FieldLabel>
+          <Select
+            value={cadence.value}
+            onValueChange={(value) =>
+              cadence.setValue(value as PeriodCadence)
+            }
+          >
+            <SelectTrigger
+              id="setting-period-cadence"
+              className="w-full bg-background"
             >
-              <SelectTrigger
-                id="setting-period-cadence"
-                className="w-full bg-background"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="weekly">Weekly</SelectItem>
-                <SelectItem value="bi-weekly">Bi-weekly</SelectItem>
-                <SelectItem value="semi-monthly">Semi-monthly</SelectItem>
-                <SelectItem value="monthly">Monthly</SelectItem>
-              </SelectContent>
-            </Select>
-          </Field>
-          <EditableNumberSetting
-            id="setting-target-hours"
-            label="Target hours"
-            min={1}
-            max={24}
-            step={0.25}
-            value={targetHours.value}
-            onCommit={targetHours.setValue}
-          />
-          <EditableTimeSetting
-            id="setting-window-start"
-            label="Workday starts"
-            value={windowStart.value}
-            onCommit={windowStart.setValue}
-          />
-        </div>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="bi-weekly">Bi-weekly</SelectItem>
+              <SelectItem value="semi-monthly">Semi-monthly</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
       </SettingBlock>
 
       <SettingBlock

@@ -14,6 +14,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as SettingsProjectsRouteImport } from './routes/settings/projects'
+import { Route as SettingsWorkScheduleRouteImport } from './routes/settings/work-schedule'
 import { Route as SettingsPrivacyRouteImport } from './routes/settings/privacy'
 import { Route as SettingsIntegrationsRouteImport } from './routes/settings/integrations'
 import { Route as SettingsGeneralRouteImport } from './routes/settings/general'
@@ -46,6 +47,11 @@ const SettingsIndexRoute = SettingsIndexRouteImport.update({
 const SettingsProjectsRoute = SettingsProjectsRouteImport.update({
   id: '/projects',
   path: '/projects',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsWorkScheduleRoute = SettingsWorkScheduleRouteImport.update({
+  id: '/work-schedule',
+  path: '/work-schedule',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsPrivacyRoute = SettingsPrivacyRouteImport.update({
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/settings/integrations': typeof SettingsIntegrationsRouteWithChildren
   '/settings/privacy': typeof SettingsPrivacyRoute
   '/settings/projects': typeof SettingsProjectsRoute
+  '/settings/work-schedule': typeof SettingsWorkScheduleRoute
   '/settings/': typeof SettingsIndexRoute
   '/settings/integrations/$providerId': typeof SettingsIntegrationsProviderIdRoute
   '/settings/integrations/': typeof SettingsIntegrationsIndexRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/settings/general': typeof SettingsGeneralRoute
   '/settings/privacy': typeof SettingsPrivacyRoute
   '/settings/projects': typeof SettingsProjectsRoute
+  '/settings/work-schedule': typeof SettingsWorkScheduleRoute
   '/settings': typeof SettingsIndexRoute
   '/settings/integrations/$providerId': typeof SettingsIntegrationsProviderIdRoute
   '/settings/integrations': typeof SettingsIntegrationsIndexRoute
@@ -131,6 +139,7 @@ export interface FileRoutesById {
   '/settings/integrations': typeof SettingsIntegrationsRouteWithChildren
   '/settings/privacy': typeof SettingsPrivacyRoute
   '/settings/projects': typeof SettingsProjectsRoute
+  '/settings/work-schedule': typeof SettingsWorkScheduleRoute
   '/settings/': typeof SettingsIndexRoute
   '/settings/integrations/$providerId': typeof SettingsIntegrationsProviderIdRoute
   '/settings/integrations/': typeof SettingsIntegrationsIndexRoute
@@ -148,6 +157,7 @@ export interface FileRouteTypes {
     | '/settings/integrations'
     | '/settings/privacy'
     | '/settings/projects'
+    | '/settings/work-schedule'
     | '/settings/'
     | '/settings/integrations/$providerId'
     | '/settings/integrations/'
@@ -161,6 +171,7 @@ export interface FileRouteTypes {
     | '/settings/general'
     | '/settings/privacy'
     | '/settings/projects'
+    | '/settings/work-schedule'
     | '/settings'
     | '/settings/integrations/$providerId'
     | '/settings/integrations'
@@ -176,6 +187,7 @@ export interface FileRouteTypes {
     | '/settings/integrations'
     | '/settings/privacy'
     | '/settings/projects'
+    | '/settings/work-schedule'
     | '/settings/'
     | '/settings/integrations/$providerId'
     | '/settings/integrations/'
@@ -222,6 +234,13 @@ declare module '@tanstack/react-router' {
       path: '/projects'
       fullPath: '/settings/projects'
       preLoaderRoute: typeof SettingsProjectsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/work-schedule': {
+      id: '/settings/work-schedule'
+      path: '/work-schedule'
+      fullPath: '/settings/work-schedule'
+      preLoaderRoute: typeof SettingsWorkScheduleRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/privacy': {
@@ -304,6 +323,7 @@ interface SettingsRouteChildren {
   SettingsIntegrationsRoute: typeof SettingsIntegrationsRouteWithChildren
   SettingsPrivacyRoute: typeof SettingsPrivacyRoute
   SettingsProjectsRoute: typeof SettingsProjectsRoute
+  SettingsWorkScheduleRoute: typeof SettingsWorkScheduleRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
 
@@ -315,6 +335,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsIntegrationsRoute: SettingsIntegrationsRouteWithChildren,
   SettingsPrivacyRoute: SettingsPrivacyRoute,
   SettingsProjectsRoute: SettingsProjectsRoute,
+  SettingsWorkScheduleRoute: SettingsWorkScheduleRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }
 

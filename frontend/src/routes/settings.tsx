@@ -42,6 +42,7 @@ export const Route = createFileRoute("/settings")({
 
 const sectionPaths = {
   general: "/settings/general",
+  workSchedule: "/settings/work-schedule",
   integrations: "/settings/integrations",
   categories: "/settings/categories",
   projects: "/settings/projects",
