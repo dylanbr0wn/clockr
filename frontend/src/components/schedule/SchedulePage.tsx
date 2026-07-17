@@ -3,7 +3,10 @@ import {
   CardContent,
   CardHeader,
 } from "@/components/ui/card";
-import { categoriesForAssignPicker } from "@/lib/schedule";
+import {
+  categoriesForAssignPicker,
+  projectsForAssignPicker,
+} from "@/lib/schedule";
 import { EventEditDialog } from "./EventEditDialog";
 import { GapSuggestDialog } from "./GapSuggestDialog";
 import { ReviewQueueDialog } from "./ReviewQueueDialog";
@@ -19,6 +22,11 @@ export function SchedulePage() {
     schedule.editingEvent?.categoryId,
   );
   const gapPickerCategories = categoriesForAssignPicker(schedule.categories);
+  const editPickerProjects = projectsForAssignPicker(
+    schedule.projects,
+    schedule.editingEvent?.projectId,
+  );
+  const gapPickerProjects = projectsForAssignPicker(schedule.projects);
 
   return (
     <>
@@ -73,6 +81,7 @@ export function SchedulePage() {
       />
       <EventEditDialog
         categories={editPickerCategories}
+        projects={editPickerProjects}
         event={schedule.editingEvent}
         isSaving={schedule.editEventPending || schedule.createPending}
         open={schedule.editingEvent !== null}
@@ -86,6 +95,7 @@ export function SchedulePage() {
       <GapSuggestDialog
         aiConfigured={schedule.aiConfigured}
         categories={gapPickerCategories}
+        projects={gapPickerProjects}
         evidenceError={schedule.gapEvidenceError}
         evidenceItems={schedule.gapEvidenceItems}
         evidencePending={schedule.gapEvidencePending}

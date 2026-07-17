@@ -27,6 +27,9 @@ interface Mutations {
         endMinutes: number;
         categoryId?: number;
         description: string;
+        workType?: string;
+        projectId?: number;
+        billableStatus?: string;
       },
       options?: { onSuccess?: () => void },
     ) => void;
@@ -41,6 +44,9 @@ interface Mutations {
         endMinutes: number;
         categoryId?: number;
         description: string;
+        workType?: string;
+        projectId?: number;
+        billableStatus?: string;
       },
       options?: { onSuccess?: () => void; onSettled?: () => void },
     ) => void;
@@ -70,6 +76,28 @@ function eventIdFromScheduleItemId(itemId: string): number | null {
 
 function editDescription(values: ScheduleEventEditValues): string {
   return values.description || values.note;
+}
+
+function allocationFields(values: {
+  workType: string;
+  projectId?: number;
+  billableStatus: string;
+}) {
+  return {
+    workType: values.workType,
+    billableStatus: values.billableStatus,
+    ...(typeof values.projectId === "number"
+      ? { projectId: values.projectId }
+      : {}),
+  };
+}
+
+function timeEntryAllocation(timeEntry: TimeEntry) {
+  return allocationFields({
+    workType: timeEntry.workType,
+    projectId: timeEntry.projectId,
+    billableStatus: timeEntry.billableStatus,
+  });
 }
 
 export function useSchedulePageEditor({
@@ -125,6 +153,7 @@ export function useSchedulePageEditor({
             endMinutes: change.endMinutes,
             categoryId: timeEntry.categoryId,
             description: timeEntry.description ?? "",
+            ...timeEntryAllocation(timeEntry),
           },
           {
             onSettled: () => {
@@ -168,6 +197,7 @@ export function useSchedulePageEditor({
       endMinutes: item.endMinutes,
       categoryId: timeEntry.categoryId,
       description: timeEntry.description ?? item.metadata?.title ?? "",
+      ...timeEntryAllocation(timeEntry),
     });
   };
 
@@ -248,6 +278,7 @@ export function useSchedulePageEditor({
           endMinutes: values.endMinutes,
           categoryId: values.categoryId,
           description,
+          ...allocationFields(values),
         },
         { onSuccess: () => setPendingCreate(null) },
       );
@@ -282,6 +313,7 @@ export function useSchedulePageEditor({
         endMinutes: values.endMinutes,
         categoryId: values.categoryId,
         description,
+        ...allocationFields(values),
       },
       {
         onSuccess: () => setEditingItemId(null),

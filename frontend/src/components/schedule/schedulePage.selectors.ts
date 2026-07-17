@@ -11,6 +11,8 @@ import type {
 import {
   START_DATE,
   buildDays,
+  DEFAULT_BILLABLE_STATUS,
+  DEFAULT_WORK_TYPE,
   periodContainsDate,
   periodDayCount,
   projectSchedulePeriod,
@@ -172,6 +174,8 @@ function resolveEditingEvent({
       category: "Unassigned",
       note: "",
       description: "",
+      workType: DEFAULT_WORK_TYPE,
+      billableStatus: DEFAULT_BILLABLE_STATUS,
       isNew: true,
     };
   }
@@ -198,5 +202,8 @@ function resolveEditingEvent({
     categoryId: timeEntry.categoryId,
     note: timeEntry.description ?? "",
     description: timeEntry.description ?? "",
+    workType: timeEntry.workType,
+    projectId: timeEntry.projectId,
+    billableStatus: timeEntry.billableStatus,
   };
 }

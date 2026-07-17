@@ -11,6 +11,7 @@ import {
   useEvents,
   useTimeEntries,
   useGapTimeline,
+  useProjects,
   useReviewDecisions,
   usePeriods,
   useListGapEvidence,
@@ -23,6 +24,7 @@ export function useSchedulePageBaseQueries(today: string, currentTimeZone: strin
   const periodsQuery = usePeriods();
   const currentPeriodQuery = useCurrentPeriod(today, currentTimeZone);
   const categoriesQuery = useCategories(true);
+  const projectsQuery = useProjects(true);
 
   const createTimeEntryMutation = useCreateTimeEntry();
   const createGapTimeEntryMutation = useCreateGapTimeEntry();
@@ -39,6 +41,7 @@ export function useSchedulePageBaseQueries(today: string, currentTimeZone: strin
     periodsQuery,
     currentPeriodQuery,
     categoriesQuery,
+    projectsQuery,
     createTimeEntryMutation,
     createGapTimeEntryMutation,
     suggestGapFillMutation,

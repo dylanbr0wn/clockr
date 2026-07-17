@@ -30,10 +30,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Category, GapEvidenceItem, GapSuggestion } from "@/lib/api";
+import type { Category, GapEvidenceItem, GapSuggestion, Project } from "@/lib/api";
 import { formatMinutes } from "@/lib/scheduler";
-import { errorMessage } from "@/lib/schedule";
+import {
+  DEFAULT_BILLABLE_STATUS,
+  DEFAULT_WORK_TYPE,
+  errorMessage,
+} from "@/lib/schedule";
 import { GapEvidencePreview } from "./GapEvidencePreview";
+import { TimeEntryAllocationFields } from "./TimeEntryAllocationFields";
 
 const UNASSIGNED_CATEGORY_VALUE = "__unassigned__";
 
@@ -48,11 +53,15 @@ export interface SelectedGap {
 export interface GapSuggestConfirmValues {
   categoryId?: number;
   description: string;
+  workType: string;
+  projectId?: number;
+  billableStatus: string;
 }
 
 interface GapSuggestDialogProps {
   gap: SelectedGap | null;
   categories: Category[];
+  projects: Project[];
   aiConfigured: boolean;
   open: boolean;
   isSuggesting: boolean;
@@ -70,6 +79,7 @@ interface GapSuggestDialogProps {
 export function GapSuggestDialog({
   gap,
   categories,
+  projects,
   aiConfigured,
   open,
   isSuggesting,
@@ -85,6 +95,11 @@ export function GapSuggestDialog({
 }: GapSuggestDialogProps) {
   const [categoryValue, setCategoryValue] = useState(UNASSIGNED_CATEGORY_VALUE);
   const [description, setDescription] = useState("");
+  const [workType, setWorkType] = useState<string>(DEFAULT_WORK_TYPE);
+  const [projectId, setProjectId] = useState<number | undefined>();
+  const [billableStatus, setBillableStatus] = useState<string>(
+    DEFAULT_BILLABLE_STATUS,
+  );
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -99,6 +114,9 @@ export function GapSuggestDialog({
       matched ? matched.id.toString() : UNASSIGNED_CATEGORY_VALUE,
     );
     setDescription(suggestion.description);
+    setWorkType(DEFAULT_WORK_TYPE);
+    setProjectId(undefined);
+    setBillableStatus(DEFAULT_BILLABLE_STATUS);
     setFormError(null);
   }, [categories, open, suggestion]);
 
@@ -106,6 +124,9 @@ export function GapSuggestDialog({
     if (!open) {
       setCategoryValue(UNASSIGNED_CATEGORY_VALUE);
       setDescription("");
+      setWorkType(DEFAULT_WORK_TYPE);
+      setProjectId(undefined);
+      setBillableStatus(DEFAULT_BILLABLE_STATUS);
       setFormError(null);
     }
   }, [open]);
@@ -121,6 +142,9 @@ export function GapSuggestDialog({
     onConfirm({
       categoryId: Number(categoryValue),
       description: description.trim(),
+      workType,
+      projectId,
+      billableStatus,
     });
   };
 
@@ -223,6 +247,17 @@ export function GapSuggestDialog({
                   </SelectContent>
                 </Select>
               </Field>
+
+              <TimeEntryAllocationFields
+                idPrefix="gap-suggest"
+                projects={projects}
+                values={{ workType, projectId, billableStatus }}
+                onChange={(next) => {
+                  setWorkType(next.workType);
+                  setProjectId(next.projectId);
+                  setBillableStatus(next.billableStatus);
+                }}
+              />
 
               {formError ? <FieldError>{formError}</FieldError> : null}
             </FieldGroup>

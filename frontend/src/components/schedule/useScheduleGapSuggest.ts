@@ -33,6 +33,9 @@ interface CreateGapTimeEntryMutation {
       endMinutes: number;
       categoryId?: number;
       description: string;
+      workType?: string;
+      projectId?: number;
+      billableStatus?: string;
     },
     options?: { onSuccess?: () => void },
   ) => void;
@@ -118,6 +121,9 @@ export function useScheduleGapSuggest({
   const handleConfirmGapSuggest = (values: {
     categoryId?: number;
     description: string;
+    workType: string;
+    projectId?: number;
+    billableStatus: string;
   }) => {
     if (!selectedGap || !activePeriodId) {
       return;
@@ -131,6 +137,11 @@ export function useScheduleGapSuggest({
         endMinutes: selectedGap.endMinutes,
         categoryId: values.categoryId,
         description: values.description,
+        workType: values.workType,
+        billableStatus: values.billableStatus,
+        ...(typeof values.projectId === "number"
+          ? { projectId: values.projectId }
+          : {}),
       },
       {
         onSuccess: () => {

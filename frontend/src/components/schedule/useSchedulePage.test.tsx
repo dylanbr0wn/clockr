@@ -34,6 +34,7 @@ const mockState = vi.hoisted(() => {
       archived: false,
       inUse: false,
     }],
+    projects: [],
     events: [],
     timeEntries: [
       {
@@ -46,6 +47,8 @@ const mockState = vi.hoisted(() => {
         categoryId: 10,
         description: "Manual description",
         attestation: "confirmed",
+        workType: "worked",
+        billableStatus: "unset",
       },
       {
         id: 12,
@@ -58,6 +61,8 @@ const mockState = vi.hoisted(() => {
         description: "auto one",
         attestation: "confirmed",
         method: "gap_fill",
+        workType: "worked",
+        billableStatus: "unset",
       },
     ],
     gapTimeline: [],
@@ -119,6 +124,7 @@ vi.mock("@/lib/api", () => ({
     error: null,
   }),
   useCategories: () => ({ data: mockState.categories, isLoading: false, error: null }),
+  useProjects: () => ({ data: mockState.projects, isLoading: false, error: null }),
   useEvents: () => ({ data: mockState.events, isLoading: false, error: null }),
   useEventCategoryOverlays: () => ({
     data: [],

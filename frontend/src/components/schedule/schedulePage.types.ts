@@ -6,6 +6,7 @@ import type {
   GapSuggestion,
   TimeEntry,
   Period,
+  Project,
   ReviewDecision,
   TzSegment,
 } from "@/lib/api";
@@ -49,6 +50,9 @@ export interface EditableScheduleEvent {
   categoryId?: number;
   note: string;
   description: string;
+  workType: string;
+  projectId?: number;
+  billableStatus: string;
   isNew?: boolean;
 }
 
@@ -59,6 +63,9 @@ export interface ScheduleEventEditValues {
   categoryId?: number;
   note: string;
   description: string;
+  workType: string;
+  projectId?: number;
+  billableStatus: string;
 }
 
 export interface SchedulePageViewModel {
@@ -70,6 +77,7 @@ export interface SchedulePageViewModel {
   activePeriod: Period | null;
   activePeriodId: number | undefined;
   categories: Category[];
+  projects: Project[];
   events: Event[];
   reviewDecisions: ReviewDecision[];
   days: ScheduleDay[];
@@ -122,6 +130,9 @@ export interface SchedulePageViewModel {
   handleConfirmGapSuggest: (values: {
     categoryId?: number;
     description: string;
+    workType: string;
+    projectId?: number;
+    billableStatus: string;
   }) => void;
 }
 

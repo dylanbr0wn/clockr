@@ -53,6 +53,8 @@ describe("useSchedulePageEditor", () => {
         categoryId: 10,
         note: "New title",
         description: "New description",
+        workType: "worked",
+        billableStatus: "unset",
       });
     });
 
@@ -87,6 +89,8 @@ describe("useSchedulePageEditor", () => {
         categoryId: 10,
         note: "Updated title",
         description: "Updated description",
+        workType: "worked",
+        billableStatus: "unset",
       });
     });
 
@@ -94,6 +98,140 @@ describe("useSchedulePageEditor", () => {
       expect.objectContaining({
         id: 11,
         description: "Updated description",
+      }),
+      expect.any(Object),
+    );
+  });
+
+  it("passes allocation fields when creating and updating time entries", () => {
+    const createMutate = vi.fn();
+    const updateMutate = vi.fn();
+
+    const { result } = renderHook(() =>
+      useSchedulePageEditor({
+        activePeriodId: 1,
+        timeEntries,
+        createTimeEntryMutation: { mutate: createMutate },
+        updateTimeEntryMutation: { mutate: updateMutate },
+        deleteTimeEntryMutation: { mutate: vi.fn() },
+        excludeEventMutation: { mutate: vi.fn() },
+      }),
+    );
+
+    act(() => {
+      result.current.handleCreate({
+        day: "2026-07-03",
+        startMinutes: 540,
+        endMinutes: 600,
+      });
+    });
+
+    act(() => {
+      result.current.handleSaveEventEdit({
+        day: "2026-07-03",
+        startMinutes: 540,
+        endMinutes: 600,
+        categoryId: 10,
+        note: "New title",
+        description: "New description",
+        workType: "worked",
+        projectId: 7,
+        billableStatus: "billable",
+      });
+    });
+
+    expect(createMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workType: "worked",
+        projectId: 7,
+        billableStatus: "billable",
+      }),
+      expect.any(Object),
+    );
+
+    act(() => {
+      result.current.handleOpenEventEditor({
+        id: "time-entry-11",
+        day: "2026-07-02",
+        startMinutes: 540,
+        endMinutes: 600,
+        metadata: {
+          title: "Title",
+          category: "Work",
+          kind: "manual",
+          mutable: true,
+        },
+      });
+    });
+
+    act(() => {
+      result.current.handleSaveEventEdit({
+        day: "2026-07-02",
+        startMinutes: 540,
+        endMinutes: 600,
+        categoryId: 10,
+        note: "Updated title",
+        description: "Updated description",
+        workType: "paid_leave",
+        billableStatus: "unset",
+      });
+    });
+
+    expect(updateMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 11,
+        workType: "paid_leave",
+        billableStatus: "unset",
+      }),
+      expect.any(Object),
+    );
+    expect(updateMutate.mock.calls.at(-1)?.[0]).not.toHaveProperty("projectId");
+  });
+
+  it("preserves allocation fields when committing drag changes", () => {
+    const updateMutate = vi.fn();
+    const allocated: TimeEntry[] = [
+      {
+        ...timeEntries[0],
+        workType: "worked",
+        projectId: 9,
+        billableStatus: "billable",
+      },
+    ];
+
+    const { result } = renderHook(() =>
+      useSchedulePageEditor({
+        activePeriodId: 1,
+        timeEntries: allocated,
+        createTimeEntryMutation: { mutate: vi.fn() },
+        updateTimeEntryMutation: { mutate: updateMutate },
+        deleteTimeEntryMutation: { mutate: vi.fn() },
+        excludeEventMutation: { mutate: vi.fn() },
+      }),
+    );
+
+    act(() => {
+      result.current.handleCommit({
+        itemId: "time-entry-11",
+        day: "2026-07-02",
+        startMinutes: 560,
+        endMinutes: 620,
+        interaction: "move",
+        item: {
+          id: "time-entry-11",
+          day: "2026-07-02",
+          startMinutes: 540,
+          endMinutes: 600,
+        },
+      });
+    });
+
+    expect(updateMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 11,
+        workType: "worked",
+        projectId: 9,
+        billableStatus: "billable",
       }),
       expect.any(Object),
     );

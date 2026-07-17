@@ -61,6 +61,7 @@ export function useSchedulePage(): SchedulePageViewModel {
   const persistedPeriods = base.periodsQuery.data ?? [];
   const currentPeriod = base.currentPeriodQuery.data ?? null;
   const categories = base.categoriesQuery.data ?? [];
+  const projects = base.projectsQuery.data ?? [];
   const preloadedPeriods = useMemo(
     () => mergePeriods(persistedPeriods, currentPeriod),
     [currentPeriod, persistedPeriods],
@@ -168,6 +169,7 @@ export function useSchedulePage(): SchedulePageViewModel {
       base.periodsQuery.isLoading,
       base.currentPeriodQuery.isLoading,
       base.categoriesQuery.isLoading,
+      base.projectsQuery.isLoading,
       period.eventsQuery.isLoading,
       period.timeEntriesQuery.isLoading,
       period.gapTimelineQuery.isLoading,
@@ -184,6 +186,7 @@ export function useSchedulePage(): SchedulePageViewModel {
       base.periodsQuery.error,
       base.currentPeriodQuery.error,
       base.categoriesQuery.error,
+      base.projectsQuery.error,
       period.eventsQuery.error,
       period.timeEntriesQuery.error,
       period.gapTimelineQuery.error,
@@ -211,6 +214,7 @@ export function useSchedulePage(): SchedulePageViewModel {
     activePeriod: derived.activePeriod,
     activePeriodId: derived.activePeriodId,
     categories,
+    projects,
     events: period.eventsQuery.data ?? [],
     reviewDecisions: period.reviewDecisionsQuery.data ?? [],
     days: derived.days,

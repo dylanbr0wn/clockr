@@ -6,6 +6,7 @@ import type {
   TimeEntry,
   Interval,
   Period,
+  Project,
   TzSegment,
 } from "@/lib/api";
 import {
@@ -56,6 +57,16 @@ export function categoriesForAssignPicker(
   return categories.filter(
     (category) =>
       !category.archived || category.id === selectedCategoryId,
+  );
+}
+
+/** Active projects for new assigns; keep selected archived so edit still shows it. */
+export function projectsForAssignPicker(
+  projects: Project[],
+  selectedProjectId?: number,
+): Project[] {
+  return projects.filter(
+    (project) => !project.archived || project.id === selectedProjectId,
   );
 }
 

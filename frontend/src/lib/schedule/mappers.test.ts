@@ -9,6 +9,7 @@ import {
   buildAllDayChipsByDay,
   buildEventCategoryOverlayMap,
   categoriesForAssignPicker,
+  projectsForAssignPicker,
   eventToSchedulerItem,
   expandAllDayEventDays,
   timeEntryToSchedulerItem,
@@ -423,6 +424,40 @@ describe("schedule mappers", () => {
 
     expect(categoriesForAssignPicker(categories).map((c) => c.id)).toEqual([1]);
     expect(categoriesForAssignPicker(categories, 2).map((c) => c.id)).toEqual([
+      1, 2,
+    ]);
+  });
+
+  it("keeps selected archived project in assign picker", () => {
+    const projects = [
+      {
+        id: 1,
+        name: "Active",
+        key: "ACTIVE",
+        color: "#22C55E",
+        archived: false,
+        inUse: false,
+      },
+      {
+        id: 2,
+        name: "Archived",
+        key: "ARCH",
+        color: "#64748B",
+        archived: true,
+        inUse: true,
+      },
+      {
+        id: 3,
+        name: "Other archived",
+        key: "OTHER",
+        color: "#94A3B8",
+        archived: true,
+        inUse: true,
+      },
+    ];
+
+    expect(projectsForAssignPicker(projects).map((p) => p.id)).toEqual([1]);
+    expect(projectsForAssignPicker(projects, 2).map((p) => p.id)).toEqual([
       1, 2,
     ]);
   });

@@ -31,13 +31,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Category } from "@/lib/api";
+import type { Category, Project } from "@/lib/api";
 import { formatMinutes } from "@/lib/scheduler";
 import { cn } from "@/lib/utils";
 import type {
   EditableScheduleEvent,
   ScheduleEventEditValues,
 } from "./useSchedulePage";
+import { TimeEntryAllocationFields } from "./TimeEntryAllocationFields";
 
 const UNASSIGNED_CATEGORY_VALUE = "__unassigned__";
 
@@ -100,6 +101,7 @@ function timeValueToMinutes(value: string, allowEndOfDay = false) {
 
 interface EventEditDialogProps {
   categories: Category[];
+  projects: Project[];
   event: EditableScheduleEvent | null;
   isSaving: boolean;
   open: boolean;
@@ -109,6 +111,7 @@ interface EventEditDialogProps {
 
 export function EventEditDialog({
   categories,
+  projects,
   event,
   isSaving,
   open,
@@ -121,6 +124,9 @@ export function EventEditDialog({
   const [categoryValue, setCategoryValue] = useState(
     UNASSIGNED_CATEGORY_VALUE,
   );
+  const [workType, setWorkType] = useState("worked");
+  const [projectId, setProjectId] = useState<number | undefined>();
+  const [billableStatus, setBillableStatus] = useState("unset");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
@@ -140,6 +146,9 @@ export function EventEditDialog({
         ? event.categoryId.toString()
         : UNASSIGNED_CATEGORY_VALUE,
     );
+    setWorkType(event.workType);
+    setProjectId(event.projectId);
+    setBillableStatus(event.billableStatus);
     setTitle(event.note);
     setDescription(event.description);
     setFormError(null);
@@ -177,6 +186,9 @@ export function EventEditDialog({
           : Number(categoryValue),
       note: title.trim(),
       description: description.trim(),
+      workType,
+      projectId,
+      billableStatus,
     });
   };
 
@@ -307,6 +319,17 @@ export function EventEditDialog({
                 </SelectContent>
               </Select>
             </Field>
+
+            <TimeEntryAllocationFields
+              idPrefix="event"
+              projects={projects}
+              values={{ workType, projectId, billableStatus }}
+              onChange={(next) => {
+                setWorkType(next.workType);
+                setProjectId(next.projectId);
+                setBillableStatus(next.billableStatus);
+              }}
+            />
 
             {formError ? <FieldError>{formError}</FieldError> : null}
           </FieldGroup>

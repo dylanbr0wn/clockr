@@ -142,6 +142,9 @@ describe("useScheduleGapSuggest", () => {
       result.current.handleConfirmGapSuggest({
         categoryId: 4,
         description: "Deep work",
+        workType: "worked",
+        projectId: 12,
+        billableStatus: "billable",
       });
     });
 
@@ -153,6 +156,9 @@ describe("useScheduleGapSuggest", () => {
         endMinutes: 540,
         categoryId: 4,
         description: "Deep work",
+        workType: "worked",
+        projectId: 12,
+        billableStatus: "billable",
       }),
       expect.any(Object),
     );
