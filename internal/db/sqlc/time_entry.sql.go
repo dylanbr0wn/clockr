@@ -308,6 +308,46 @@ func (q *Queries) UpdateTimeEntry(ctx context.Context, arg UpdateTimeEntryParams
 	return i, err
 }
 
+const updateTimeEntryAttestation = `-- name: UpdateTimeEntryAttestation :one
+UPDATE time_entry SET
+    attestation = ?,
+    updated_at  = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ? AND period_id = ?
+RETURNING id, period_id, start_instant, end_instant, duration_minutes, local_work_date, category_id, description, attestation, source_kind, source_id, source_revision, method, created_at, updated_at, work_type, project_id, billable_status
+`
+
+type UpdateTimeEntryAttestationParams struct {
+	Attestation string `json:"attestation"`
+	ID          int64  `json:"id"`
+	PeriodID    int64  `json:"period_id"`
+}
+
+func (q *Queries) UpdateTimeEntryAttestation(ctx context.Context, arg UpdateTimeEntryAttestationParams) (TimeEntry, error) {
+	row := q.db.QueryRowContext(ctx, updateTimeEntryAttestation, arg.Attestation, arg.ID, arg.PeriodID)
+	var i TimeEntry
+	err := row.Scan(
+		&i.ID,
+		&i.PeriodID,
+		&i.StartInstant,
+		&i.EndInstant,
+		&i.DurationMinutes,
+		&i.LocalWorkDate,
+		&i.CategoryID,
+		&i.Description,
+		&i.Attestation,
+		&i.SourceKind,
+		&i.SourceID,
+		&i.SourceRevision,
+		&i.Method,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.WorkType,
+		&i.ProjectID,
+		&i.BillableStatus,
+	)
+	return i, err
+}
+
 const updateTimeEntrySpan = `-- name: UpdateTimeEntrySpan :one
 UPDATE time_entry SET
     start_instant     = ?,

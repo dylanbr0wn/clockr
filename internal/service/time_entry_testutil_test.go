@@ -12,6 +12,12 @@ import (
 // insertTimeEntry seeds a confirmed time_entry for service tests (replaces CreateGapFill fixtures).
 func insertTimeEntry(t *testing.T, q *sqlc.Queries, periodID int64, day, startUTC, endUTC string, categoryID sql.NullInt64, description string, gapOrigin bool) {
 	t.Helper()
+	_ = insertTimeEntryFull(t, q, periodID, day, startUTC, endUTC, categoryID, description, "confirmed", gapOrigin)
+}
+
+// insertTimeEntryFull seeds a time_entry with an explicit attestation and returns the row id.
+func insertTimeEntryFull(t *testing.T, q *sqlc.Queries, periodID int64, day, startUTC, endUTC string, categoryID sql.NullInt64, description, attestation string, gapOrigin bool) int64 {
+	t.Helper()
 	start, err := time.Parse(time.RFC3339, startUTC)
 	if err != nil {
 		t.Fatalf("parse start: %v", err)
@@ -24,7 +30,7 @@ func insertTimeEntry(t *testing.T, q *sqlc.Queries, periodID int64, day, startUT
 	if gapOrigin {
 		method = sql.NullString{String: "gap_fill", Valid: true}
 	}
-	if _, err := q.CreateTimeEntry(context.Background(), sqlc.CreateTimeEntryParams{
+	row, err := q.CreateTimeEntry(context.Background(), sqlc.CreateTimeEntryParams{
 		PeriodID:        periodID,
 		StartInstant:    startUTC,
 		EndInstant:      endUTC,
@@ -32,11 +38,13 @@ func insertTimeEntry(t *testing.T, q *sqlc.Queries, periodID int64, day, startUT
 		LocalWorkDate:   day,
 		CategoryID:      categoryID,
 		Description:     description,
-		Attestation:     "confirmed",
+		Attestation:     attestation,
 		Method:          method,
 		WorkType:        "worked",
 		BillableStatus:  "unset",
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatalf("insert time entry: %v", err)
 	}
+	return row.ID
 }

@@ -52,5 +52,12 @@ UPDATE time_entry SET
 WHERE id = ? AND period_id = ?
 RETURNING *;
 
+-- name: UpdateTimeEntryAttestation :one
+UPDATE time_entry SET
+    attestation = ?,
+    updated_at  = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ? AND period_id = ?
+RETURNING *;
+
 -- name: DeleteTimeEntry :execrows
 DELETE FROM time_entry WHERE id = ? AND period_id = ?;

@@ -118,6 +118,86 @@ func (s *ScheduleService) DeleteTimeEntry(ctx context.Context, req *connect.Requ
 	return connect.NewResponse(&appv1.DeleteTimeEntryResponse{PeriodId: req.Msg.PeriodId, Id: req.Msg.Id}), nil
 }
 
+func (s *ScheduleService) ConfirmTimeEntry(ctx context.Context, req *connect.Request[appv1.ConfirmTimeEntryRequest]) (*connect.Response[appv1.ConfirmTimeEntryResponse], error) {
+	if err := requireID(req.Msg.Id, "id"); err != nil {
+		return nil, err
+	}
+	if err := requireID(req.Msg.PeriodId, "period_id"); err != nil {
+		return nil, err
+	}
+	items, err := s.service.ConfirmTimeEntry(ctx, service.ConfirmTimeEntryInput{
+		ID:                req.Msg.Id,
+		PeriodID:          req.Msg.PeriodId,
+		OvernightPolicy:   req.Msg.OvernightPolicy,
+		OverlapResolution: req.Msg.OverlapResolution,
+	})
+	if err != nil {
+		return nil, mapServiceError(err)
+	}
+	out := make([]*appv1.TimeEntry, len(items))
+	for i := range items {
+		out[i] = toProtoTimeEntry(items[i])
+	}
+	return connect.NewResponse(&appv1.ConfirmTimeEntryResponse{TimeEntries: out}), nil
+}
+
+func (s *ScheduleService) RejectTimeEntry(ctx context.Context, req *connect.Request[appv1.RejectTimeEntryRequest]) (*connect.Response[appv1.RejectTimeEntryResponse], error) {
+	if err := requireID(req.Msg.Id, "id"); err != nil {
+		return nil, err
+	}
+	if err := requireID(req.Msg.PeriodId, "period_id"); err != nil {
+		return nil, err
+	}
+	item, err := s.service.RejectTimeEntry(ctx, service.RejectTimeEntryInput{
+		ID:       req.Msg.Id,
+		PeriodID: req.Msg.PeriodId,
+	})
+	if err != nil {
+		return nil, mapServiceError(err)
+	}
+	return connect.NewResponse(&appv1.RejectTimeEntryResponse{TimeEntry: toProtoTimeEntry(item)}), nil
+}
+
+func (s *ScheduleService) AdjustDraftTimeEntry(ctx context.Context, req *connect.Request[appv1.AdjustDraftTimeEntryRequest]) (*connect.Response[appv1.AdjustDraftTimeEntryResponse], error) {
+	if err := requireID(req.Msg.Id, "id"); err != nil {
+		return nil, err
+	}
+	input, err := timeEntryInput(req.Msg.Input)
+	if err != nil {
+		return nil, err
+	}
+	item, serviceErr := s.service.AdjustDraftTimeEntry(ctx, service.TimeEntryUpdateInput{
+		ID:             req.Msg.Id,
+		TimeEntryInput: input,
+	})
+	if serviceErr != nil {
+		return nil, mapServiceError(serviceErr)
+	}
+	return connect.NewResponse(&appv1.AdjustDraftTimeEntryResponse{TimeEntry: toProtoTimeEntry(item)}), nil
+}
+
+func (s *ScheduleService) SplitTimeEntry(ctx context.Context, req *connect.Request[appv1.SplitTimeEntryRequest]) (*connect.Response[appv1.SplitTimeEntryResponse], error) {
+	if err := requireID(req.Msg.Id, "id"); err != nil {
+		return nil, err
+	}
+	if err := requireID(req.Msg.PeriodId, "period_id"); err != nil {
+		return nil, err
+	}
+	items, err := s.service.SplitTimeEntry(ctx, service.SplitTimeEntryInput{
+		ID:        req.Msg.Id,
+		PeriodID:  req.Msg.PeriodId,
+		CutPoints: req.Msg.CutPoints,
+	})
+	if err != nil {
+		return nil, mapServiceError(err)
+	}
+	out := make([]*appv1.TimeEntry, len(items))
+	for i := range items {
+		out[i] = toProtoTimeEntry(items[i])
+	}
+	return connect.NewResponse(&appv1.SplitTimeEntryResponse{TimeEntries: out}), nil
+}
+
 func (s *ScheduleService) ListReviewDecisions(ctx context.Context, req *connect.Request[appv1.ListReviewDecisionsRequest]) (*connect.Response[appv1.ListReviewDecisionsResponse], error) {
 	if err := requireID(req.Msg.PeriodId, "period_id"); err != nil {
 		return nil, err

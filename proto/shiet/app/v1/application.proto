@@ -42,6 +42,10 @@ service ScheduleService {
   rpc CreateGapTimeEntry(CreateGapTimeEntryRequest) returns (CreateGapTimeEntryResponse);
   rpc UpdateTimeEntry(UpdateTimeEntryRequest) returns (UpdateTimeEntryResponse);
   rpc DeleteTimeEntry(DeleteTimeEntryRequest) returns (DeleteTimeEntryResponse);
+  rpc ConfirmTimeEntry(ConfirmTimeEntryRequest) returns (ConfirmTimeEntryResponse);
+  rpc RejectTimeEntry(RejectTimeEntryRequest) returns (RejectTimeEntryResponse);
+  rpc AdjustDraftTimeEntry(AdjustDraftTimeEntryRequest) returns (AdjustDraftTimeEntryResponse);
+  rpc SplitTimeEntry(SplitTimeEntryRequest) returns (SplitTimeEntryResponse);
   rpc ListReviewDecisions(ListReviewDecisionsRequest) returns (ListReviewDecisionsResponse);
   rpc ResolveReviewDecision(ResolveReviewDecisionRequest) returns (ResolveReviewDecisionResponse);
   rpc ExcludeEvent(ExcludeEventRequest) returns (ExcludeEventResponse);
@@ -272,6 +276,29 @@ message CreateTimeEntryResponse { int64 period_id = 1; int64 id = 2; }
 message CreateGapTimeEntryResponse { int64 period_id = 1; int64 id = 2; }
 message UpdateTimeEntryResponse { int64 period_id = 1; int64 id = 2; }
 message DeleteTimeEntryResponse { int64 period_id = 1; int64 id = 2; }
+message ConfirmTimeEntryRequest {
+  int64 id = 1;
+  int64 period_id = 2;
+  // attribute_to_start | split_at_midnight — required when span crosses local midnight
+  string overnight_policy = 3;
+  // keep_mine | keep_theirs | split | allow_parallel — required when overlapping confirmed entries
+  string overlap_resolution = 4;
+}
+message ConfirmTimeEntryResponse { repeated TimeEntry time_entries = 1; }
+message RejectTimeEntryRequest {
+  int64 id = 1;
+  int64 period_id = 2;
+}
+message RejectTimeEntryResponse { TimeEntry time_entry = 1; }
+message AdjustDraftTimeEntryRequest { int64 id = 1; TimeEntryInput input = 2; }
+message AdjustDraftTimeEntryResponse { TimeEntry time_entry = 1; }
+message SplitTimeEntryRequest {
+  int64 id = 1;
+  int64 period_id = 2;
+  // RFC3339 UTC cut points strictly inside the draft span, ascending
+  repeated string cut_points = 3;
+}
+message SplitTimeEntryResponse { repeated TimeEntry time_entries = 1; }
 enum ReviewActionRole {
   REVIEW_ACTION_ROLE_UNSPECIFIED = 0;
   REVIEW_ACTION_ROLE_PRIMARY = 1;
