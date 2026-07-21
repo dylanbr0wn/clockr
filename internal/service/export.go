@@ -293,11 +293,6 @@ func (s *Service) RenderPeriodExport(ctx context.Context, periodID int64, templa
 	return renderExportTemplate(model, tmpl)
 }
 
-type textSummaryData struct {
-	PeriodExportModel
-	VarianceMinutes int
-}
-
 func renderTextSummary(model PeriodExportModel, body, templateKey string) (string, error) {
 	if strings.TrimSpace(body) == "" {
 		if templateKey == ExportTemplateTextSummary {
@@ -310,12 +305,8 @@ func renderTextSummary(model PeriodExportModel, body, templateKey string) (strin
 	if err != nil {
 		return "", fmt.Errorf("parse text summary template: %w", err)
 	}
-	data := textSummaryData{
-		PeriodExportModel: model,
-		VarianceMinutes:   model.ActualMinutes - model.TargetMinutes,
-	}
 	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, data); err != nil {
+	if err := tmpl.Execute(&buf, PlainPeriodExportData(model)); err != nil {
 		return "", fmt.Errorf("execute text summary template: %w", err)
 	}
 	return strings.TrimRight(buf.String(), "\n"), nil
