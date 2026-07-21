@@ -25,6 +25,7 @@ import (
 	"github.com/dylanbr0wn/shiet/internal/broker/ratelimit"
 	"github.com/dylanbr0wn/shiet/internal/broker/store"
 	"github.com/dylanbr0wn/shiet/internal/integration/oauth"
+	applog "github.com/dylanbr0wn/shiet/internal/log"
 	"github.com/dylanbr0wn/shiet/internal/oauthpages"
 	"github.com/rs/zerolog"
 )
@@ -405,7 +406,7 @@ func (s Server) oauthCallback(w http.ResponseWriter, r *http.Request, provider s
 	w.WriteHeader(http.StatusOK)
 	page, err := oauthpages.Success(providerName, handoffURL)
 	if err != nil {
-		s.logInfo(codes.EventCallback, "outcome", "render_page_failed", "error", err.Error())
+		s.logInfo(codes.EventCallback, "outcome", "render_page_failed", "reason", applog.ReasonUnknown)
 		page = fallbackSuccessPage(providerName, handoffURL)
 	}
 	_, _ = io.WriteString(w, page)

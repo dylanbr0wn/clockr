@@ -111,7 +111,8 @@ Never log:
 - `client_secret` or other secret-bearing fields
 
 Safe fields include event name, surface, outcome/reason codes, IP bucket,
-`app_version`, and `platform`.
+`app_version`, and `platform`. Failure paths must not log `err.Error()`,
+response bodies, or URL query strings.
 
 `GET /metrics` exposes Prometheus text counters behind a Bearer gate
 (`Authorization: Bearer` from `SHIET_BROKER_METRICS_TOKEN`). Missing token,

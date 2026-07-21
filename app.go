@@ -9,11 +9,12 @@ import (
 
 	"github.com/dylanbr0wn/shiet/internal/ai"
 	"github.com/dylanbr0wn/shiet/internal/config"
-	"github.com/dylanbr0wn/shiet/internal/integration/connection"
 	"github.com/dylanbr0wn/shiet/internal/integration/bitbucket"
+	"github.com/dylanbr0wn/shiet/internal/integration/connection"
 	"github.com/dylanbr0wn/shiet/internal/integration/github"
 	"github.com/dylanbr0wn/shiet/internal/integration/google"
 	"github.com/dylanbr0wn/shiet/internal/integration/slack"
+	applog "github.com/dylanbr0wn/shiet/internal/log"
 	"github.com/dylanbr0wn/shiet/internal/service"
 	"github.com/rs/zerolog"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -263,9 +264,10 @@ func (a *App) SaveExportFile(defaultFilename, content string) (string, error) {
 }
 
 // logErr logs a non-nil error at the Go→frontend boundary, then returns it unchanged.
+// Logs op + reason code only — never err.Error() (may embed tokens/bodies).
 func (a *App) logErr(op string, err error) error {
 	if err != nil {
-		a.log.Error().Err(err).Str("op", op).Msg("operation failed")
+		a.log.Error().Str("op", op).Str("reason", applog.Reason(err)).Msg("operation failed")
 	}
 	return err
 }
@@ -276,7 +278,11 @@ func wrapSyncPeriod(logger zerolog.Logger, sync func(context.Context, int64) (se
 		logger.Info().Str("op", "calendar.sync_period").Int64("period_id", periodID).Msg("sync started")
 		result, err := sync(ctx, periodID)
 		if err != nil {
-			logger.Error().Err(err).Str("op", "calendar.sync_period").Int64("period_id", periodID).Msg("operation failed")
+			logger.Error().
+				Str("op", "calendar.sync_period").
+				Int64("period_id", periodID).
+				Str("reason", applog.Reason(err)).
+				Msg("operation failed")
 			return result, err
 		}
 		return result, nil

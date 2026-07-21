@@ -62,6 +62,18 @@ The displayed path matches `log.path` (or the default above). Opening the folder
 works even if `shiet.log` does not exist yet (directory is created on first
 write / reveal). Shipped in [DYL-122](https://linear.app/dylans-apps/issue/DYL-122/settings-reveal-log-folder).
 
+## Failure logs
+
+Desktop and shared failure emitters log `op` plus a fixed `reason` code — never
+`err.Error()`, response body snippets, or URL query strings from provider/HTTP
+paths. Reason codes:
+
+`unauthorized` · `forbidden` · `not_found` · `rate_limited` · `network` ·
+`invalid_config` · `unknown`
+
+Key-based redaction and Google-shaped `LooksLikeSecret` remain a passive safety
+net only; do not rely on expanding token prefixes.
+
 ## OAuth broker
 
 The broker writes the same redacting JSON format to **stdout** (deploy-friendly;

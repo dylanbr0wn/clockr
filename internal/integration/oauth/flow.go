@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/dylanbr0wn/shiet/internal/integration/secrets"
+	applog "github.com/dylanbr0wn/shiet/internal/log"
 	"github.com/dylanbr0wn/shiet/internal/oauthpages"
 	"github.com/pkg/browser"
 )
@@ -258,7 +259,7 @@ func shutdownAndWait(srv *http.Server, serveWG *sync.WaitGroup) {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownGrace)
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Printf("oauth callback server shutdown: %v", err)
+		log.Printf("op=oauth.callback_shutdown reason=%s", applog.Reason(err))
 	}
 
 	done := make(chan struct{})

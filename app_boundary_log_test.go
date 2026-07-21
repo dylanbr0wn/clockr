@@ -14,7 +14,8 @@ import (
 func TestLogErr_logsAndReturnsSameError(t *testing.T) {
 	var buf bytes.Buffer
 	app := &App{log: applog.New(&buf)}
-	want := errors.New("connect failed: invalid_grant")
+	// Body/token-shaped text must never appear in the log line (DYL-180).
+	want := errors.New(`connect failed: invalid_grant body={"token":"ghp_abcdefghijklmnopqrstuvwxyz"}`)
 
 	got := app.logErr("google.connect", want)
 	if !errors.Is(got, want) {
@@ -28,11 +29,16 @@ func TestLogErr_logsAndReturnsSameError(t *testing.T) {
 	if !strings.Contains(out, `"op":"google.connect"`) {
 		t.Fatalf("expected op field, got %q", out)
 	}
-	if !strings.Contains(out, "connect failed: invalid_grant") {
-		t.Fatalf("expected error message, got %q", out)
+	if !strings.Contains(out, `"reason":"unauthorized"`) {
+		t.Fatalf("expected reason code, got %q", out)
 	}
 	if !strings.Contains(out, "operation failed") {
 		t.Fatalf("expected operation failed msg, got %q", out)
+	}
+	for _, leak := range []string{"invalid_grant", "ghp_", "connect failed", `"error":`} {
+		if strings.Contains(out, leak) {
+			t.Fatalf("raw error material leaked (%q): %q", leak, out)
+		}
 	}
 }
 
@@ -87,8 +93,11 @@ func TestWrapSyncPeriod_logsStartAndFailure(t *testing.T) {
 	if !strings.Contains(out, `"level":"error"`) || !strings.Contains(out, "operation failed") {
 		t.Fatalf("expected sync failure log, got %q", out)
 	}
-	if !strings.Contains(out, "calendar account needs re-authentication") {
-		t.Fatalf("expected underlying error in log, got %q", out)
+	if !strings.Contains(out, `"reason":"unauthorized"`) {
+		t.Fatalf("expected reason code, got %q", out)
+	}
+	if strings.Contains(out, "re-authentication") || strings.Contains(out, `"error":`) {
+		t.Fatalf("raw error material leaked: %q", out)
 	}
 	if !strings.Contains(out, `"period_id":42`) {
 		t.Fatalf("expected period_id, got %q", out)

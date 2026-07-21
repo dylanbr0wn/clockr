@@ -24,12 +24,12 @@ var assets embed.FS
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("load config: %v", err)
+		log.Fatalf("op=config.load reason=%s", applog.Reason(err))
 	}
 
 	logger, logCloser, err := applog.Open(cfg.Log.Path, cfg.Log.Level, wailsDevConsole)
 	if err != nil {
-		log.Fatalf("open log: %v", err)
+		log.Fatalf("op=log.open reason=%s", applog.Reason(err))
 	}
 	defer logCloser.Close()
 	logger.Info().
@@ -42,13 +42,13 @@ func main() {
 	// data before binding so the service is live when the frontend calls it.
 	conn, err := db.Open(cfg.DB.Path)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("open database")
+		logger.Fatal().Str("op", "db.open").Str("path", cfg.DB.Path).Str("reason", applog.Reason(err)).Msg("open database")
 	}
 	if err := db.Migrate(conn); err != nil {
-		logger.Fatal().Err(err).Msg("migrate database")
+		logger.Fatal().Str("op", "db.migrate").Str("path", cfg.DB.Path).Str("reason", applog.Reason(err)).Msg("migrate database")
 	}
 	if err := seed.Core(context.Background(), conn); err != nil {
-		logger.Fatal().Err(err).Msg("seed database")
+		logger.Fatal().Str("op", "db.seed").Str("path", cfg.DB.Path).Str("reason", applog.Reason(err)).Msg("seed database")
 	}
 
 	// Create an instance of the app structure
@@ -100,6 +100,6 @@ func main() {
 	})
 
 	if err != nil {
-		logger.Error().Err(err).Msg("wails run failed")
+		logger.Error().Str("op", "app.wails_run").Str("reason", applog.Reason(err)).Msg("wails run failed")
 	}
 }

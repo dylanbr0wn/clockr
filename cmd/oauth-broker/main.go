@@ -15,18 +15,19 @@ import (
 	"github.com/dylanbr0wn/shiet/internal/broker/observe"
 	"github.com/dylanbr0wn/shiet/internal/broker/ratelimit"
 	"github.com/dylanbr0wn/shiet/internal/broker/store"
+	applog "github.com/dylanbr0wn/shiet/internal/log"
 )
 
 func main() {
 	cfg, err := brokerconfig.LoadFromEnv()
 	if err != nil {
-		log.Fatalf("load broker config: %v", err)
+		log.Fatalf("op=broker.config.load reason=%s", applog.Reason(err))
 	}
 
 	ctx := context.Background()
 	datastore, err := store.Open(ctx, cfg.DatastoreDSN)
 	if err != nil {
-		log.Fatalf("open broker datastore: %v", err)
+		log.Fatalf("op=broker.datastore.open reason=%s", applog.Reason(err))
 	}
 	defer datastore.Close()
 
@@ -60,7 +61,7 @@ func main() {
 		log.Printf("shutting down after %s", sig)
 	case err := <-errCh:
 		if !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("broker server failed: %v", err)
+			log.Fatalf("op=broker.listen reason=%s", applog.Reason(err))
 		}
 		return
 	}
@@ -68,6 +69,6 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("broker shutdown failed: %v", err)
+		log.Fatalf("op=broker.shutdown reason=%s", applog.Reason(err))
 	}
 }
