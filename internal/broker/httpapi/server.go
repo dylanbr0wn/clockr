@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -122,12 +123,28 @@ func (s Server) handoffHandler(provider string) http.HandlerFunc {
 }
 
 func (s Server) metrics(w http.ResponseWriter, r *http.Request) {
+	if !metricsAuthorized(r, s.Config.MetricsToken) {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
 	if s.Metrics == nil {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 	s.Metrics.Handler().ServeHTTP(w, r)
+}
+
+func metricsAuthorized(r *http.Request, token string) bool {
+	if token == "" {
+		return false
+	}
+	const prefix = "Bearer "
+	auth := r.Header.Get("Authorization")
+	if !strings.HasPrefix(auth, prefix) {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(auth[len(prefix):]), []byte(token)) == 1
 }
 
 func (s Server) health(w http.ResponseWriter, _ *http.Request) {

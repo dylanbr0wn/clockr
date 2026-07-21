@@ -173,3 +173,19 @@ func TestLoadFromEnvKillSwitches(t *testing.T) {
 		t.Fatal("did not expect 0.2.0 disabled")
 	}
 }
+
+func TestLoadFromEnvMetricsToken(t *testing.T) {
+	t.Setenv("SHIET_BROKER_PUBLIC_ORIGIN", "https://auth.shiet.app")
+	t.Setenv("SHIET_BROKER_GOOGLE_CLIENT_ID", "client-id")
+	t.Setenv("SHIET_BROKER_GOOGLE_CLIENT_SECRET", "client-secret")
+	t.Setenv("SHIET_BROKER_DATASTORE_DSN", "file:broker.db")
+	t.Setenv("SHIET_BROKER_METRICS_TOKEN", "metrics-secret")
+
+	cfg, err := LoadFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.MetricsToken != "metrics-secret" {
+		t.Fatalf("MetricsToken: got %q want %q", cfg.MetricsToken, "metrics-secret")
+	}
+}

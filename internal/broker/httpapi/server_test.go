@@ -212,13 +212,51 @@ func TestGoogleCallbackRejectsExpiredOrMissingState(t *testing.T) {
 }
 
 func TestMetricsEndpoint(t *testing.T) {
+	const token = "metrics-secret"
 	metrics := observe.NewMetrics()
 	metrics.IncAuthStart()
-	srv := Server{Config: testConfig(), Store: &memoryStore{}, Metrics: metrics}
-	recorder := httptest.NewRecorder()
-	srv.Handler().ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/metrics", nil))
-	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), "broker_auth_starts_total 1") {
-		t.Fatalf("metrics = %d %s", recorder.Code, recorder.Body.String())
+
+	cases := []struct {
+		name   string
+		token  string
+		header string
+		path   string
+		want   int
+		body   string
+	}{
+		{name: "no_token_configured", token: "", path: "/metrics", want: http.StatusNotFound},
+		{name: "missing_header", token: token, path: "/metrics", want: http.StatusNotFound},
+		{name: "wrong_bearer", token: token, header: "Bearer wrong", path: "/metrics", want: http.StatusNotFound},
+		{name: "query_param_only", token: token, path: "/metrics?token=" + token, want: http.StatusNotFound},
+		{name: "valid_bearer", token: token, header: "Bearer " + token, path: "/metrics", want: http.StatusOK, body: "broker_auth_starts_total 1"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := testConfig()
+			cfg.MetricsToken = tc.token
+			srv := Server{Config: cfg, Store: &memoryStore{}, Metrics: metrics}
+			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			if tc.header != "" {
+				req.Header.Set("Authorization", tc.header)
+			}
+			recorder := httptest.NewRecorder()
+			srv.Handler().ServeHTTP(recorder, req)
+			if recorder.Code != tc.want {
+				t.Fatalf("status: got %d want %d body %q", recorder.Code, tc.want, recorder.Body.String())
+			}
+			if tc.want == http.StatusNotFound {
+				if recorder.Body.Len() != 0 {
+					t.Fatalf("404 body must be empty, got %q", recorder.Body.String())
+				}
+				if recorder.Header().Get("WWW-Authenticate") != "" {
+					t.Fatal("must not set WWW-Authenticate")
+				}
+				return
+			}
+			if !strings.Contains(recorder.Body.String(), tc.body) {
+				t.Fatalf("metrics body missing %q: %s", tc.body, recorder.Body.String())
+			}
+		})
 	}
 }
 

@@ -62,6 +62,9 @@ Optional:
   `refresh_disabled` and Connect `FailedPrecondition`.
 - `SHIET_BROKER_DISABLED_APP_VERSIONS`: comma-separated desktop `app_version`
   values that receive `app_version_disabled` on start/refresh.
+- `SHIET_BROKER_METRICS_TOKEN`: shared secret for scraping `GET /metrics`.
+  Require `Authorization: Bearer <token>`. If unset or empty, `/metrics`
+  returns 404 (fail closed).
 
 ## Abuse Controls
 
@@ -110,7 +113,10 @@ Never log:
 Safe fields include event name, surface, outcome/reason codes, IP bucket,
 `app_version`, and `platform`.
 
-`GET /metrics` exposes Prometheus text counters, including:
+`GET /metrics` exposes Prometheus text counters behind a Bearer gate
+(`Authorization: Bearer` from `SHIET_BROKER_METRICS_TOKEN`). Missing token,
+missing/wrong header, or query-param-only auth → 404 with empty body and no
+`WWW-Authenticate`. Counters include:
 
 - `broker_auth_starts_total`
 - `broker_auth_start_failures_total`
@@ -140,8 +146,9 @@ Handoff failure reasons: `already_used`, `expired`, `not_found`,
 
 ### Broker deployment (Railway)
 
-1. Scrape or periodically fetch `GET /metrics` (or ship stdout JSON logs to a
-   log drain) and alert on:
+1. Scrape or periodically fetch `GET /metrics` with
+   `Authorization: Bearer <SHIET_BROKER_METRICS_TOKEN>` (or ship stdout JSON
+   logs to a log drain) and alert on:
    - rising `broker_rate_limited_total`
    - `broker_quota_risk_total` for `invalid_grant` or `handoff_replay`
    - sustained `broker_handoff_failures_total` / refresh failures

@@ -50,6 +50,7 @@ type Config struct {
 	AuthDisabled            bool
 	RefreshDisabled         bool
 	DisabledAppVersions     []string
+	MetricsToken            string
 }
 
 // LoadFromEnv reads SHIET_BROKER_* environment variables and validates the
@@ -80,6 +81,7 @@ func LoadFromEnv() (Config, error) {
 		AuthDisabled:            envTruthy("SHIET_BROKER_AUTH_DISABLED"),
 		RefreshDisabled:         envTruthy("SHIET_BROKER_REFRESH_DISABLED"),
 		DisabledAppVersions:     splitCSV(os.Getenv("SHIET_BROKER_DISABLED_APP_VERSIONS")),
+		MetricsToken:            os.Getenv("SHIET_BROKER_METRICS_TOKEN"),
 	}
 
 	var err error
