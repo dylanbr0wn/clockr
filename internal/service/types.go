@@ -182,7 +182,7 @@ type ReviewDecision struct {
 	Actions     []ReviewDecisionAction `json:"actions"`
 }
 
-// TimeEntry is a confirmed (or draft) interval on the canonical ledger.
+// TimeEntry is a draft, confirmed, or dismissed interval on the canonical ledger.
 type TimeEntry struct {
 	ID              int64  `json:"id"`
 	PeriodID        int64  `json:"periodId"`
@@ -192,7 +192,7 @@ type TimeEntry struct {
 	DurationMinutes int64  `json:"durationMinutes"`
 	CategoryID      *int64 `json:"categoryId,omitempty"`
 	Description     string `json:"description,omitempty"`
-	Attestation     string `json:"attestation"` // draft | confirmed
+	Attestation     string `json:"attestation"` // draft | confirmed | dismissed
 	Method          string `json:"method,omitempty"` // e.g. gap_fill when stamped
 	WorkType        string `json:"workType"`                   // worked | paid_leave | unpaid_leave | holiday | break | adjustment
 	ProjectID       *int64 `json:"projectId,omitempty"`        // optional FK → project

@@ -235,6 +235,7 @@ message TimeEntry {
   int32 duration_minutes = 6;
   optional int64 category_id = 7;
   string description = 8;
+  // draft | confirmed | dismissed
   string attestation = 9;
   string method = 10;
   // worked | paid_leave | unpaid_leave | holiday | break | adjustment

@@ -131,3 +131,61 @@ func TestTimeEntryQuerier_CRUDRoundTrip(t *testing.T) {
 		t.Fatal("get after delete: want error")
 	}
 }
+
+func TestTimeEntryQuerier_DismissedAttestationRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "time-entry-dismissed.db")
+	conn, err := db.Open(path)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	if err := db.Migrate(conn); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	ctx := context.Background()
+	q := sqlc.New(conn)
+
+	period, err := q.CreatePeriod(ctx, sqlc.CreatePeriodParams{
+		StartDate:  "2026-06-01",
+		EndDate:    "2026-06-14",
+		Cadence:    "bi-weekly",
+		AnchorDate: "2026-06-01",
+	})
+	if err != nil {
+		t.Fatalf("create period: %v", err)
+	}
+
+	created, err := q.CreateTimeEntry(ctx, sqlc.CreateTimeEntryParams{
+		PeriodID:        period.ID,
+		StartInstant:    "2026-06-01T14:00:00Z",
+		EndInstant:      "2026-06-01T15:00:00Z",
+		DurationMinutes: 60,
+		LocalWorkDate:   "2026-06-01",
+		CategoryID:      sql.NullInt64{},
+		Description:     "soft rejected proposal",
+		Attestation:     "dismissed",
+		Method:          sql.NullString{String: "calendar_import", Valid: true},
+		WorkType:        "worked",
+		BillableStatus:  "unset",
+	})
+	if err != nil {
+		t.Fatalf("create dismissed: %v", err)
+	}
+	if created.Attestation != "dismissed" {
+		t.Fatalf("create attestation = %q, want dismissed", created.Attestation)
+	}
+
+	got, err := q.GetTimeEntry(ctx, sqlc.GetTimeEntryParams{ID: created.ID, PeriodID: period.ID})
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if got.Attestation != "dismissed" {
+		t.Fatalf("get attestation = %q, want dismissed", got.Attestation)
+	}
+	if got.Description != "soft rejected proposal" {
+		t.Fatalf("get description = %q", got.Description)
+	}
+}
