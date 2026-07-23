@@ -65,7 +65,7 @@ type ExportCategory struct {
 
 // ExportEntry is one timed interval contributing to the period export.
 type ExportEntry struct {
-	Source         string         `json:"source"` // event | time_entry
+	Source         string         `json:"source"` // time_entry (confirmed only)
 	SourceID       int64          `json:"sourceId"`
 	Day            string         `json:"day"` // YYYY-MM-DD
 	StartMinutes   int            `json:"startMinutes"`
@@ -74,10 +74,10 @@ type ExportEntry struct {
 	Title          string         `json:"title"`
 	Description    string         `json:"description"`
 	Category       ExportCategory `json:"category"`
-	WorkType       string         `json:"workType,omitempty"`       // time_entry only; empty for calendar events
-	ProjectName    string         `json:"projectName,omitempty"`    // time_entry only
-	ProjectKey     string         `json:"projectKey,omitempty"`     // time_entry only
-	BillableStatus string         `json:"billableStatus,omitempty"` // time_entry only
+	WorkType       string         `json:"workType,omitempty"`
+	ProjectName    string         `json:"projectName,omitempty"`
+	ProjectKey     string         `json:"projectKey,omitempty"`
+	BillableStatus string         `json:"billableStatus,omitempty"`
 }
 
 // ExportCategoryMinutes is minutes for one category within a day or period.
@@ -159,15 +159,7 @@ func (s *Service) BuildPeriodExport(ctx context.Context, periodID int64) (Period
 	if err != nil {
 		return PeriodExportModel{}, err
 	}
-	events, err := s.ListEvents(ctx, periodID)
-	if err != nil {
-		return PeriodExportModel{}, err
-	}
 	timeEntries, err := s.ListTimeEntries(ctx, periodID)
-	if err != nil {
-		return PeriodExportModel{}, err
-	}
-	overlays, err := s.ListEventCategoryOverlays(ctx, periodID)
 	if err != nil {
 		return PeriodExportModel{}, err
 	}
@@ -188,24 +180,16 @@ func (s *Service) BuildPeriodExport(ctx context.Context, periodID int64) (Period
 	for _, p := range projects {
 		projectsByID[p.ID] = p
 	}
-	overlayByKey := make(map[string]int64, len(overlays))
-	for _, o := range overlays {
-		overlayByKey[eventOverlayKey(o.Provider, o.ExternalID, o.InstanceID)] = o.CategoryID
-	}
 
 	locCache := map[string]*time.Location{}
-	entries := make([]ExportEntry, 0, len(events)+len(timeEntries))
+	// Soft-demote: payable export is confirmed TimeEntries only. Raw calendar
+	// events and draft/dismissed entries stay off day totals and detail rows.
+	entries := make([]ExportEntry, 0, len(timeEntries))
 
-	for _, event := range events {
-		entry, ok, err := eventToExportEntry(event, segs, catsByID, overlayByKey, locCache)
-		if err != nil {
-			return PeriodExportModel{}, err
-		}
-		if ok {
-			entries = append(entries, entry)
-		}
-	}
 	for _, te := range timeEntries {
+		if te.Attestation != "confirmed" {
+			continue
+		}
 		entry, ok, err := timeEntryToExportEntry(te, segs, catsByID, projectsByID, locCache)
 		if err != nil {
 			return PeriodExportModel{}, err
@@ -367,70 +351,6 @@ func resolveExportCategory(categoryID *int64, catsByID map[int64]Category) Expor
 	}
 }
 
-func eventToExportEntry(
-	event Event,
-	segs []TzSegment,
-	catsByID map[int64]Category,
-	overlayByKey map[string]int64,
-	locCache map[string]*time.Location,
-) (ExportEntry, bool, error) {
-	var categoryID *int64
-	if id, ok := overlayByKey[eventOverlayKey(event.Provider, event.ExternalID, event.InstanceID)]; ok {
-		categoryID = &id
-	}
-	category := resolveExportCategory(categoryID, catsByID)
-	title := event.Title
-	if title == "" {
-		title = "Untitled event"
-	}
-
-	if event.AllDay {
-		if event.StartDate == "" {
-			return ExportEntry{}, false, nil
-		}
-		startMinutes := scheduleStartMinutes
-		endMinutes := scheduleEndMinutes
-		return ExportEntry{
-			Source:       "event",
-			SourceID:     event.ID,
-			Day:          event.StartDate,
-			StartMinutes: startMinutes,
-			EndMinutes:   endMinutes,
-			Minutes:      endMinutes - startMinutes,
-			Title:        title,
-			Description:  event.Description,
-			Category:     category,
-		}, true, nil
-	}
-
-	if event.Start == nil || event.End == nil {
-		return ExportEntry{}, false, nil
-	}
-	startDay, startMinutes, err := zonedPosition(*event.Start, segs, locCache)
-	if err != nil {
-		return ExportEntry{}, false, err
-	}
-	endDay, endMinutes, err := zonedPosition(*event.End, segs, locCache)
-	if err != nil {
-		return ExportEntry{}, false, err
-	}
-	if endDay != startDay {
-		endMinutes = scheduleEndMinutes
-	}
-	endMinutes = maxInt(startMinutes+minBlockMinutes, endMinutes)
-	return ExportEntry{
-		Source:       "event",
-		SourceID:     event.ID,
-		Day:          startDay,
-		StartMinutes: startMinutes,
-		EndMinutes:   endMinutes,
-		Minutes:      endMinutes - startMinutes,
-		Title:        title,
-		Description:  event.Description,
-		Category:     category,
-	}, true, nil
-}
-
 func timeEntryToExportEntry(
 	entry TimeEntry,
 	segs []TzSegment,
@@ -502,28 +422,6 @@ func resolveExportProject(projectID *int64, projectsByID map[int64]Project) (nam
 		return "", ""
 	}
 	return project.Name, project.Key
-}
-
-func zonedPosition(t time.Time, segs []TzSegment, locCache map[string]*time.Location) (day string, minutes int, err error) {
-	if len(segs) == 0 {
-		day, minutes = zonedDateTimeParts(t.UTC(), time.UTC)
-		return day, minutes, nil
-	}
-	initialLoc, err := loadLoc(locCache, segs[0].IanaTz)
-	if err != nil {
-		return "", 0, err
-	}
-	day, minutes = zonedDateTimeParts(t, initialLoc)
-	active := activeSegment(segs, day)
-	if active.IanaTz == segs[0].IanaTz {
-		return day, minutes, nil
-	}
-	activeLoc, err := loadLoc(locCache, active.IanaTz)
-	if err != nil {
-		return "", 0, err
-	}
-	day, minutes = zonedDateTimeParts(t, activeLoc)
-	return day, minutes, nil
 }
 
 func zonedDateTimeParts(t time.Time, loc *time.Location) (day string, minutes int) {

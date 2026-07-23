@@ -99,7 +99,7 @@ func TestBuildPeriodExport_EntriesAndRollups(t *testing.T) {
 		t.Fatal("seeded Meetings/Deep Work categories missing")
 	}
 
-	// 11:00–13:00 EDT = 15:00–17:00Z → 2h on 2026-06-01
+	// Calendar event remains busy evidence but is not payable.
 	e.addEvent(t, "meet-1", "2026-06-01T15:00:00Z", "2026-06-01T17:00:00Z")
 	if _, err := e.q.UpsertOverlay(ctx, sqlc.UpsertOverlayParams{
 		PeriodID:   e.periodID,
@@ -111,10 +111,8 @@ func TestBuildPeriodExport_EntriesAndRollups(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Gap fill 13:00–15:00 EDT = 17:00–19:00Z → 2h Deep Work on day 1
+	// Confirmed entries: 13:00–15:00 EDT day 1 + 10:00–12:00 EDT day 2 → 4h Deep Work
 	insertTimeEntry(t, e.q, e.periodID, "2026-06-01", "2026-06-01T17:00:00Z", "2026-06-01T19:00:00Z", sql.NullInt64{Int64: deepWork.ID, Valid: true}, "Focus", false)
-
-	// Gap fill day 2: 10:00–12:00 EDT = 14:00–16:00Z → 2h Deep Work
 	insertTimeEntry(t, e.q, e.periodID, "2026-06-02", "2026-06-02T14:00:00Z", "2026-06-02T16:00:00Z", sql.NullInt64{Int64: deepWork.ID, Valid: true}, "Planning", false)
 
 	model, err := e.svc.BuildPeriodExport(ctx, e.periodID)
@@ -128,14 +126,14 @@ func TestBuildPeriodExport_EntriesAndRollups(t *testing.T) {
 	if len(model.Days) != 2 {
 		t.Fatalf("days = %v want 2", model.Days)
 	}
-	if model.ActualMinutes != 360 {
-		t.Fatalf("actualMinutes = %d want 360", model.ActualMinutes)
+	if model.ActualMinutes != 240 {
+		t.Fatalf("actualMinutes = %d want 240 (confirmed only)", model.ActualMinutes)
 	}
 	if model.TargetMinutes != 8*60*2 {
 		t.Fatalf("targetMinutes = %d want %d", model.TargetMinutes, 8*60*2)
 	}
-	if len(model.Entries) != 3 {
-		t.Fatalf("entries = %d want 3", len(model.Entries))
+	if len(model.Entries) != 2 {
+		t.Fatalf("entries = %d want 2", len(model.Entries))
 	}
 
 	byName := map[string]service.ExportCategoryMinutes{}
@@ -144,12 +142,9 @@ func TestBuildPeriodExport_EntriesAndRollups(t *testing.T) {
 		if total.Category.Key == "" {
 			t.Fatalf("category %q missing key", total.Category.Name)
 		}
-		if total.Category.Name == "Meetings" && total.Category.Key != meetings.Key {
-			t.Fatalf("Meetings key = %q want %q", total.Category.Key, meetings.Key)
-		}
 	}
-	if byName["Meetings"].Minutes != 120 {
-		t.Fatalf("Meetings total = %d want 120", byName["Meetings"].Minutes)
+	if _, ok := byName["Meetings"]; ok {
+		t.Fatalf("Meetings must not be payable from calendar: %+v", byName["Meetings"])
 	}
 	if byName["Deep Work"].Minutes != 240 {
 		t.Fatalf("Deep Work total = %d want 240", byName["Deep Work"].Minutes)
@@ -162,12 +157,70 @@ func TestBuildPeriodExport_EntriesAndRollups(t *testing.T) {
 		t.Fatalf("weekday daily targets = %d, %d want 480 each", model.DailyTotals[0].TargetMinutes, model.DailyTotals[1].TargetMinutes)
 	}
 	day1 := categoryMinutesByName(model.DailyTotals[0])
-	if day1["Meetings"] != 120 || day1["Deep Work"] != 120 {
+	if day1["Deep Work"] != 120 || day1["Meetings"] != 0 {
 		t.Fatalf("day1 categories = %+v", day1)
 	}
 	day2 := categoryMinutesByName(model.DailyTotals[1])
 	if day2["Deep Work"] != 120 {
 		t.Fatalf("day2 categories = %+v", day2)
+	}
+}
+
+func TestBuildPeriodExport_OnlyConfirmedTimeEntriesArePayable(t *testing.T) {
+	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto")
+	ctx := context.Background()
+
+	cats, err := e.svc.ListCategories(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var deepWork service.Category
+	for _, c := range cats {
+		if c.Name == "Deep Work" {
+			deepWork = c
+		}
+	}
+	if deepWork.ID == 0 {
+		t.Fatal("seeded Deep Work category missing")
+	}
+	catID := sql.NullInt64{Int64: deepWork.ID, Valid: true}
+
+	// Raw calendar event must not count as payable.
+	e.addEvent(t, "meet-1", "2026-06-01T15:00:00Z", "2026-06-01T17:00:00Z")
+	if _, err := e.q.UpsertOverlay(ctx, sqlc.UpsertOverlayParams{
+		PeriodID:   e.periodID,
+		Provider:   service.ProviderGoogle,
+		ExternalID: "meet-1",
+		CategoryID: catID,
+		Kind:       "category",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	insertTimeEntryFull(t, e.q, e.periodID, "2026-06-01", "2026-06-01T17:00:00Z", "2026-06-01T18:00:00Z", catID, "Draft proposal", "draft", false)
+	insertTimeEntryFull(t, e.q, e.periodID, "2026-06-01", "2026-06-01T18:00:00Z", "2026-06-01T19:00:00Z", catID, "Dismissed proposal", "dismissed", false)
+	insertTimeEntryFull(t, e.q, e.periodID, "2026-06-01", "2026-06-01T19:00:00Z", "2026-06-01T20:00:00Z", catID, "Confirmed work", "confirmed", false)
+
+	model, err := e.svc.BuildPeriodExport(ctx, e.periodID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if model.ActualMinutes != 60 {
+		t.Fatalf("actualMinutes = %d want 60 (confirmed only)", model.ActualMinutes)
+	}
+	if len(model.Entries) != 1 {
+		t.Fatalf("entries = %d want 1 confirmed", len(model.Entries))
+	}
+	got := model.Entries[0]
+	if got.Source != "time_entry" || got.Title != "Confirmed work" || got.Minutes != 60 {
+		t.Fatalf("payable entry = %+v", got)
+	}
+	if len(model.PeriodTotals) != 1 || model.PeriodTotals[0].Category.Name != "Deep Work" || model.PeriodTotals[0].Minutes != 60 {
+		t.Fatalf("periodTotals = %+v", model.PeriodTotals)
+	}
+	if model.DailyTotals[0].ActualMinutes != 60 {
+		t.Fatalf("day actual = %d want 60", model.DailyTotals[0].ActualMinutes)
 	}
 }
 
@@ -237,7 +290,6 @@ func TestRenderPeriodExport_MatrixCSVShape(t *testing.T) {
 	want := strings.Join([]string{
 		"Category,2026-06-01,2026-06-02,Total",
 		"Deep Work,2.00,2.00,4.00",
-		"Meetings,2.00,0.00,2.00",
 	}, "\n")
 	if render.Content != want {
 		t.Fatalf("csv mismatch\ngot:\n%s\nwant:\n%s", render.Content, want)
@@ -289,7 +341,6 @@ func TestRenderPeriodExport_FlatDailyCSVShape(t *testing.T) {
 	want := strings.Join([]string{
 		"Date,Category,Key,Hours",
 		"2026-06-01,Deep Work," + deepWork.Key + ",2.00",
-		"2026-06-01,Meetings," + meetings.Key + ",2.00",
 		"2026-06-02,Deep Work," + deepWork.Key + ",2.00",
 	}, "\n")
 	if render.Content != want {
@@ -341,7 +392,6 @@ func TestRenderPeriodExport_DetailEntriesCSVShape(t *testing.T) {
 
 	want := strings.Join([]string{
 		"Start,End,Category,Key,Hours,Title,Description,Work type,Project,Project key,Billable",
-		"2026-06-01T11:00,2026-06-01T13:00,Meetings," + meetings.Key + ",2.00,meet-1,Google notes,,,,",
 		"2026-06-01T13:00,2026-06-01T15:00,Deep Work," + deepWork.Key + ",2.00,User notes,User notes,worked,,,unset",
 		"2026-06-02T10:00,2026-06-02T12:00,Deep Work," + deepWork.Key + ",2.00,Planning,Planning,worked,,,unset",
 	}, "\n")
@@ -403,25 +453,13 @@ func TestBuildPeriodExport_AllocationFieldsOnTimeEntriesOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(model.Entries) != 2 {
-		t.Fatalf("entries = %d want 2", len(model.Entries))
+	if len(model.Entries) != 1 {
+		t.Fatalf("entries = %d want 1 confirmed time entry", len(model.Entries))
 	}
 
-	var eventEntry, timeEntry *service.ExportEntry
-	for i := range model.Entries {
-		switch model.Entries[i].Source {
-		case "event":
-			eventEntry = &model.Entries[i]
-		case "time_entry":
-			timeEntry = &model.Entries[i]
-		}
-	}
-	if eventEntry == nil || timeEntry == nil {
-		t.Fatalf("missing entry kinds: %+v", model.Entries)
-	}
-
-	if eventEntry.WorkType != "" || eventEntry.ProjectName != "" || eventEntry.ProjectKey != "" || eventEntry.BillableStatus != "" {
-		t.Fatalf("event allocation should be empty: %+v", eventEntry)
+	timeEntry := model.Entries[0]
+	if timeEntry.Source != "time_entry" {
+		t.Fatalf("source = %q want time_entry", timeEntry.Source)
 	}
 	if timeEntry.WorkType != "worked" {
 		t.Fatalf("time_entry work_type = %q want worked", timeEntry.WorkType)
@@ -490,7 +528,6 @@ func TestRenderPeriodExport_DetailEntriesCSVAllocationColumns(t *testing.T) {
 
 	want := strings.Join([]string{
 		"Start,End,Category,Key,Hours,Title,Description,Work type,Project,Project key,Billable",
-		"2026-06-01T11:00,2026-06-01T13:00,Deep Work," + deepWork.Key + ",2.00,meet-1,Calendar notes,,,,",
 		"2026-06-01T13:00,2026-06-01T15:00,Deep Work," + deepWork.Key + ",2.00,Feature work,Feature work,worked,Apollo,apollo,billable",
 	}, "\n")
 	if render.Content != want {
@@ -532,28 +569,11 @@ func TestBuildPeriodExport_EntryDescriptions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(model.Entries) != 2 {
-		t.Fatalf("entries = %d want 2", len(model.Entries))
+	if len(model.Entries) != 1 {
+		t.Fatalf("entries = %d want 1 confirmed time entry", len(model.Entries))
 	}
 
-	var eventEntry, timeEntry *service.ExportEntry
-	for i := range model.Entries {
-		switch model.Entries[i].Source {
-		case "event":
-			eventEntry = &model.Entries[i]
-		case "time_entry":
-			timeEntry = &model.Entries[i]
-		}
-	}
-	if eventEntry == nil || timeEntry == nil {
-		t.Fatalf("entries = %+v", model.Entries)
-	}
-	if eventEntry.Description != "Calendar agenda" {
-		t.Fatalf("event description = %q want Calendar agenda", eventEntry.Description)
-	}
-	if eventEntry.Title != "meet-1" {
-		t.Fatalf("event title = %q want meet-1", eventEntry.Title)
-	}
+	timeEntry := model.Entries[0]
 	if timeEntry.Description != "Longer work notes" {
 		t.Fatalf("time entry description = %q want Longer work notes", timeEntry.Description)
 	}
@@ -609,17 +629,15 @@ func TestRenderPeriodExport_TextSummaryShape(t *testing.T) {
 		"2026-06-01 to 2026-06-02",
 		"",
 		"Target: 16h",
-		"Actual: 6h",
-		"Variance: -10h",
+		"Actual: 4h",
+		"Variance: -12h",
 		"",
 		"Totals by category:",
 		"  Deep Work: 4h",
-		"  Meetings: 2h",
 		"",
 		"Daily breakdown:",
-		"2026-06-01 — 4h / 8h target",
+		"2026-06-01 — 2h / 8h target",
 		"  Deep Work: 2h",
-		"  Meetings: 2h",
 		"",
 		"2026-06-02 — 2h / 8h target",
 		"  Deep Work: 2h",
@@ -657,7 +675,7 @@ func TestRenderPeriodExport_TextSummaryEmptyDay(t *testing.T) {
 	}
 }
 
-func TestBuildPeriodExport_UnassignedWithoutOverlay(t *testing.T) {
+func TestBuildPeriodExport_CalendarEventNotPayable(t *testing.T) {
 	e := newGapEnv(t, "2026-06-01", "2026-06-01", "America/Toronto")
 	e.addEvent(t, "bare", "2026-06-01T15:00:00Z", "2026-06-01T16:00:00Z")
 
@@ -665,15 +683,14 @@ func TestBuildPeriodExport_UnassignedWithoutOverlay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(model.PeriodTotals) != 1 {
-		t.Fatalf("periodTotals = %+v", model.PeriodTotals)
+	if model.ActualMinutes != 0 {
+		t.Fatalf("actualMinutes = %d want 0", model.ActualMinutes)
 	}
-	total := model.PeriodTotals[0]
-	if total.Category.Name != "Unassigned" || total.Category.Key != "Unassigned" {
-		t.Fatalf("category = %+v want Unassigned", total.Category)
+	if len(model.Entries) != 0 {
+		t.Fatalf("entries = %+v want none", model.Entries)
 	}
-	if total.Minutes != 60 {
-		t.Fatalf("minutes = %d want 60", total.Minutes)
+	if len(model.PeriodTotals) != 0 {
+		t.Fatalf("periodTotals = %+v want empty", model.PeriodTotals)
 	}
 }
 
@@ -863,7 +880,8 @@ func TestPreviewExport_DraftBody(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if preview.Content != "What,Hrs\nmeet-1,1.00" {
+	// Soft-demote: calendar-only period has no payable detail rows.
+	if preview.Content != "What,Hrs" {
 		t.Fatalf("content = %q", preview.Content)
 	}
 }

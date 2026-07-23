@@ -150,7 +150,10 @@ export function formatDetailEntriesCSV(
   categoryKeys: Record<string, string> = {},
 ) {
   const header = ["Start", "End", "Category", "Key", "Hours", "Title"];
-  const sorted = [...items].sort((left, right) => {
+  const payable = items.filter(
+    (item) => item.metadata?.attestation === "confirmed",
+  );
+  const sorted = [...payable].sort((left, right) => {
     if (left.day !== right.day) {
       return left.day.localeCompare(right.day);
     }

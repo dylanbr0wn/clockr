@@ -14,6 +14,8 @@ export interface ScheduleMetadata {
   categoryId?: number;
   categoryColor?: string;
   kind: ScheduleKind;
+  /** TimeEntry attestation; payable totals use `confirmed` only. */
+  attestation?: string;
   reviewItemId?: number;
   reviewKind?: string;
   isAllDay?: boolean;

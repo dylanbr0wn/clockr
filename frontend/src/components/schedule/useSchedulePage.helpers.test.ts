@@ -28,22 +28,32 @@ describe("useSchedulePage.helpers", () => {
     expect(result).toBe(persisted);
   });
 
-  it("calculates category totals from scheduler items", () => {
+  it("calculates category totals from confirmed time entries only", () => {
     const items = [
       {
         startMinutes: 60,
         endMinutes: 120,
-        metadata: { category: "Work" },
+        metadata: { category: "Work", attestation: "confirmed" },
       },
       {
         startMinutes: 120,
         endMinutes: 180,
-        metadata: { category: "Work" },
+        metadata: { category: "Work", attestation: "confirmed" },
       },
       {
         startMinutes: 180,
         endMinutes: 210,
-        metadata: {},
+        metadata: { category: "Work", attestation: "draft" },
+      },
+      {
+        startMinutes: 210,
+        endMinutes: 240,
+        metadata: { kind: "calendar", category: "Meetings" },
+      },
+      {
+        startMinutes: 240,
+        endMinutes: 270,
+        metadata: { category: "Misc", attestation: "confirmed" },
       },
     ];
 
@@ -51,7 +61,7 @@ describe("useSchedulePage.helpers", () => {
 
     expect(totals).toEqual({
       Work: 120,
-      Unassigned: 30,
+      Misc: 30,
     });
   });
 

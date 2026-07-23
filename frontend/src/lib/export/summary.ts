@@ -67,7 +67,12 @@ export function buildPeriodExportSummary(
   const periodTotals: Record<string, number> = {};
   const dailyMap = new Map<string, Record<string, number>>();
 
-  for (const item of items) {
+  // Soft-demote: only confirmed TimeEntries count as payable.
+  const payableItems = items.filter(
+    (item) => item.metadata?.attestation === "confirmed",
+  );
+
+  for (const item of payableItems) {
     const category = item.metadata?.category ?? "Unassigned";
     const minutes = item.endMinutes - item.startMinutes;
     periodTotals[category] = (periodTotals[category] ?? 0) + minutes;
@@ -114,7 +119,7 @@ export function buildPeriodExportSummary(
     targetMinutes,
     actualMinutes,
     periodTotals,
-    categoryColors: buildCategoryColorMap(items, options.categories),
+    categoryColors: buildCategoryColorMap(payableItems, options.categories),
     dailyTotals,
   };
 }

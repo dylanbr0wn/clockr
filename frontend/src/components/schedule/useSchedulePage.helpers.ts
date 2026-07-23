@@ -17,6 +17,9 @@ export function mergePeriods(
 
 export function calculateTotals(items: ScheduleItem[]): Record<string, number> {
   return items.reduce<Record<string, number>>((next, item) => {
+    if (item.metadata?.attestation !== "confirmed") {
+      return next;
+    }
     const key = item.metadata?.category ?? "Unassigned";
     next[key] = (next[key] ?? 0) + item.endMinutes - item.startMinutes;
     return next;

@@ -321,6 +321,7 @@ describe("schedule mappers", () => {
         category: "Deep Work",
         categoryColor: "#8B5CF6",
         kind: "manual",
+        attestation: "confirmed",
         mutable: true,
         excludable: false,
         opensReviewQueue: false,

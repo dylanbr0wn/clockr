@@ -56,6 +56,7 @@ const items: ScheduleItem[] = [
       category: "Development",
       categoryColor: "#8B5CF6",
       kind: "manual",
+      attestation: "confirmed",
     },
   },
   {
@@ -68,32 +69,30 @@ const items: ScheduleItem[] = [
       category: "Development",
       categoryColor: "#8B5CF6",
       kind: "manual",
+      attestation: "confirmed",
     },
   },
 ];
 
 describe("period export", () => {
-  it("builds period and daily totals from schedule items", () => {
+  it("builds period and daily totals from confirmed time entries only", () => {
     const summary = buildPeriodExportSummary(items, period, { expectedDays });
 
     expect(summary.periodTotals).toEqual({
-      Calendar: 120,
       Development: 240,
     });
     expect(summary.categoryColors).toEqual({
-      Calendar: "#0EA5E9",
       Development: "#8B5CF6",
     });
     expect(summary.targetMinutes).toBe(8 * 60 * 2);
-    expect(summary.actualMinutes).toBe(360);
+    expect(summary.actualMinutes).toBe(240);
     expect(summary.dailyTotals).toEqual([
       {
         date: "2026-06-01",
         categories: {
-          Calendar: 120,
           Development: 120,
         },
-        actualMinutes: 240,
+        actualMinutes: 120,
         targetMinutes: 480,
         source: "weekday",
       },
@@ -107,6 +106,51 @@ describe("period export", () => {
         source: "weekday",
       },
     ]);
+  });
+
+  it("excludes draft and dismissed time entries from payable totals", () => {
+    const mixed: ScheduleItem[] = [
+      {
+        id: "draft-1",
+        day: "2026-06-01",
+        startMinutes: 9 * 60,
+        endMinutes: 10 * 60,
+        metadata: {
+          title: "Draft",
+          category: "Development",
+          kind: "manual",
+          attestation: "draft",
+        },
+      },
+      {
+        id: "dismissed-1",
+        day: "2026-06-01",
+        startMinutes: 10 * 60,
+        endMinutes: 11 * 60,
+        metadata: {
+          title: "Dismissed",
+          category: "Development",
+          kind: "manual",
+          attestation: "dismissed",
+        },
+      },
+      {
+        id: "confirmed-1",
+        day: "2026-06-01",
+        startMinutes: 11 * 60,
+        endMinutes: 12 * 60,
+        metadata: {
+          title: "Confirmed",
+          category: "Development",
+          kind: "manual",
+          attestation: "confirmed",
+        },
+      },
+    ];
+
+    const summary = buildPeriodExportSummary(mixed, period, { expectedDays });
+    expect(summary.actualMinutes).toBe(60);
+    expect(summary.periodTotals).toEqual({ Development: 60 });
   });
 
   it("carries exception source and kind onto daily totals", () => {
@@ -193,12 +237,12 @@ describe("period export", () => {
     expect(text).toContain("Period: Jun 1-Jun 2");
     expect(text).toContain("Target: 16h");
     expect(text).not.toContain("h/day");
-    expect(text).toContain("Actual: 6h");
-    expect(text).toContain("Variance: -10h");
-    expect(text).toContain("Calendar: 2h");
+    expect(text).toContain("Actual: 4h");
+    expect(text).toContain("Variance: -12h");
+    expect(text).not.toContain("Calendar:");
     expect(text).toContain("Development: 4h");
-    expect(text).toContain("2026-06-01 — 4h / 8h target");
-    expect(text).toContain("  Calendar: 2h");
+    expect(text).toContain("2026-06-01 — 2h / 8h target");
+    expect(text).toContain("  Development: 2h");
   });
 
   it("formats a category-by-day CSV matrix", () => {
@@ -208,7 +252,6 @@ describe("period export", () => {
     expect(csv).toBe(
       [
         "Category,2026-06-01,2026-06-02,Total",
-        "Calendar,2.00,0.00,2.00",
         "Development,2.00,2.00,4.00",
       ].join("\n"),
     );
@@ -224,7 +267,6 @@ describe("period export", () => {
     expect(csv).toBe(
       [
         "Date,Category,Key,Hours",
-        "2026-06-01,Calendar,CAL,2.00",
         "2026-06-01,Development,DEV,2.00",
         "2026-06-02,Development,DEV,2.00",
       ].join("\n"),
@@ -240,7 +282,6 @@ describe("period export", () => {
     expect(csv).toBe(
       [
         "Start,End,Category,Key,Hours,Title",
-        "2026-06-01T09:00,2026-06-01T11:00,Calendar,CAL,2.00,Meeting",
         "2026-06-01T13:00,2026-06-01T15:00,Development,DEV,2.00,Deep work",
         "2026-06-02T10:00,2026-06-02T12:00,Development,DEV,2.00,Planning",
       ].join("\n"),

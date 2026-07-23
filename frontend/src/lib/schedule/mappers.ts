@@ -329,6 +329,7 @@ export function timeEntryToSchedulerItem(
         categoryId: timeEntry.categoryId,
         categoryColor: resolveCategoryColor(timeEntry.categoryId, categoriesById),
         kind,
+        attestation: timeEntry.attestation,
         mutable: true,
         excludable: false,
         opensReviewQueue: false,
