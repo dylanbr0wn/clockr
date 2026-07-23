@@ -18,6 +18,21 @@ func insertTimeEntry(t *testing.T, q *sqlc.Queries, periodID int64, day, startUT
 // insertTimeEntryFull seeds a time_entry with an explicit attestation and returns the row id.
 func insertTimeEntryFull(t *testing.T, q *sqlc.Queries, periodID int64, day, startUTC, endUTC string, categoryID sql.NullInt64, description, attestation string, gapOrigin bool) int64 {
 	t.Helper()
+	return insertTimeEntryProvenance(t, q, periodID, day, startUTC, endUTC, categoryID, description, attestation, gapOrigin, "", "", "")
+}
+
+// insertTimeEntryProvenance seeds a time_entry with optional calendar provenance stamps.
+func insertTimeEntryProvenance(
+	t *testing.T,
+	q *sqlc.Queries,
+	periodID int64,
+	day, startUTC, endUTC string,
+	categoryID sql.NullInt64,
+	description, attestation string,
+	gapOrigin bool,
+	sourceKind, sourceID, sourceRevision string,
+) int64 {
+	t.Helper()
 	start, err := time.Parse(time.RFC3339, startUTC)
 	if err != nil {
 		t.Fatalf("parse start: %v", err)
@@ -29,6 +44,8 @@ func insertTimeEntryFull(t *testing.T, q *sqlc.Queries, periodID int64, day, sta
 	method := sql.NullString{}
 	if gapOrigin {
 		method = sql.NullString{String: "gap_fill", Valid: true}
+	} else if sourceKind == "calendar_event" {
+		method = sql.NullString{String: "calendar_import", Valid: true}
 	}
 	row, err := q.CreateTimeEntry(context.Background(), sqlc.CreateTimeEntryParams{
 		PeriodID:        periodID,
@@ -39,6 +56,9 @@ func insertTimeEntryFull(t *testing.T, q *sqlc.Queries, periodID int64, day, sta
 		CategoryID:      categoryID,
 		Description:     description,
 		Attestation:     attestation,
+		SourceKind:      nullString(sourceKind),
+		SourceID:        nullString(sourceID),
+		SourceRevision:  nullString(sourceRevision),
 		Method:          method,
 		WorkType:        "worked",
 		BillableStatus:  "unset",
@@ -47,4 +67,11 @@ func insertTimeEntryFull(t *testing.T, q *sqlc.Queries, periodID int64, day, sta
 		t.Fatalf("insert time entry: %v", err)
 	}
 	return row.ID
+}
+
+func nullString(s string) sql.NullString {
+	if s == "" {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: s, Valid: true}
 }

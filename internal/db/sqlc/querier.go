@@ -113,6 +113,7 @@ type Querier interface {
 	NextSubmissionVersion(ctx context.Context, periodID int64) (int64, error)
 	// Train memory from a user correction; bump hit count on repeat.
 	RememberCategory(ctx context.Context, arg RememberCategoryParams) (Memory, error)
+	ReopenReviewItem(ctx context.Context, arg ReopenReviewItemParams) (int64, error)
 	ResolveReviewItem(ctx context.Context, arg ResolveReviewItemParams) error
 	SetBitbucketRepoSelected(ctx context.Context, arg SetBitbucketRepoSelectedParams) error
 	SetBitbucketWorkspaceSelected(ctx context.Context, arg SetBitbucketWorkspaceSelectedParams) error
@@ -128,6 +129,7 @@ type Querier interface {
 	UpdateCategory(ctx context.Context, arg UpdateCategoryParams) error
 	UpdateExportTemplate(ctx context.Context, arg UpdateExportTemplateParams) (ExportTemplate, error)
 	UpdateIntegrationConnectionStatus(ctx context.Context, arg UpdateIntegrationConnectionStatusParams) error
+	UpdateOpenReviewItemPayload(ctx context.Context, arg UpdateOpenReviewItemPayloadParams) (int64, error)
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)
 	UpdateScheduleException(ctx context.Context, arg UpdateScheduleExceptionParams) (ScheduleException, error)
 	UpdateTimeEntry(ctx context.Context, arg UpdateTimeEntryParams) (TimeEntry, error)

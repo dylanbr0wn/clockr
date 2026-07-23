@@ -143,6 +143,31 @@ func (q *Queries) ListOpenReviewItems(ctx context.Context, periodID int64) ([]Re
 	return items, nil
 }
 
+const reopenReviewItem = `-- name: ReopenReviewItem :execrows
+UPDATE review_item
+SET status = 'open',
+    payload = ?,
+    event_id = ?,
+    decision_action = '',
+    decision_payload = '{}',
+    resolved_at = NULL
+WHERE id = ? AND status IN ('resolved', 'dismissed')
+`
+
+type ReopenReviewItemParams struct {
+	Payload string        `json:"payload"`
+	EventID sql.NullInt64 `json:"event_id"`
+	ID      int64         `json:"id"`
+}
+
+func (q *Queries) ReopenReviewItem(ctx context.Context, arg ReopenReviewItemParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, reopenReviewItem, arg.Payload, arg.EventID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const resolveReviewItem = `-- name: ResolveReviewItem :exec
 UPDATE review_item
 SET status = ?,
@@ -167,4 +192,23 @@ func (q *Queries) ResolveReviewItem(ctx context.Context, arg ResolveReviewItemPa
 		arg.ID,
 	)
 	return err
+}
+
+const updateOpenReviewItemPayload = `-- name: UpdateOpenReviewItemPayload :execrows
+UPDATE review_item
+SET payload = ?
+WHERE id = ? AND status = 'open'
+`
+
+type UpdateOpenReviewItemPayloadParams struct {
+	Payload string `json:"payload"`
+	ID      int64  `json:"id"`
+}
+
+func (q *Queries) UpdateOpenReviewItemPayload(ctx context.Context, arg UpdateOpenReviewItemPayloadParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateOpenReviewItemPayload, arg.Payload, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

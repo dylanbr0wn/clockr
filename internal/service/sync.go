@@ -118,7 +118,7 @@ func (s *Service) SyncEvents(ctx context.Context, periodID int64, incoming []Inc
 			return res, fmt.Errorf("update event %s: %w", inc.ExternalID, err)
 		}
 		res.Updated++
-		if err := s.handleChangedEvent(ctx, q, periodID, ev.ID, ex, inc, &res); err != nil {
+		if err := s.handleChangedEvent(ctx, q, periodID, ev.ID, ex, inc, gaps, hash, &res); err != nil {
 			return res, err
 		}
 	}
@@ -153,12 +153,22 @@ func (s *Service) SyncEvents(ctx context.Context, periodID int64, incoming []Inc
 			if removed {
 				res.Removed++
 			}
-		} else {
-			if err := q.DeleteEvent(ctx, e.ID); err != nil {
-				return res, fmt.Errorf("delete event %d: %w", e.ID, err)
-			}
-			res.Removed++
+			continue
 		}
+		flagged, kept, err := policy.OnVanishedConfirmedSource(ctx, q, periodID, e, gaps)
+		if err != nil {
+			return res, err
+		}
+		if kept {
+			if flagged > 0 {
+				res.Flagged += flagged
+			}
+			continue
+		}
+		if err := q.DeleteEvent(ctx, e.ID); err != nil {
+			return res, fmt.Errorf("delete event %d: %w", e.ID, err)
+		}
+		res.Removed++
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -189,22 +199,37 @@ func (s *Service) handleNewEvent(ctx context.Context, q *sqlc.Queries, periodID 
 	return s.applyAISuggestion(ctx, q, periodID, inc)
 }
 
-// handleChangedEvent flags conflicts arising from a material change. Time-only
-// and other non-title changes apply silently (category describes what, not when).
-func (s *Service) handleChangedEvent(ctx context.Context, q *sqlc.Queries, periodID, eventID int64, ex sqlc.Event, inc IncomingEvent, res *SyncResult) error {
+// handleChangedEvent flags conflicts arising from a material change, and opens
+// source_drift when a confirmed calendar-sourced TimeEntry's revision lags.
+func (s *Service) handleChangedEvent(
+	ctx context.Context,
+	q *sqlc.Queries,
+	periodID, eventID int64,
+	ex sqlc.Event,
+	inc IncomingEvent,
+	entries []sqlc.TimeEntry,
+	newHash string,
+	res *SyncResult,
+) error {
+	flagged, err := s.review().OnConfirmedSourceDrift(ctx, q, periodID, eventID, inc, entries, newHash)
+	if err != nil {
+		return err
+	}
+	res.Flagged += flagged
+
 	categorized, err := hasCategory(ctx, q, periodID, inc.Provider, inc.ExternalID, inc.InstanceID)
 	if err != nil {
 		return err
 	}
 	if !categorized {
-		return nil // nothing the user decided yet → no conflict
+		return nil // nothing the user decided yet → no overlay conflict
 	}
 
-	flagged, err := s.review().OnChangedCategorized(ctx, q, periodID, eventID, ex, inc)
+	overlayFlagged, err := s.review().OnChangedCategorized(ctx, q, periodID, eventID, ex, inc)
 	if err != nil {
 		return err
 	}
-	res.Flagged += flagged
+	res.Flagged += overlayFlagged
 	return nil
 }
 
