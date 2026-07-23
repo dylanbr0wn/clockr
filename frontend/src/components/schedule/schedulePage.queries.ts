@@ -1,7 +1,10 @@
 import {
   useAIConfigured,
+  useAdjustDraftTimeEntry,
   useCategories,
   useClassifyAIEndpoint,
+  useConfirmTimeEntry,
+  useConvertAllDayEvent,
   useCreateGapTimeEntry,
   useCreateTimeEntry,
   useCurrentPeriod,
@@ -12,9 +15,11 @@ import {
   useTimeEntries,
   useGapTimeline,
   useProjects,
+  useRejectTimeEntry,
   useReviewDecisions,
   usePeriods,
   useListGapEvidence,
+  useSplitTimeEntry,
   useSuggestGapFill,
   useTzSegments,
   useUpdateTimeEntry,
@@ -31,6 +36,11 @@ export function useSchedulePageBaseQueries(today: string, currentTimeZone: strin
   const suggestGapFillMutation = useSuggestGapFill();
   const listGapEvidenceMutation = useListGapEvidence();
   const updateTimeEntryMutation = useUpdateTimeEntry();
+  const adjustDraftTimeEntryMutation = useAdjustDraftTimeEntry();
+  const confirmTimeEntryMutation = useConfirmTimeEntry();
+  const rejectTimeEntryMutation = useRejectTimeEntry();
+  const splitTimeEntryMutation = useSplitTimeEntry();
+  const convertAllDayEventMutation = useConvertAllDayEvent();
   const deleteTimeEntryMutation = useDeleteTimeEntry();
   const excludeEventMutation = useExcludeEvent();
 
@@ -47,6 +57,11 @@ export function useSchedulePageBaseQueries(today: string, currentTimeZone: strin
     suggestGapFillMutation,
     listGapEvidenceMutation,
     updateTimeEntryMutation,
+    adjustDraftTimeEntryMutation,
+    confirmTimeEntryMutation,
+    rejectTimeEntryMutation,
+    splitTimeEntryMutation,
+    convertAllDayEventMutation,
     deleteTimeEntryMutation,
     excludeEventMutation,
     aiConfig,

@@ -25,6 +25,7 @@ import {
   resolveEventCategoryId,
   type EventReviewState,
 } from "./mappers";
+import { toDate } from "./timezone";
 import type {
   AllDayChip,
   ScheduleGapOverlay,
@@ -52,6 +53,44 @@ export interface ProjectedSchedulePeriod {
   resettableDays: ReadonlySet<string>;
   timeEntriesByItemId: Map<string, TimeEntry>;
   reviewDecisionsByEventId: Map<number, EventReviewState>;
+}
+
+const CALENDAR_LINKED_METHODS = new Set([
+  "calendar_import",
+  "calendar_convert",
+]);
+
+function intervalsOverlap(
+  startA: Date,
+  endA: Date,
+  startB: Date,
+  endB: Date,
+) {
+  return startA.getTime() < endB.getTime() && endA.getTime() > startB.getTime();
+}
+
+/** Timed calendar events covered by a live calendar-linked TimeEntry stay off the canvas. */
+export function isTimedEventCoveredByLinkedEntry(
+  event: Event,
+  linkedEntries: TimeEntry[],
+): boolean {
+  if (event.allDay) {
+    return false;
+  }
+  const start = toDate(event.start);
+  const end = toDate(event.end);
+  if (!start || !end) {
+    return false;
+  }
+
+  return linkedEntries.some((entry) => {
+    const entryStart = toDate(entry.start);
+    const entryEnd = toDate(entry.end);
+    if (!entryStart || !entryEnd) {
+      return false;
+    }
+    return intervalsOverlap(start, end, entryStart, entryEnd);
+  });
 }
 
 export function buildReviewStateByEventId(
@@ -90,6 +129,12 @@ export function projectSchedulePeriod({
   const overlaysByKey = buildEventCategoryOverlayMap(eventCategoryOverlays);
   const timeEntriesByItemId = buildTimeEntriesByItemId(timeEntries);
   const reviewDecisionsByEventId = buildReviewStateByEventId(reviewDecisions);
+  const linkedCalendarEntries = timeEntries.filter(
+    (entry) =>
+      entry.attestation !== "dismissed" &&
+      typeof entry.method === "string" &&
+      CALENDAR_LINKED_METHODS.has(entry.method),
+  );
 
   const allDayChipsByDay = buildAllDayChipsByDay(
     events,
@@ -101,6 +146,10 @@ export function projectSchedulePeriod({
 
   const items = [
     ...events
+      .filter(
+        (event) =>
+          !isTimedEventCoveredByLinkedEntry(event, linkedCalendarEntries),
+      )
       .map((event) =>
         eventToSchedulerItem(
           event,

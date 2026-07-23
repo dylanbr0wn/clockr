@@ -22,10 +22,12 @@ export interface ScheduleTimelineActions {
   onPreviewChange: (change: ScheduleChange | null) => void;
   onCommitChange: (change: ScheduleChange) => void;
   onEditItem: (item: ScheduleItem) => void;
+  onEditDraftItem?: (item: ScheduleItem) => void;
   onDuplicateItem: (item: ScheduleItem) => void;
   onRemoveItem: (item: ScheduleItem) => void;
   onExcludeItem: (item: ScheduleItem) => void;
   onExcludeAllDayChip: (chip: AllDayChip) => void;
+  onConvertAllDayChip?: (chip: AllDayChip) => void;
   onResetDay: (day: string) => void;
   onSelectGap: (gap: ScheduleGapOverlay) => void;
   onOpenReviewQueue: () => void;

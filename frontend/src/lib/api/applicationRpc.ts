@@ -56,6 +56,10 @@ import type {
   TimeEntryInput,
   TimeEntryResult,
   TimeEntryUpdateInput,
+  ConfirmTimeEntryInput,
+  RejectTimeEntryInput,
+  SplitTimeEntryInput,
+  ConvertAllDayEventInput,
   PeriodExportRender,
   PeriodExportModel,
   PreviewExportInput,
@@ -226,6 +230,47 @@ export async function deleteTimeEntryRPC(input: TimeEntryDeleteInput): Promise<T
   const out = await scheduleClient().deleteTimeEntry({ id: bigint(input.id), periodId: bigint(input.periodId) });
   return { periodId: safeInt(out.periodId, "period id"), id: safeInt(out.id, "time entry id") };
 }
+export async function confirmTimeEntryRPC(input: ConfirmTimeEntryInput): Promise<TimeEntry[]> {
+  const out = await scheduleClient().confirmTimeEntry({
+    id: bigint(input.id),
+    periodId: bigint(input.periodId),
+    overnightPolicy: input.overnightPolicy ?? "",
+    overlapResolution: input.overlapResolution ?? "",
+  });
+  return out.timeEntries.map(mapTimeEntry);
+}
+export async function rejectTimeEntryRPC(input: RejectTimeEntryInput): Promise<TimeEntry> {
+  const out = await scheduleClient().rejectTimeEntry({
+    id: bigint(input.id),
+    periodId: bigint(input.periodId),
+  });
+  if (!out.timeEntry) throw new Error("reject time entry response is missing time entry");
+  return mapTimeEntry(out.timeEntry);
+}
+export async function adjustDraftTimeEntryRPC(input: TimeEntryUpdateInput): Promise<TimeEntry> {
+  const out = await scheduleClient().adjustDraftTimeEntry({
+    id: bigint(input.id),
+    input: timeEntryInput(input),
+  });
+  if (!out.timeEntry) throw new Error("adjust draft time entry response is missing time entry");
+  return mapTimeEntry(out.timeEntry);
+}
+export async function splitTimeEntryRPC(input: SplitTimeEntryInput): Promise<TimeEntry[]> {
+  const out = await scheduleClient().splitTimeEntry({
+    id: bigint(input.id),
+    periodId: bigint(input.periodId),
+    cutPoints: input.cutPoints,
+  });
+  return out.timeEntries.map(mapTimeEntry);
+}
+export async function convertAllDayEventRPC(input: ConvertAllDayEventInput): Promise<TimeEntry> {
+  const out = await scheduleClient().convertAllDayEvent({
+    eventId: bigint(input.eventId),
+    input: timeEntryInput(input.input),
+  });
+  if (!out.timeEntry) throw new Error("convert all-day event response is missing time entry");
+  return mapTimeEntry(out.timeEntry);
+}
 export async function listReviewDecisionsRPC(periodId: number) {
   return (await scheduleClient().listReviewDecisions({ periodId: bigint(periodId) })).decisions.map(mapReviewDecision);
 }
@@ -362,7 +407,7 @@ function mapEvent(item: WireEvent): Event {
   return { id: safeInt(item.id, "event id"), periodId: safeInt(item.periodId, "period id"), calendarId: safeInt(item.calendarId, "calendar id"), provider: item.provider, externalId: item.externalId, title: item.title, allDay: item.allDay, active: item.active,
     ...(item.instanceId ? { instanceId: item.instanceId } : {}), ...(item.recurringEventId ? { recurringEventId: item.recurringEventId } : {}), ...(item.icalUid ? { icalUid: item.icalUid } : {}), ...(item.description ? { description: item.description } : {}), ...(item.location ? { location: item.location } : {}), ...(item.organizer ? { organizer: item.organizer } : {}), ...(item.start ? { start: iso(item.start, "event start") } : {}), ...(item.end ? { end: iso(item.end, "event end") } : {}), ...(item.startDate ? { startDate: item.startDate } : {}), ...(item.endDate ? { endDate: item.endDate } : {}), ...(item.originalTz ? { originalTz: item.originalTz } : {}) };
 }
-function mapTimeEntry(item: WireTimeEntry): TimeEntry {
+export function mapTimeEntry(item: WireTimeEntry): TimeEntry {
   return {
     id: safeInt(item.id, "time entry id"),
     periodId: safeInt(item.periodId, "period id"),

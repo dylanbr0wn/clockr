@@ -285,6 +285,7 @@ export function buildAllDayChipsByDay(
         allDaySpan: allDaySpanPosition(day, spanDays),
         excludable: true,
         opensReviewQueue: isReview,
+        convertible: !isReview,
       };
       const dayChips = chipsByDay.get(day) ?? [];
       dayChips.push(chip);
@@ -301,6 +302,10 @@ export function timeEntryToSchedulerItem(
   tzSegments: TzSegment[],
   placement?: SchedulePlacement,
 ): ScheduleItem | null {
+  if (timeEntry.attestation === "dismissed") {
+    return null;
+  }
+
   const timeZone = activeTimeZoneForDay(timeEntry.localWorkDate, tzSegments);
   const startDate = toDate(timeEntry.start);
   const endDate = toDate(timeEntry.end);
@@ -315,7 +320,12 @@ export function timeEntryToSchedulerItem(
   const endMinutes =
     end.day === start.day ? end.minutes : SCHEDULE_END_MINUTES;
   const category = categoryName(timeEntry.categoryId, categoriesById);
-  const kind = timeEntry.method === "gap_fill" ? "gap" : "manual";
+  const isDraft = timeEntry.attestation === "draft";
+  const kind = isDraft
+    ? "draft"
+    : timeEntry.method === "gap_fill"
+      ? "gap"
+      : "manual";
 
   return applyPlacement(
     {
@@ -333,6 +343,7 @@ export function timeEntryToSchedulerItem(
         mutable: true,
         excludable: false,
         opensReviewQueue: false,
+        opensDraftEditor: isDraft,
       },
     },
     placement,

@@ -100,6 +100,51 @@ describe("schedule projection", () => {
     expect(projected.timeEntriesByItemId.get("time-entry-21")?.id).toBe(21);
   });
 
+  it("hides timed calendar events covered by live calendar-linked drafts", () => {
+    const projected = projectSchedulePeriod({
+      events: [
+        {
+          id: 34,
+          periodId: 1,
+          calendarId: 3,
+          provider: "google",
+          externalId: "event-34",
+          title: "Focus",
+          allDay: false,
+          start: "2026-06-09T16:30:00Z",
+          end: "2026-06-09T18:00:00Z",
+          active: true,
+        } as never,
+      ],
+      eventCategoryOverlays: [],
+      timeEntries: [
+        {
+          id: 21,
+          periodId: 1,
+          localWorkDate: "2026-06-09",
+          start: "2026-06-09T16:30:00Z",
+          end: "2026-06-09T18:00:00Z",
+          durationMinutes: 90,
+          categoryId: 10,
+          description: "Focus",
+          attestation: "draft",
+          method: "calendar_import",
+        } as never,
+      ],
+      gapTimeline: [],
+      reviewDecisions: [],
+      tzSegments: [...tzSegments],
+      categories: [...categories],
+      visibleDays: new Set(["2026-06-09"]),
+      draftPlacements: {},
+    });
+
+    expect(projected.items.find((item) => item.id === "event-34")).toBeUndefined();
+    expect(projected.items.find((item) => item.id === "time-entry-21")?.metadata).toMatchObject({
+      kind: "draft",
+    });
+  });
+
   it("resolves archived category names on historical time entries", () => {
     const projected = projectSchedulePeriod({
       events: [],

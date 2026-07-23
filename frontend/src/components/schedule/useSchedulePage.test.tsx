@@ -166,6 +166,31 @@ vi.mock("@/lib/api", () => ({
     isPending: false,
     error: null,
   }),
+  useAdjustDraftTimeEntry: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+    error: null,
+  }),
+  useConfirmTimeEntry: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+    error: null,
+  }),
+  useRejectTimeEntry: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+    error: null,
+  }),
+  useSplitTimeEntry: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+    error: null,
+  }),
+  useConvertAllDayEvent: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+    error: null,
+  }),
   useDeleteTimeEntry: () => ({
     mutate: mockState.deleteMutate,
     isPending: false,

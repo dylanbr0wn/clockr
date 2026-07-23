@@ -25,6 +25,8 @@ export function kindClasses(kind: ScheduleKind) {
       return "border-emerald-300 bg-emerald-50 text-emerald-950 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-100";
     case "manual":
       return "border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100";
+    case "draft":
+      return "border-dashed border-teal-400 bg-teal-50/80 text-teal-950 dark:border-teal-700 dark:bg-teal-950/40 dark:text-teal-100";
     case "review":
       return "border-rose-300 bg-rose-50 text-rose-950 dark:border-rose-700 dark:bg-rose-950/40 dark:text-rose-100";
   }
@@ -34,7 +36,7 @@ export function scheduleItemPresentation(
   kind: ScheduleKind,
   categoryColor?: string,
 ): { className: string; style?: CSSProperties } {
-  if (kind === "review") {
+  if (kind === "review" || kind === "draft") {
     return { className: kindClasses(kind) };
   }
 

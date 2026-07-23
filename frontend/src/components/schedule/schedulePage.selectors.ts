@@ -187,7 +187,7 @@ function resolveEditingEvent({
   const timeEntry = timeEntriesByItemId.get(editingItemId);
   const item = items.find((candidate) => candidate.id === editingItemId);
 
-  if (!timeEntry || !item) {
+  if (!timeEntry || !item || timeEntry.attestation === "draft") {
     return null;
   }
 

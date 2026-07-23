@@ -2,6 +2,7 @@ import {
   AlertTriangleIcon,
   CopyIcon,
   EyeOffIcon,
+  FilePenLineIcon,
   PencilIcon,
   Trash2Icon,
 } from "lucide-react";
@@ -54,6 +55,22 @@ export function ScheduleTimedItem({
     : { className: "border-border bg-muted text-foreground" };
   const canMutateItem = metadata?.mutable ?? false;
   const canExcludeItem = metadata?.excludable ?? false;
+  const opensDraftEditor = metadata?.opensDraftEditor ?? false;
+  const opensReviewQueue = metadata?.opensReviewQueue ?? false;
+
+  const openEditor = () => {
+    if (opensDraftEditor) {
+      actions.onEditDraftItem?.(item as ScheduleItem);
+      return;
+    }
+    if (opensReviewQueue) {
+      actions.onOpenReviewQueue();
+      return;
+    }
+    if (canMutateItem) {
+      actions.onEditItem(item as ScheduleItem);
+    }
+  };
 
   return (
     <ContextMenu>
@@ -63,20 +80,30 @@ export function ScheduleTimedItem({
             onContextMenu: (event) => {
               event.stopPropagation();
             },
+            onClick: (event) => {
+              if (!opensDraftEditor && !opensReviewQueue) {
+                return;
+              }
+              event.preventDefault();
+              event.stopPropagation();
+              openEditor();
+            },
             onDoubleClick: (event) => {
-              if (!canMutateItem) {
+              if (!opensDraftEditor && !canMutateItem) {
                 return;
               }
 
               event.preventDefault();
               event.stopPropagation();
-              actions.onEditItem(item as ScheduleItem);
+              openEditor();
             },
             className: [
               "group z-10 flex min-h-10 flex-col overflow-hidden rounded-md border px-2 py-1 text-left text-xs shadow-sm transition-shadow",
-              canMutateItem
+              opensDraftEditor || canMutateItem
                 ? "cursor-grab active:cursor-grabbing"
-                : "cursor-default",
+                : opensReviewQueue
+                  ? "cursor-pointer"
+                  : "cursor-default",
               layoutItem.isPreview
                 ? "opacity-70 ring-2 ring-background/20"
                 : "hover:shadow-md",
@@ -98,6 +125,12 @@ export function ScheduleTimedItem({
               <div className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide opacity-80">
                 <AlertTriangleIcon className="size-3" />
                 <span>Needs review</span>
+              </div>
+            ) : null}
+            {metadata?.kind === "draft" ? (
+              <div className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide opacity-80">
+                <FilePenLineIcon className="size-3" />
+                <span>Draft</span>
               </div>
             ) : null}
             <p className="truncate font-semibold">
@@ -122,7 +155,12 @@ export function ScheduleTimedItem({
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent data-scheduler-ignore-create="">
-        {canExcludeItem ? (
+        {opensDraftEditor ? (
+          <ContextMenuItem onSelect={() => openEditor()}>
+            <FilePenLineIcon />
+            Review draft…
+          </ContextMenuItem>
+        ) : canExcludeItem ? (
           <ContextMenuItem
             onSelect={() => actions.onExcludeItem(item as ScheduleItem)}
           >

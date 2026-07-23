@@ -1,4 +1,4 @@
-import { AlertTriangleIcon, EyeOffIcon } from "lucide-react";
+import { AlertTriangleIcon, EyeOffIcon, TimerIcon } from "lucide-react";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -19,6 +19,7 @@ interface ScheduleAllDayRowProps {
   allDayRowHeight: number;
   onOpenReviewQueue: () => void;
   onExcludeAllDayChip: (chip: AllDayChip) => void;
+  onConvertAllDayChip?: (chip: AllDayChip) => void;
 }
 
 export function ScheduleAllDayRow({
@@ -27,6 +28,7 @@ export function ScheduleAllDayRow({
   allDayRowHeight,
   onOpenReviewQueue,
   onExcludeAllDayChip,
+  onConvertAllDayChip,
 }: ScheduleAllDayRowProps) {
   return (
     <>
@@ -55,6 +57,7 @@ export function ScheduleAllDayRow({
                 chip.categoryColor,
               );
               const opensReviewQueue = chip.opensReviewQueue ?? false;
+              const convertible = chip.convertible ?? false;
               const visibleSpan = resolveVisibleAllDaySpan(
                 chip,
                 index,
@@ -92,6 +95,14 @@ export function ScheduleAllDayRow({
                     </button>
                   </ContextMenuTrigger>
                   <ContextMenuContent>
+                    {convertible && onConvertAllDayChip ? (
+                      <ContextMenuItem
+                        onSelect={() => onConvertAllDayChip(chip)}
+                      >
+                        <TimerIcon />
+                        Convert to time entry…
+                      </ContextMenuItem>
+                    ) : null}
                     {chip.excludable ? (
                       <ContextMenuItem onSelect={() => onExcludeAllDayChip(chip)}>
                         <EyeOffIcon />
