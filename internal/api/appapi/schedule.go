@@ -198,6 +198,24 @@ func (s *ScheduleService) SplitTimeEntry(ctx context.Context, req *connect.Reque
 	return connect.NewResponse(&appv1.SplitTimeEntryResponse{TimeEntries: out}), nil
 }
 
+func (s *ScheduleService) ConvertAllDayEvent(ctx context.Context, req *connect.Request[appv1.ConvertAllDayEventRequest]) (*connect.Response[appv1.ConvertAllDayEventResponse], error) {
+	if err := requireID(req.Msg.EventId, "event_id"); err != nil {
+		return nil, err
+	}
+	input, err := timeEntryInput(req.Msg.Input)
+	if err != nil {
+		return nil, err
+	}
+	item, serviceErr := s.service.ConvertAllDayEvent(ctx, service.ConvertAllDayEventInput{
+		EventID:        req.Msg.EventId,
+		TimeEntryInput: input,
+	})
+	if serviceErr != nil {
+		return nil, mapServiceError(serviceErr)
+	}
+	return connect.NewResponse(&appv1.ConvertAllDayEventResponse{TimeEntry: toProtoTimeEntry(item)}), nil
+}
+
 func (s *ScheduleService) ListReviewDecisions(ctx context.Context, req *connect.Request[appv1.ListReviewDecisionsRequest]) (*connect.Response[appv1.ListReviewDecisionsResponse], error) {
 	if err := requireID(req.Msg.PeriodId, "period_id"); err != nil {
 		return nil, err

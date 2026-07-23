@@ -46,6 +46,7 @@ service ScheduleService {
   rpc RejectTimeEntry(RejectTimeEntryRequest) returns (RejectTimeEntryResponse);
   rpc AdjustDraftTimeEntry(AdjustDraftTimeEntryRequest) returns (AdjustDraftTimeEntryResponse);
   rpc SplitTimeEntry(SplitTimeEntryRequest) returns (SplitTimeEntryResponse);
+  rpc ConvertAllDayEvent(ConvertAllDayEventRequest) returns (ConvertAllDayEventResponse);
   rpc ListReviewDecisions(ListReviewDecisionsRequest) returns (ListReviewDecisionsResponse);
   rpc ResolveReviewDecision(ResolveReviewDecisionRequest) returns (ResolveReviewDecisionResponse);
   rpc ExcludeEvent(ExcludeEventRequest) returns (ExcludeEventResponse);
@@ -299,6 +300,11 @@ message SplitTimeEntryRequest {
   repeated string cut_points = 3;
 }
 message SplitTimeEntryResponse { repeated TimeEntry time_entries = 1; }
+message ConvertAllDayEventRequest {
+  int64 event_id = 1;
+  TimeEntryInput input = 2;
+}
+message ConvertAllDayEventResponse { TimeEntry time_entry = 1; }
 enum ReviewActionRole {
   REVIEW_ACTION_ROLE_UNSPECIFIED = 0;
   REVIEW_ACTION_ROLE_PRIMARY = 1;

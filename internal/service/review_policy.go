@@ -40,6 +40,7 @@ const (
 const (
 	SourceKindCalendarEvent = "calendar_event"
 	MethodCalendarImport    = "calendar_import"
+	MethodCalendarConvert   = "calendar_convert"
 )
 
 // overlay status note used to hide an event from the schedule.
