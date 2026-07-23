@@ -49,6 +49,9 @@ func (s *Service) ExcludeEvent(ctx context.Context, input ExcludeEventInput) (Ex
 	if err := policy.DeleteCategoryOverlay(ctx, q, ev); err != nil {
 		return res, err
 	}
+	if err := policy.dismissCalendarDraftsForEvent(ctx, q, ev); err != nil {
+		return res, err
+	}
 	if err := policy.MarkExcluded(ctx, q, ev); err != nil {
 		return res, err
 	}

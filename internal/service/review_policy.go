@@ -437,6 +437,17 @@ func (reviewPolicy) HasStatusExcluded(ctx context.Context, q *sqlc.Queries, ev s
 	return o.Note == overlayStatusExclude, nil
 }
 
+// dismissCalendarDraftsForEvent soft-rejects live calendar_import drafts linked
+// to the event identity (exclude / deleted keep|drop).
+func (reviewPolicy) dismissCalendarDraftsForEvent(ctx context.Context, q *sqlc.Queries, ev sqlc.Event) error {
+	identity := eventIdentityFromRow(ev)
+	entries, err := q.ListTimeEntriesForPeriod(ctx, ev.PeriodID)
+	if err != nil {
+		return mapErr("list time entries", err)
+	}
+	return dismissLinkedDrafts(ctx, q, linkedCalendarEntries(entries, identity))
+}
+
 // DeleteCategoryOverlay removes the category overlay for the event if present.
 func (reviewPolicy) DeleteCategoryOverlay(ctx context.Context, q *sqlc.Queries, ev sqlc.Event) error {
 	o, err := q.GetOverlay(ctx, sqlc.GetOverlayParams{
@@ -562,11 +573,17 @@ func (p reviewPolicy) applyDeletedCategorized(ctx context.Context, q *sqlc.Queri
 
 	switch action {
 	case ReviewActionKeepEntry:
+		if err := p.dismissCalendarDraftsForEvent(ctx, q, ev); err != nil {
+			return err
+		}
 		if err := p.convertEventToManualFill(ctx, q, ev); err != nil {
 			return err
 		}
 		return p.MarkExcluded(ctx, q, ev)
 	case ReviewActionDropEntry:
+		if err := p.dismissCalendarDraftsForEvent(ctx, q, ev); err != nil {
+			return err
+		}
 		if err := p.DeleteCategoryOverlay(ctx, q, ev); err != nil {
 			return err
 		}

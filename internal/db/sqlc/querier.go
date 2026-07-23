@@ -134,6 +134,8 @@ type Querier interface {
 	UpdateScheduleException(ctx context.Context, arg UpdateScheduleExceptionParams) (ScheduleException, error)
 	UpdateTimeEntry(ctx context.Context, arg UpdateTimeEntryParams) (TimeEntry, error)
 	UpdateTimeEntryAttestation(ctx context.Context, arg UpdateTimeEntryAttestationParams) (TimeEntry, error)
+	UpdateTimeEntryCalendarDraft(ctx context.Context, arg UpdateTimeEntryCalendarDraftParams) (TimeEntry, error)
+	UpdateTimeEntrySourceRevision(ctx context.Context, arg UpdateTimeEntrySourceRevisionParams) error
 	UpdateTimeEntrySpan(ctx context.Context, arg UpdateTimeEntrySpanParams) (TimeEntry, error)
 	UpdateWorkScheduleEffectiveTo(ctx context.Context, arg UpdateWorkScheduleEffectiveToParams) (WorkSchedule, error)
 	UpsertBitbucketRepo(ctx context.Context, arg UpsertBitbucketRepoParams) (BitbucketRepo, error)

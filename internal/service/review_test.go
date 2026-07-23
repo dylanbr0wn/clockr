@@ -234,24 +234,55 @@ func TestSync_VanishedConfirmedCalendarSourceOpensSourceDrift(t *testing.T) {
 	}
 }
 
-// seedConfirmedCalendarDrift syncs an event, seeds a confirmed calendar-sourced
-// TimeEntry at the original span, then re-syncs a moved event to open source_drift.
+// seedConfirmedCalendarDrift syncs an event (materializing a draft), confirms it,
+// then re-syncs a moved event to open source_drift.
 func seedConfirmedCalendarDrift(t *testing.T, e *syncEnv) (entryID int64, sourceID string) {
 	t.Helper()
 	ctx := context.Background()
 	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{e.baseEvent()}); err != nil {
 		t.Fatal(err)
 	}
-	events, err := e.q.ListAllEventsForPeriod(ctx, e.periodID)
-	if err != nil || len(events) != 1 {
-		t.Fatalf("seed event: err=%v n=%d", err, len(events))
+	entries, err := e.svc.ListTimeEntries(ctx, e.periodID)
+	if err != nil {
+		t.Fatal(err)
 	}
+	var draft *service.TimeEntry
+	for i := range entries {
+		if entries[i].Attestation == "draft" && entries[i].Method == service.MethodCalendarImport {
+			draft = &entries[i]
+			break
+		}
+	}
+	if draft == nil {
+		t.Fatal("expected materialize draft after sync")
+	}
+	cat := e.catID
+	if _, err := e.svc.AdjustDraftTimeEntry(ctx, service.TimeEntryUpdateInput{
+		ID: draft.ID,
+		TimeEntryInput: service.TimeEntryInput{
+			PeriodID:     e.periodID,
+			Day:          draft.LocalWorkDate,
+			StartMinutes: 5 * 60, // 09:00Z = 05:00 Toronto
+			EndMinutes:   5*60 + 30,
+			CategoryID:   &cat,
+			Description:  "My notes",
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	confirmed, err := e.svc.ConfirmTimeEntry(ctx, service.ConfirmTimeEntryInput{
+		ID:       draft.ID,
+		PeriodID: e.periodID,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(confirmed) != 1 {
+		t.Fatalf("want 1 confirmed, got %d", len(confirmed))
+	}
+	entryID = confirmed[0].ID
 	sourceID = fmt.Sprintf("%s|%d|evt-1|", service.ProviderGoogle, e.calID)
-	entryID = insertTimeEntryProvenance(t, e.q, e.periodID,
-		"2026-06-02", "2026-06-02T09:00:00Z", "2026-06-02T09:30:00Z",
-		sql.NullInt64{Int64: e.catID, Valid: true}, "My notes", "confirmed", false,
-		"calendar_event", sourceID, events[0].SourceHash,
-	)
+
 	moved := e.baseEvent()
 	moved.Start = tm("2026-06-02T10:00:00Z")
 	moved.End = tm("2026-06-02T10:30:00Z")
@@ -331,20 +362,32 @@ func TestResolveReviewDecision_DeletedCategorizedKeep(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(fills) != 1 {
+	var live []service.TimeEntry
+	for _, te := range fills {
+		if te.Attestation != "dismissed" {
+			live = append(live, te)
+		}
+	}
+	if len(live) != 1 {
 		t.Fatalf("want one manual copy, got %+v", fills)
 	}
-	if fills[0].Method != "" || fills[0].Description != "Standup" || fills[0].CategoryID == nil || *fills[0].CategoryID != e.catID {
-		t.Fatalf("manual copy did not preserve event title/category: %+v", fills[0])
+	if live[0].Method != "" || live[0].Description != "Standup" || live[0].CategoryID == nil || *live[0].CategoryID != e.catID {
+		t.Fatalf("manual copy did not preserve event title/category: %+v", live[0])
 	}
-	if err := e.svc.DeleteTimeEntry(ctx, service.TimeEntryDeleteInput{ID: fills[0].ID, PeriodID: e.periodID}); err != nil {
+	if err := e.svc.DeleteTimeEntry(ctx, service.TimeEntryDeleteInput{ID: live[0].ID, PeriodID: e.periodID}); err != nil {
 		t.Fatalf("manual copy should be deletable: %v", err)
 	}
 	fills, err = e.svc.ListTimeEntries(ctx, e.periodID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(fills) != 0 {
+	live = live[:0]
+	for _, te := range fills {
+		if te.Attestation != "dismissed" {
+			live = append(live, te)
+		}
+	}
+	if len(live) != 0 {
 		t.Fatalf("manual copy should be deleted, got %+v", fills)
 	}
 
@@ -364,6 +407,7 @@ func TestResolveReviewDecision_TitleChangedAccept(t *testing.T) {
 		t.Fatal(err)
 	}
 	mustOverlay(t, e, "evt-1")
+	dismissCalendarDrafts(t, e)
 
 	renamed := e.baseEvent()
 	renamed.Title = "Sprint Planning"
@@ -371,6 +415,9 @@ func TestResolveReviewDecision_TitleChangedAccept(t *testing.T) {
 		t.Fatal(err)
 	}
 	items := openDecisions(t, e)
+	if len(items) != 1 || items[0].Kind != "title_changed" {
+		t.Fatalf("want title_changed, got %+v", items)
+	}
 
 	if _, err := e.svc.ResolveReviewDecision(ctx, service.ResolveReviewDecisionInput{
 		DecisionID: items[0].ID,

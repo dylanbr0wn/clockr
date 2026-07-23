@@ -348,6 +348,86 @@ func (q *Queries) UpdateTimeEntryAttestation(ctx context.Context, arg UpdateTime
 	return i, err
 }
 
+const updateTimeEntryCalendarDraft = `-- name: UpdateTimeEntryCalendarDraft :one
+UPDATE time_entry SET
+    start_instant     = ?,
+    end_instant       = ?,
+    duration_minutes  = ?,
+    local_work_date   = ?,
+    description       = ?,
+    source_revision   = ?,
+    category_id       = ?,
+    updated_at        = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ? AND period_id = ? AND attestation = 'draft'
+RETURNING id, period_id, start_instant, end_instant, duration_minutes, local_work_date, category_id, description, attestation, source_kind, source_id, source_revision, method, created_at, updated_at, work_type, project_id, billable_status
+`
+
+type UpdateTimeEntryCalendarDraftParams struct {
+	StartInstant    string         `json:"start_instant"`
+	EndInstant      string         `json:"end_instant"`
+	DurationMinutes int64          `json:"duration_minutes"`
+	LocalWorkDate   string         `json:"local_work_date"`
+	Description     string         `json:"description"`
+	SourceRevision  sql.NullString `json:"source_revision"`
+	CategoryID      sql.NullInt64  `json:"category_id"`
+	ID              int64          `json:"id"`
+	PeriodID        int64          `json:"period_id"`
+}
+
+func (q *Queries) UpdateTimeEntryCalendarDraft(ctx context.Context, arg UpdateTimeEntryCalendarDraftParams) (TimeEntry, error) {
+	row := q.db.QueryRowContext(ctx, updateTimeEntryCalendarDraft,
+		arg.StartInstant,
+		arg.EndInstant,
+		arg.DurationMinutes,
+		arg.LocalWorkDate,
+		arg.Description,
+		arg.SourceRevision,
+		arg.CategoryID,
+		arg.ID,
+		arg.PeriodID,
+	)
+	var i TimeEntry
+	err := row.Scan(
+		&i.ID,
+		&i.PeriodID,
+		&i.StartInstant,
+		&i.EndInstant,
+		&i.DurationMinutes,
+		&i.LocalWorkDate,
+		&i.CategoryID,
+		&i.Description,
+		&i.Attestation,
+		&i.SourceKind,
+		&i.SourceID,
+		&i.SourceRevision,
+		&i.Method,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.WorkType,
+		&i.ProjectID,
+		&i.BillableStatus,
+	)
+	return i, err
+}
+
+const updateTimeEntrySourceRevision = `-- name: UpdateTimeEntrySourceRevision :exec
+UPDATE time_entry SET
+    source_revision = ?,
+    updated_at      = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ? AND period_id = ?
+`
+
+type UpdateTimeEntrySourceRevisionParams struct {
+	SourceRevision sql.NullString `json:"source_revision"`
+	ID             int64          `json:"id"`
+	PeriodID       int64          `json:"period_id"`
+}
+
+func (q *Queries) UpdateTimeEntrySourceRevision(ctx context.Context, arg UpdateTimeEntrySourceRevisionParams) error {
+	_, err := q.db.ExecContext(ctx, updateTimeEntrySourceRevision, arg.SourceRevision, arg.ID, arg.PeriodID)
+	return err
+}
+
 const updateTimeEntrySpan = `-- name: UpdateTimeEntrySpan :one
 UPDATE time_entry SET
     start_instant     = ?,

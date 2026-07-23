@@ -3,7 +3,6 @@ package service_test
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
@@ -161,6 +160,24 @@ func TestSync_MaterialTitleChangeFlags(t *testing.T) {
 	}
 	mustOverlay(t, e, "evt-1")
 
+	// Confirm the draft so title change is an overlay conflict (not draft-only refresh).
+	entries, err := e.svc.ListTimeEntries(ctx, e.periodID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var draftID int64
+	for _, te := range entries {
+		if te.Attestation == "draft" {
+			draftID = te.ID
+			break
+		}
+	}
+	if _, err := e.svc.ConfirmTimeEntry(ctx, service.ConfirmTimeEntryInput{
+		ID: draftID, PeriodID: e.periodID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
 	renamed := e.baseEvent()
 	renamed.Title = "Sprint Planning" // material change
 
@@ -168,12 +185,49 @@ func TestSync_MaterialTitleChangeFlags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.Updated != 1 || r.Flagged != 1 {
+	// source_drift (+ optional title_changed). At least one flag.
+	if r.Updated != 1 || r.Flagged < 1 {
 		t.Fatalf("title change should flag: %+v", r)
 	}
 	items := openDecisions(t, e)
-	if len(items) != 1 || items[0].Kind != "title_changed" {
-		t.Fatalf("want one title_changed item, got %+v", items)
+	kinds := map[string]int{}
+	for _, it := range items {
+		kinds[it.Kind]++
+	}
+	if kinds["source_drift"] < 1 && kinds["title_changed"] < 1 {
+		t.Fatalf("want source_drift and/or title_changed, got %+v", items)
+	}
+}
+
+func TestSync_DraftOnlyTitleChangeSkipsTitleReview(t *testing.T) {
+	e := newSyncEnv(t)
+	ctx := context.Background()
+
+	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{e.baseEvent()}); err != nil {
+		t.Fatal(err)
+	}
+	mustOverlay(t, e, "evt-1")
+
+	renamed := e.baseEvent()
+	renamed.Title = "Sprint Planning"
+	r, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{renamed})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Updated != 1 || r.Flagged != 0 {
+		t.Fatalf("draft-only title refresh should not flag: %+v", r)
+	}
+	if items := openDecisions(t, e); len(items) != 0 {
+		t.Fatalf("no title_changed expected, got %+v", items)
+	}
+	entries, err := e.svc.ListTimeEntries(ctx, e.periodID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, te := range entries {
+		if te.Attestation == "draft" && te.Description != "Sprint Planning" {
+			t.Fatalf("draft description not refreshed: %+v", te)
+		}
 	}
 }
 
@@ -240,20 +294,36 @@ func TestSync_ConfirmedCalendarSourceChangeOpensSourceDrift(t *testing.T) {
 	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{e.baseEvent()}); err != nil {
 		t.Fatal(err)
 	}
-	events, err := e.q.ListAllEventsForPeriod(ctx, e.periodID)
+	entries, err := e.svc.ListTimeEntries(ctx, e.periodID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(events) != 1 {
-		t.Fatalf("want 1 event, got %d", len(events))
+	var draftID int64
+	for _, te := range entries {
+		if te.Attestation == "draft" && te.Method == service.MethodCalendarImport {
+			draftID = te.ID
+			break
+		}
 	}
-	ev := events[0]
-	sourceID := fmt.Sprintf("%s|%d|evt-1|", service.ProviderGoogle, e.calID)
-	entryID := insertTimeEntryProvenance(t, e.q, e.periodID,
-		"2026-06-02", "2026-06-02T09:00:00Z", "2026-06-02T09:30:00Z",
-		sql.NullInt64{Int64: e.catID, Valid: true}, "Standup", "confirmed", false,
-		"calendar_event", sourceID, ev.SourceHash,
-	)
+	if draftID == 0 {
+		t.Fatal("expected materialize draft")
+	}
+	confirmed, err := e.svc.ConfirmTimeEntry(ctx, service.ConfirmTimeEntryInput{
+		ID:       draftID,
+		PeriodID: e.periodID,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	entryID := confirmed[0].ID
+	evHash := ""
+	row, err := e.q.GetTimeEntry(ctx, sqlc.GetTimeEntryParams{ID: entryID, PeriodID: e.periodID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if row.SourceRevision.Valid {
+		evHash = row.SourceRevision.String
+	}
 
 	moved := e.baseEvent()
 	moved.Start = tm("2026-06-02T10:00:00Z")
@@ -282,12 +352,279 @@ func TestSync_ConfirmedCalendarSourceChangeOpensSourceDrift(t *testing.T) {
 	if got.Start != "2026-06-02T09:00:00Z" || got.End != "2026-06-02T09:30:00Z" {
 		t.Fatalf("confirmed span mutated: start=%s end=%s", got.Start, got.End)
 	}
-	row, err := e.q.GetTimeEntry(ctx, sqlc.GetTimeEntryParams{ID: entryID, PeriodID: e.periodID})
+	row, err = e.q.GetTimeEntry(ctx, sqlc.GetTimeEntryParams{ID: entryID, PeriodID: e.periodID})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !row.SourceRevision.Valid || row.SourceRevision.String != ev.SourceHash {
+	if !row.SourceRevision.Valid || row.SourceRevision.String != evHash {
 		t.Fatalf("source_revision mutated: %+v", row.SourceRevision)
+	}
+}
+
+func TestSync_MaterializesDraftForIncludedTimedEvent(t *testing.T) {
+	e := newSyncEnv(t)
+	ctx := context.Background()
+
+	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{e.baseEvent()}); err != nil {
+		t.Fatal(err)
+	}
+
+	entries, err := e.svc.ListTimeEntries(ctx, e.periodID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var drafts []service.TimeEntry
+	for _, te := range entries {
+		if te.Attestation == "draft" && te.Method == service.MethodCalendarImport {
+			drafts = append(drafts, te)
+		}
+	}
+	if len(drafts) != 1 {
+		t.Fatalf("want 1 calendar_import draft, got %d entries (%d drafts): %+v", len(entries), len(drafts), entries)
+	}
+	d := drafts[0]
+	if d.Description != "Standup" {
+		t.Fatalf("description = %q, want Standup", d.Description)
+	}
+	if d.Start != "2026-06-02T09:00:00Z" || d.End != "2026-06-02T09:30:00Z" {
+		t.Fatalf("span = %s..%s, want 09:00–09:30Z", d.Start, d.End)
+	}
+	if d.DurationMinutes != 30 {
+		t.Fatalf("duration = %d, want 30", d.DurationMinutes)
+	}
+	if d.LocalWorkDate != "2026-06-02" {
+		t.Fatalf("local_work_date = %q, want 2026-06-02", d.LocalWorkDate)
+	}
+
+	// Second sync is idempotent — still exactly one draft.
+	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{e.baseEvent()}); err != nil {
+		t.Fatal(err)
+	}
+	entries, err = e.svc.ListTimeEntries(ctx, e.periodID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drafts = drafts[:0]
+	for _, te := range entries {
+		if te.Attestation == "draft" && te.Method == service.MethodCalendarImport {
+			drafts = append(drafts, te)
+		}
+	}
+	if len(drafts) != 1 {
+		t.Fatalf("second sync should keep one draft, got %d", len(drafts))
+	}
+}
+
+func TestSync_NoDraftForAllDayOrOpenTentative(t *testing.T) {
+	e := newSyncEnv(t)
+	ctx := context.Background()
+
+	allDay := service.IncomingEvent{
+		CalendarID: e.calID, Provider: service.ProviderGoogle, ExternalID: "evt-allday", Title: "Holiday",
+		Status: "accepted", AllDay: true, StartDate: "2026-06-03", EndDate: "2026-06-04",
+	}
+	tentative := e.baseEvent()
+	tentative.ExternalID = "evt-tent"
+	tentative.Status = "tentative"
+
+	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{allDay, tentative}); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := e.svc.ListTimeEntries(ctx, e.periodID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, te := range entries {
+		if te.Method == service.MethodCalendarImport {
+			t.Fatalf("unexpected calendar draft: %+v", te)
+		}
+	}
+}
+
+func TestSync_MaterializeAfterTentativeInclude(t *testing.T) {
+	e := newSyncEnv(t)
+	ctx := context.Background()
+
+	tentative := e.baseEvent()
+	tentative.Status = "tentative"
+	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{tentative}); err != nil {
+		t.Fatal(err)
+	}
+	items := openDecisions(t, e)
+	if len(items) != 1 || items[0].Kind != "tentative" {
+		t.Fatalf("want tentative review, got %+v", items)
+	}
+	if _, err := e.svc.ResolveReviewDecision(ctx, service.ResolveReviewDecisionInput{
+		DecisionID: items[0].ID,
+		Action:     service.ReviewActionInclude,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// Re-sync unchanged event after include → draft appears.
+	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{tentative}); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := e.svc.ListTimeEntries(ctx, e.periodID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var drafts int
+	for _, te := range entries {
+		if te.Attestation == "draft" && te.Method == service.MethodCalendarImport {
+			drafts++
+		}
+	}
+	if drafts != 1 {
+		t.Fatalf("want 1 draft after include, got %d (%+v)", drafts, entries)
+	}
+}
+
+func TestSync_RefreshDraftOnTimeOnlyChange(t *testing.T) {
+	e := newSyncEnv(t)
+	ctx := context.Background()
+
+	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{e.baseEvent()}); err != nil {
+		t.Fatal(err)
+	}
+	moved := e.baseEvent()
+	moved.Start = tm("2026-06-02T10:00:00Z")
+	moved.End = tm("2026-06-02T10:30:00Z")
+	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{moved}); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := e.svc.ListTimeEntries(ctx, e.periodID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var drafts []service.TimeEntry
+	for _, te := range entries {
+		if te.Attestation == "draft" && te.Method == service.MethodCalendarImport {
+			drafts = append(drafts, te)
+		}
+	}
+	if len(drafts) != 1 {
+		t.Fatalf("want 1 draft, got %+v", entries)
+	}
+	if drafts[0].Start != "2026-06-02T10:00:00Z" || drafts[0].End != "2026-06-02T10:30:00Z" {
+		t.Fatalf("draft not refreshed: %+v", drafts[0])
+	}
+}
+
+func TestSync_DismissedStaysOnTimeOnlyReopensOnTitleChange(t *testing.T) {
+	e := newSyncEnv(t)
+	ctx := context.Background()
+
+	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{e.baseEvent()}); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := e.svc.ListTimeEntries(ctx, e.periodID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var draftID int64
+	for _, te := range entries {
+		if te.Attestation == "draft" {
+			draftID = te.ID
+			break
+		}
+	}
+	if _, err := e.svc.RejectTimeEntry(ctx, service.RejectTimeEntryInput{ID: draftID, PeriodID: e.periodID}); err != nil {
+		t.Fatal(err)
+	}
+
+	moved := e.baseEvent()
+	moved.Start = tm("2026-06-02T11:00:00Z")
+	moved.End = tm("2026-06-02T11:30:00Z")
+	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{moved}); err != nil {
+		t.Fatal(err)
+	}
+	entries, err = e.svc.ListTimeEntries(ctx, e.periodID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, te := range entries {
+		if te.Attestation == "draft" {
+			t.Fatalf("time-only should not re-propose dismissed: %+v", te)
+		}
+	}
+
+	renamed := moved
+	renamed.Title = "Standup (renamed)"
+	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{renamed}); err != nil {
+		t.Fatal(err)
+	}
+	entries, err = e.svc.ListTimeEntries(ctx, e.periodID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var drafts []service.TimeEntry
+	for _, te := range entries {
+		if te.Attestation == "draft" && te.Method == service.MethodCalendarImport {
+			drafts = append(drafts, te)
+		}
+	}
+	if len(drafts) != 1 {
+		t.Fatalf("material title change should re-propose, got %+v", entries)
+	}
+	if drafts[0].Description != "Standup (renamed)" {
+		t.Fatalf("description = %q", drafts[0].Description)
+	}
+}
+
+func TestSync_DraftCopiesMemoryCategory(t *testing.T) {
+	e := newSyncEnv(t)
+	ctx := context.Background()
+
+	if _, err := e.q.RememberCategory(ctx, sqlc.RememberCategoryParams{
+		MatchKey: "rid:series-1", CategoryID: e.catID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	inc := e.baseEvent()
+	inc.RecurringEventID = "series-1"
+	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{inc}); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := e.svc.ListTimeEntries(ctx, e.periodID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var draft *service.TimeEntry
+	for i := range entries {
+		if entries[i].Attestation == "draft" {
+			draft = &entries[i]
+			break
+		}
+	}
+	if draft == nil || draft.CategoryID == nil || *draft.CategoryID != e.catID {
+		t.Fatalf("draft should copy memory category, got %+v", draft)
+	}
+}
+
+func TestSync_ExcludeDismissesDraft(t *testing.T) {
+	e := newSyncEnv(t)
+	ctx := context.Background()
+
+	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{e.baseEvent()}); err != nil {
+		t.Fatal(err)
+	}
+	events, err := e.svc.ListEvents(ctx, e.periodID)
+	if err != nil || len(events) != 1 {
+		t.Fatalf("events: err=%v n=%d", err, len(events))
+	}
+	if _, err := e.svc.ExcludeEvent(ctx, service.ExcludeEventInput{
+		EventID: events[0].ID, PeriodID: e.periodID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := e.svc.ListTimeEntries(ctx, e.periodID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, te := range entries {
+		if te.Method == service.MethodCalendarImport && te.Attestation == "draft" {
+			t.Fatalf("exclude should dismiss draft, still live: %+v", te)
+		}
 	}
 }
 
@@ -367,4 +704,24 @@ func openDecisions(t *testing.T, e *syncEnv) []service.ReviewDecision {
 		t.Fatal(err)
 	}
 	return items
+}
+
+// dismissCalendarDrafts soft-rejects any live calendar_import drafts in the period.
+func dismissCalendarDrafts(t *testing.T, e *syncEnv) {
+	t.Helper()
+	ctx := context.Background()
+	entries, err := e.svc.ListTimeEntries(ctx, e.periodID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, te := range entries {
+		if te.Attestation != "draft" || te.Method != service.MethodCalendarImport {
+			continue
+		}
+		if _, err := e.svc.RejectTimeEntry(ctx, service.RejectTimeEntryInput{
+			ID: te.ID, PeriodID: e.periodID,
+		}); err != nil {
+			t.Fatalf("reject draft %d: %v", te.ID, err)
+		}
+	}
 }

@@ -59,5 +59,24 @@ UPDATE time_entry SET
 WHERE id = ? AND period_id = ?
 RETURNING *;
 
+-- name: UpdateTimeEntryCalendarDraft :one
+UPDATE time_entry SET
+    start_instant     = ?,
+    end_instant       = ?,
+    duration_minutes  = ?,
+    local_work_date   = ?,
+    description       = ?,
+    source_revision   = ?,
+    category_id       = ?,
+    updated_at        = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ? AND period_id = ? AND attestation = 'draft'
+RETURNING *;
+
+-- name: UpdateTimeEntrySourceRevision :exec
+UPDATE time_entry SET
+    source_revision = ?,
+    updated_at      = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ? AND period_id = ?;
+
 -- name: DeleteTimeEntry :execrows
 DELETE FROM time_entry WHERE id = ? AND period_id = ?;

@@ -82,7 +82,7 @@ func (s *Service) SyncEvents(ctx context.Context, periodID int64, incoming []Inc
 		baseByKey[eventKey(e.CalendarID, e.ExternalID, e.InstanceID)] = e
 	}
 
-	gaps, err := q.ListTimeEntriesForPeriod(ctx, periodID)
+	entries, err := q.ListTimeEntriesForPeriod(ctx, periodID)
 	if err != nil {
 		return res, fmt.Errorf("load gap fills: %w", err)
 	}
@@ -101,7 +101,10 @@ func (s *Service) SyncEvents(ctx context.Context, periodID int64, incoming []Inc
 				return res, fmt.Errorf("insert event %s: %w", inc.ExternalID, err)
 			}
 			res.Added++
-			if err := s.handleNewEvent(ctx, q, periodID, inc, ev.ID, gaps, &res); err != nil {
+			if err := s.handleNewEvent(ctx, q, periodID, inc, ev.ID, entries, &res); err != nil {
+				return res, err
+			}
+			if err := s.materializeDraftForEvent(ctx, q, periodID, inc, ev, &entries, false); err != nil {
 				return res, err
 			}
 			continue
@@ -109,6 +112,9 @@ func (s *Service) SyncEvents(ctx context.Context, periodID int64, incoming []Inc
 
 		if ex.SourceHash == hash {
 			res.Unchanged++
+			if err := s.materializeDraftForEvent(ctx, q, periodID, inc, ex, &entries, false); err != nil {
+				return res, err
+			}
 			continue
 		}
 
@@ -118,7 +124,11 @@ func (s *Service) SyncEvents(ctx context.Context, periodID int64, incoming []Inc
 			return res, fmt.Errorf("update event %s: %w", inc.ExternalID, err)
 		}
 		res.Updated++
-		if err := s.handleChangedEvent(ctx, q, periodID, ev.ID, ex, inc, gaps, hash, &res); err != nil {
+		if err := s.handleChangedEvent(ctx, q, periodID, ev.ID, ex, inc, entries, hash, &res); err != nil {
+			return res, err
+		}
+		material := titleMaterialChange(ex, inc) || scheduleIncludeDropped(ex, inc)
+		if err := s.materializeDraftForEvent(ctx, q, periodID, inc, ev, &entries, material); err != nil {
 			return res, err
 		}
 	}
@@ -155,7 +165,7 @@ func (s *Service) SyncEvents(ctx context.Context, periodID int64, incoming []Inc
 			}
 			continue
 		}
-		flagged, kept, err := policy.OnVanishedConfirmedSource(ctx, q, periodID, e, gaps)
+		flagged, kept, err := policy.OnVanishedConfirmedSource(ctx, q, periodID, e, entries)
 		if err != nil {
 			return res, err
 		}
@@ -223,6 +233,22 @@ func (s *Service) handleChangedEvent(
 	}
 	if !categorized {
 		return nil // nothing the user decided yet → no overlay conflict
+	}
+
+	// Draft-only proposals absorb title refresh; skip duplicate title_changed review.
+	identity := eventIdentityFromIncoming(inc)
+	linked := linkedCalendarEntries(entries, identity)
+	liveDrafts, hasConfirmed, _ := partitionLinked(linked)
+	if len(liveDrafts) > 0 && !hasConfirmed && titleMaterialChange(ex, inc) {
+		// Still flag declined and other overlay conflicts; only suppress title_changed.
+		if inc.Status == "declined" {
+			overlayFlagged, err := s.review().OnChangedCategorized(ctx, q, periodID, eventID, ex, inc)
+			if err != nil {
+				return err
+			}
+			res.Flagged += overlayFlagged
+		}
+		return nil
 	}
 
 	overlayFlagged, err := s.review().OnChangedCategorized(ctx, q, periodID, eventID, ex, inc)

@@ -43,6 +43,7 @@ func TestListReviewDecisions_SupportedKinds(t *testing.T) {
 					t.Fatal(err)
 				}
 				mustOverlay(t, e, "evt-1")
+				dismissCalendarDrafts(t, e)
 				renamed := e.baseEvent()
 				renamed.Title = "Sprint Planning"
 				if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{renamed}); err != nil {
