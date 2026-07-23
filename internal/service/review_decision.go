@@ -166,6 +166,20 @@ func (reviewPolicy) ToDecision(item sqlc.ReviewItem, event *sqlc.Event) (ReviewD
 				secondaryReviewAction(ReviewActionExclude, "Dismiss"),
 			},
 		}, true
+	case reviewSourceDrift:
+		return ReviewDecision{
+			ID:          item.ID,
+			Kind:        item.Kind,
+			EventID:     eventID,
+			Tag:         "Source changed",
+			Title:       title,
+			Description: "Calendar event changed after you confirmed time. Confirmed entry stays as-is; spawn a draft proposal, replace with a new draft from the event, or dismiss.",
+			Actions: []ReviewDecisionAction{
+				primaryReviewAction(ReviewActionSpawnDraft, "Spawn draft"),
+				secondaryReviewAction(ReviewActionReplace, "Replace with draft"),
+				secondaryReviewAction(ReviewActionDismiss, "Dismiss"),
+			},
+		}, true
 	case "overlap", "dedup_ambiguous":
 		return ReviewDecision{}, false
 	default:

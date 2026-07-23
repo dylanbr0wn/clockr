@@ -15,6 +15,21 @@ INSERT INTO review_item (period_id, kind, event_id, payload, conflict_key)
 VALUES (?, ?, ?, ?, ?)
 RETURNING *;
 
+-- name: UpdateOpenReviewItemPayload :execrows
+UPDATE review_item
+SET payload = ?
+WHERE id = ? AND status = 'open';
+
+-- name: ReopenReviewItem :execrows
+UPDATE review_item
+SET status = 'open',
+    payload = ?,
+    event_id = ?,
+    decision_action = '',
+    decision_payload = '{}',
+    resolved_at = NULL
+WHERE id = ? AND status IN ('resolved', 'dismissed');
+
 -- name: ResolveReviewItem :exec
 UPDATE review_item
 SET status = ?,

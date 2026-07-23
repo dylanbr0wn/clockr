@@ -22,6 +22,8 @@ const (
 	ReviewActionUseEvent  = "use_event"
 	ReviewActionInclude   = "include"
 	ReviewActionExclude   = "exclude"
+	ReviewActionSpawnDraft = "spawn_draft"
+	ReviewActionReplace    = "replace"
 )
 
 // review_item.kind values (must match the schema CHECK constraint).
@@ -31,6 +33,13 @@ const (
 	reviewDeletedCategoriz = "deleted_categorized"
 	reviewTentative        = "tentative"
 	reviewAllDay           = "all_day"
+	reviewSourceDrift      = "source_drift"
+)
+
+// Calendar → TimeEntry provenance stamps (locked in calendar proposal lifecycle).
+const (
+	SourceKindCalendarEvent = "calendar_event"
+	MethodCalendarImport    = "calendar_import"
 )
 
 // overlay status note used to hide an event from the schedule.
@@ -101,6 +110,11 @@ func (p reviewPolicy) Apply(ctx context.Context, q *sqlc.Queries, item sqlc.Revi
 		err = p.applyNewInGap(ctx, q, item, action)
 	case reviewTentative, reviewAllDay:
 		err = p.applyIncludeExclude(ctx, q, item, action)
+	case reviewSourceDrift:
+		err = p.applySourceDrift(ctx, q, item, action)
+		if action == ReviewActionDismiss {
+			status = "dismissed"
+		}
 	case "overlap", "dedup_ambiguous":
 		return "", failedPreconditionf("review kind %q is not supported yet", item.Kind)
 	default:
@@ -239,6 +253,157 @@ func (p reviewPolicy) OnChangedCategorized(ctx context.Context, q *sqlc.Queries,
 	return flagged, nil
 }
 
+// OnConfirmedSourceDrift opens/updates a source_drift review when confirmed
+// calendar-sourced TimeEntries lag the event's current source_hash. Confirmed
+// rows are left untouched.
+func (p reviewPolicy) OnConfirmedSourceDrift(
+	ctx context.Context,
+	q *sqlc.Queries,
+	periodID, eventID int64,
+	inc IncomingEvent,
+	entries []sqlc.TimeEntry,
+	newHash string,
+) (flagged int, err error) {
+	identity := eventIdentityFromIncoming(inc)
+	var driftedIDs []int64
+	for _, te := range entries {
+		if te.Attestation != "confirmed" {
+			continue
+		}
+		if !te.SourceKind.Valid || te.SourceKind.String != SourceKindCalendarEvent {
+			continue
+		}
+		if !te.SourceID.Valid || te.SourceID.String != identity {
+			continue
+		}
+		rev := ""
+		if te.SourceRevision.Valid {
+			rev = te.SourceRevision.String
+		}
+		if rev == newHash {
+			continue
+		}
+		driftedIDs = append(driftedIDs, te.ID)
+	}
+	if len(driftedIDs) == 0 {
+		return 0, nil
+	}
+
+	created, err := p.enqueueSourceDrift(ctx, q, periodID, eventID, identity, map[string]any{
+		"time_entry_ids":  driftedIDs,
+		"event_identity":  identity,
+		"source_revision": newHash,
+		"title":           inc.Title,
+	})
+	if err != nil {
+		return 0, err
+	}
+	if created {
+		return 1, nil
+	}
+	return 0, nil
+}
+
+// OnVanishedConfirmedSource keeps the event fact and opens source_drift when
+// confirmed calendar-sourced TimeEntries still point at the vanished event.
+func (p reviewPolicy) OnVanishedConfirmedSource(
+	ctx context.Context,
+	q *sqlc.Queries,
+	periodID int64,
+	ev sqlc.Event,
+	entries []sqlc.TimeEntry,
+) (flagged int, kept bool, err error) {
+	identity := eventIdentityFromRow(ev)
+	var driftedIDs []int64
+	for _, te := range entries {
+		if te.Attestation != "confirmed" {
+			continue
+		}
+		if !te.SourceKind.Valid || te.SourceKind.String != SourceKindCalendarEvent {
+			continue
+		}
+		if !te.SourceID.Valid || te.SourceID.String != identity {
+			continue
+		}
+		driftedIDs = append(driftedIDs, te.ID)
+	}
+	if len(driftedIDs) == 0 {
+		return 0, false, nil
+	}
+
+	created, err := p.enqueueSourceDrift(ctx, q, periodID, ev.ID, identity, map[string]any{
+		"time_entry_ids":  driftedIDs,
+		"event_identity":  identity,
+		"source_revision": "deleted",
+		"title":           ev.Title,
+		"reason":          "deleted",
+	})
+	if err != nil {
+		return 0, false, err
+	}
+	if created {
+		return 1, true, nil
+	}
+	return 0, true, nil
+}
+
+// enqueueSourceDrift creates, updates payload on open, or reopens a prior
+// resolved/dismissed source_drift item for the event identity.
+func (reviewPolicy) enqueueSourceDrift(
+	ctx context.Context,
+	q *sqlc.Queries,
+	periodID, eventID int64,
+	identity string,
+	payload map[string]any,
+) (created bool, err error) {
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return false, fmt.Errorf("marshal source_drift payload: %w", err)
+	}
+	conflictKey := strings.Join([]string{identity, "source_drift"}, "|")
+	existing, err := q.GetReviewItemByConflictKey(ctx, sqlc.GetReviewItemByConflictKeyParams{
+		PeriodID:    periodID,
+		Kind:        reviewSourceDrift,
+		ConflictKey: conflictKey,
+	})
+	if err == nil {
+		switch existing.Status {
+		case "open":
+			if _, err := q.UpdateOpenReviewItemPayload(ctx, sqlc.UpdateOpenReviewItemPayloadParams{
+				Payload: string(b),
+				ID:      existing.ID,
+			}); err != nil {
+				return false, mapErr("update source_drift payload", err)
+			}
+			return false, nil
+		case "resolved", "dismissed":
+			n, err := q.ReopenReviewItem(ctx, sqlc.ReopenReviewItemParams{
+				Payload: string(b),
+				EventID: sql.NullInt64{Int64: eventID, Valid: true},
+				ID:      existing.ID,
+			})
+			if err != nil {
+				return false, mapErr("reopen source_drift", err)
+			}
+			return n > 0, nil
+		}
+	}
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return false, mapErr("get source_drift review", err)
+	}
+
+	if _, err := q.CreateReviewItem(ctx, sqlc.CreateReviewItemParams{
+		PeriodID:    periodID,
+		Kind:        reviewSourceDrift,
+		EventID:     sql.NullInt64{Int64: eventID, Valid: true},
+		Payload:     string(b),
+		ConflictKey: conflictKey,
+	}); err != nil {
+		return false, fmt.Errorf("enqueue source_drift: %w", err)
+	}
+	return true, nil
+}
+
 // MarkExcluded upserts a status=excluded overlay for the event.
 func (reviewPolicy) MarkExcluded(ctx context.Context, q *sqlc.Queries, ev sqlc.Event) error {
 	if _, err := q.UpsertOverlay(ctx, sqlc.UpsertOverlayParams{
@@ -289,6 +454,99 @@ func (reviewPolicy) DeleteCategoryOverlay(ctx context.Context, q *sqlc.Queries, 
 	}
 	if err := q.DeleteOverlay(ctx, o.ID); err != nil {
 		return mapErr("delete overlay", err)
+	}
+	return nil
+}
+
+// applySourceDrift handles review actions for calendar source drift after confirm.
+// Confirmed entries are never demoted; spawn/replace create a new draft proposal.
+func (p reviewPolicy) applySourceDrift(ctx context.Context, q *sqlc.Queries, item sqlc.ReviewItem, action string) error {
+	switch action {
+	case ReviewActionDismiss:
+		return nil
+	case ReviewActionSpawnDraft, ReviewActionReplace:
+		return p.spawnSourceDriftDraft(ctx, q, item, action == ReviewActionReplace)
+	default:
+		return invalidInputf("unsupported action %q for %s", action, item.Kind)
+	}
+}
+
+func (p reviewPolicy) spawnSourceDriftDraft(ctx context.Context, q *sqlc.Queries, item sqlc.ReviewItem, replace bool) error {
+	if !item.EventID.Valid {
+		return fmt.Errorf("source_drift item %d has no event", item.ID)
+	}
+	ev, err := q.GetEvent(ctx, item.EventID.Int64)
+	if err != nil {
+		return mapErr("get event", err)
+	}
+	if ev.AllDay != 0 || !ev.StartUtc.Valid || !ev.EndUtc.Valid {
+		return fmt.Errorf("source_drift spawn: event %d is not a timed event", ev.ID)
+	}
+
+	var payload struct {
+		TimeEntryIDs   []int64 `json:"time_entry_ids"`
+		EventIdentity  string  `json:"event_identity"`
+		SourceRevision string  `json:"source_revision"`
+	}
+	_ = json.Unmarshal([]byte(item.Payload), &payload)
+	identity := payload.EventIdentity
+	if identity == "" {
+		identity = eventIdentityFromRow(ev)
+	}
+	revision := payload.SourceRevision
+	if revision == "" {
+		revision = ev.SourceHash
+	}
+
+	categoryID := sql.NullInt64{}
+	description := ev.Title
+	workType := "worked"
+	billable := "unset"
+	projectID := sql.NullInt64{}
+	for _, id := range payload.TimeEntryIDs {
+		row, err := q.GetTimeEntry(ctx, sqlc.GetTimeEntryParams{ID: id, PeriodID: item.PeriodID})
+		if err != nil {
+			continue
+		}
+		if row.Attestation != "confirmed" {
+			continue
+		}
+		categoryID = row.CategoryID
+		if !replace && row.Description != "" {
+			description = row.Description
+		}
+		workType = row.WorkType
+		billable = row.BillableStatus
+		projectID = row.ProjectID
+		break
+	}
+
+	start := parseTime(ev.StartUtc.String)
+	end := parseTime(ev.EndUtc.String)
+	day, err := eventLocalDay(ctx, q, ev)
+	if err != nil {
+		return err
+	}
+
+	_, err = q.CreateTimeEntry(ctx, sqlc.CreateTimeEntryParams{
+		PeriodID:        item.PeriodID,
+		StartInstant:    start.UTC().Format(time.RFC3339),
+		EndInstant:      end.UTC().Format(time.RFC3339),
+		DurationMinutes: durationMinutes(start, end),
+		LocalWorkDate:   day,
+		CategoryID:      categoryID,
+		Description:     description,
+		Attestation:     "draft",
+		SourceKind:      sql.NullString{String: SourceKindCalendarEvent, Valid: true},
+		SourceID:        sql.NullString{String: identity, Valid: true},
+		SourceRevision:  sql.NullString{String: revision, Valid: true},
+		Method:          sql.NullString{String: MethodCalendarImport, Valid: true},
+		WorkType:        workType,
+		ProjectID:       projectID,
+		BillableStatus:  billable,
+	})
+	if err != nil {
+		return mapErr("create source_drift draft", err)
 	}
 	return nil
 }

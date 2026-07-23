@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
@@ -229,6 +230,64 @@ func TestSync_DisappearedEvent(t *testing.T) {
 	events, _ := e.svc.ListEvents(ctx, e.periodID)
 	if len(events) != 1 || events[0].ExternalID != "evt-1" {
 		t.Fatalf("categorized event should be retained, got %+v", events)
+	}
+}
+
+func TestSync_ConfirmedCalendarSourceChangeOpensSourceDrift(t *testing.T) {
+	e := newSyncEnv(t)
+	ctx := context.Background()
+
+	if _, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{e.baseEvent()}); err != nil {
+		t.Fatal(err)
+	}
+	events, err := e.q.ListAllEventsForPeriod(ctx, e.periodID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("want 1 event, got %d", len(events))
+	}
+	ev := events[0]
+	sourceID := fmt.Sprintf("%s|%d|evt-1|", service.ProviderGoogle, e.calID)
+	entryID := insertTimeEntryProvenance(t, e.q, e.periodID,
+		"2026-06-02", "2026-06-02T09:00:00Z", "2026-06-02T09:30:00Z",
+		sql.NullInt64{Int64: e.catID, Valid: true}, "Standup", "confirmed", false,
+		"calendar_event", sourceID, ev.SourceHash,
+	)
+
+	moved := e.baseEvent()
+	moved.Start = tm("2026-06-02T10:00:00Z")
+	moved.End = tm("2026-06-02T10:30:00Z")
+
+	r, err := e.svc.SyncEvents(ctx, e.periodID, []service.IncomingEvent{moved})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Updated != 1 || r.Flagged != 1 {
+		t.Fatalf("want update+flag for source drift, got %+v", r)
+	}
+
+	items := openDecisions(t, e)
+	if len(items) != 1 || items[0].Kind != "source_drift" {
+		t.Fatalf("want one source_drift decision, got %+v", items)
+	}
+
+	got, err := e.svc.GetTimeEntry(ctx, entryID, e.periodID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Attestation != "confirmed" {
+		t.Fatalf("attestation = %q, want confirmed", got.Attestation)
+	}
+	if got.Start != "2026-06-02T09:00:00Z" || got.End != "2026-06-02T09:30:00Z" {
+		t.Fatalf("confirmed span mutated: start=%s end=%s", got.Start, got.End)
+	}
+	row, err := e.q.GetTimeEntry(ctx, sqlc.GetTimeEntryParams{ID: entryID, PeriodID: e.periodID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !row.SourceRevision.Valid || row.SourceRevision.String != ev.SourceHash {
+		t.Fatalf("source_revision mutated: %+v", row.SourceRevision)
 	}
 }
 
