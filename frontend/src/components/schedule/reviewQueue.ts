@@ -10,6 +10,8 @@ export function kindBadgeClass(kind: string) {
       return "bg-violet-500/10 text-violet-700 dark:text-violet-300";
     case "all_day":
       return "bg-slate-500/10 text-slate-700 dark:text-slate-300";
+    case "source_drift":
+      return "bg-orange-500/10 text-orange-700 dark:text-orange-300";
     default:
       return "bg-muted text-muted-foreground";
   }

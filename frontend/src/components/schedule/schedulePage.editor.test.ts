@@ -32,6 +32,7 @@ describe("useSchedulePageEditor", () => {
         timeEntries,
         createTimeEntryMutation: { mutate: createMutate },
         updateTimeEntryMutation: { mutate: updateMutate },
+        adjustDraftTimeEntryMutation: { mutate: vi.fn() },
         deleteTimeEntryMutation: { mutate: vi.fn() },
         excludeEventMutation: { mutate: vi.fn() },
       }),
@@ -113,6 +114,7 @@ describe("useSchedulePageEditor", () => {
         timeEntries,
         createTimeEntryMutation: { mutate: createMutate },
         updateTimeEntryMutation: { mutate: updateMutate },
+        adjustDraftTimeEntryMutation: { mutate: vi.fn() },
         deleteTimeEntryMutation: { mutate: vi.fn() },
         excludeEventMutation: { mutate: vi.fn() },
       }),
@@ -205,6 +207,7 @@ describe("useSchedulePageEditor", () => {
         timeEntries: allocated,
         createTimeEntryMutation: { mutate: vi.fn() },
         updateTimeEntryMutation: { mutate: updateMutate },
+        adjustDraftTimeEntryMutation: { mutate: vi.fn() },
         deleteTimeEntryMutation: { mutate: vi.fn() },
         excludeEventMutation: { mutate: vi.fn() },
       }),
@@ -246,6 +249,7 @@ describe("useSchedulePageEditor", () => {
         timeEntries,
         createTimeEntryMutation: { mutate: vi.fn() },
         updateTimeEntryMutation: { mutate: updateMutate },
+        adjustDraftTimeEntryMutation: { mutate: vi.fn() },
         deleteTimeEntryMutation: { mutate: vi.fn() },
         excludeEventMutation: { mutate: vi.fn() },
       }),
@@ -274,5 +278,112 @@ describe("useSchedulePageEditor", () => {
       }),
       expect.any(Object),
     );
+  });
+
+  it("routes draft drag commits through adjustDraftTimeEntry", () => {
+    const updateMutate = vi.fn();
+    const adjustMutate = vi.fn();
+    const draftEntries: TimeEntry[] = [
+      {
+        ...timeEntries[0],
+        attestation: "draft",
+      },
+    ];
+
+    const { result } = renderHook(() =>
+      useSchedulePageEditor({
+        activePeriodId: 1,
+        timeEntries: draftEntries,
+        createTimeEntryMutation: { mutate: vi.fn() },
+        updateTimeEntryMutation: { mutate: updateMutate },
+        adjustDraftTimeEntryMutation: { mutate: adjustMutate },
+        deleteTimeEntryMutation: { mutate: vi.fn() },
+        excludeEventMutation: { mutate: vi.fn() },
+      }),
+    );
+
+    act(() => {
+      result.current.handleCommit({
+        itemId: "time-entry-11",
+        day: "2026-07-02",
+        startMinutes: 560,
+        endMinutes: 620,
+        interaction: "move",
+        item: {
+          id: "time-entry-11",
+          day: "2026-07-02",
+          startMinutes: 540,
+          endMinutes: 600,
+        },
+      });
+    });
+
+    expect(updateMutate).not.toHaveBeenCalled();
+    expect(adjustMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 11,
+        startMinutes: 560,
+        endMinutes: 620,
+      }),
+      expect.any(Object),
+    );
+  });
+
+  it("opens draft editor separately from event editor", () => {
+    const draftEntries: TimeEntry[] = [
+      {
+        ...timeEntries[0],
+        attestation: "draft",
+      },
+    ];
+
+    const { result } = renderHook(() =>
+      useSchedulePageEditor({
+        activePeriodId: 1,
+        timeEntries: draftEntries,
+        createTimeEntryMutation: { mutate: vi.fn() },
+        updateTimeEntryMutation: { mutate: vi.fn() },
+        adjustDraftTimeEntryMutation: { mutate: vi.fn() },
+        deleteTimeEntryMutation: { mutate: vi.fn() },
+        excludeEventMutation: { mutate: vi.fn() },
+      }),
+    );
+
+    act(() => {
+      result.current.handleOpenDraftEditor({
+        id: "time-entry-11",
+        day: "2026-07-02",
+        startMinutes: 540,
+        endMinutes: 600,
+        metadata: {
+          title: "Draft",
+          category: "Work",
+          kind: "draft",
+          mutable: true,
+          opensDraftEditor: true,
+        },
+      });
+    });
+
+    expect(result.current.draftingItemId).toBe("time-entry-11");
+    expect(result.current.editingItemId).toBeNull();
+
+    act(() => {
+      result.current.handleOpenEventEditor({
+        id: "time-entry-11",
+        day: "2026-07-02",
+        startMinutes: 540,
+        endMinutes: 600,
+        metadata: {
+          title: "Draft",
+          category: "Work",
+          kind: "draft",
+          mutable: true,
+          opensDraftEditor: true,
+        },
+      });
+    });
+
+    expect(result.current.editingItemId).toBeNull();
   });
 });

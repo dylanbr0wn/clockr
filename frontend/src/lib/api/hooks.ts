@@ -10,6 +10,8 @@ import {
   createCategory,
   createProject,
   createTimeEntry,
+  confirmTimeEntry,
+  convertAllDayEvent,
   deleteCategory,
   archiveCategory,
   archiveProject,
@@ -51,6 +53,8 @@ import {
   refreshGitHubRepos,
   refreshSlackChannels,
   refreshBitbucketResources,
+  rejectTimeEntry,
+  adjustDraftTimeEntry,
   resolveReviewDecision,
   listGapEvidence,
   revealLogFolder,
@@ -67,6 +71,7 @@ import {
   setBitbucketWorkspaceSelected,
   setBitbucketRepoSelected,
   setSetting,
+  splitTimeEntry,
   suggestGapFill,
   syncPeriod,
   updateCategory,
@@ -610,6 +615,84 @@ export function useDeleteTimeEntry() {
       });
       void queryClient.invalidateQueries({
         queryKey: shietQueryKeys.gapTimeline(periodId),
+      });
+    },
+  });
+}
+
+function invalidateDraftMutationCaches(
+  queryClient: ReturnType<typeof useQueryClient>,
+  periodId: number,
+) {
+  void queryClient.invalidateQueries({
+    queryKey: shietQueryKeys.periodTimeEntries(periodId),
+  });
+  void queryClient.invalidateQueries({
+    queryKey: shietQueryKeys.gapTimeline(periodId),
+  });
+  void queryClient.invalidateQueries({
+    queryKey: shietQueryKeys.periodReviewDecisions(periodId),
+  });
+}
+
+export function useConfirmTimeEntry() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: confirmTimeEntry,
+    onSuccess: (entries, input) => {
+      const periodId = entries[0]?.periodId ?? input.periodId;
+      invalidateDraftMutationCaches(queryClient, periodId);
+    },
+  });
+}
+
+export function useRejectTimeEntry() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: rejectTimeEntry,
+    onSuccess: (entry, input) => {
+      invalidateDraftMutationCaches(queryClient, entry.periodId || input.periodId);
+    },
+  });
+}
+
+export function useAdjustDraftTimeEntry() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: adjustDraftTimeEntry,
+    onSuccess: (entry, input) => {
+      invalidateDraftMutationCaches(queryClient, entry.periodId || input.periodId);
+    },
+  });
+}
+
+export function useSplitTimeEntry() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: splitTimeEntry,
+    onSuccess: (entries, input) => {
+      const periodId = entries[0]?.periodId ?? input.periodId;
+      invalidateDraftMutationCaches(queryClient, periodId);
+    },
+  });
+}
+
+export function useConvertAllDayEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: convertAllDayEvent,
+    onSuccess: (entry, input) => {
+      invalidateDraftMutationCaches(
+        queryClient,
+        entry.periodId || input.input.periodId,
+      );
+      void queryClient.invalidateQueries({
+        queryKey: shietQueryKeys.periodEvents(entry.periodId || input.input.periodId),
       });
     },
   });

@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useState, type SetStateAction } from "react";
-import { defaultTimeZone, localDateKey, type ScheduleGapOverlay } from "@/lib/schedule";
+import {
+  timeEntryItemId,
+  defaultTimeZone,
+  errorMessage,
+  localDateKey,
+  type AllDayChip,
+  type ScheduleGapOverlay,
+} from "@/lib/schedule";
 import { useJsonSetting } from "../settings/useJsonSetting";
 import {
   DEFAULT_PRIVACY_FIELDS,
@@ -55,6 +62,7 @@ export function useSchedulePage(): SchedulePageViewModel {
     [viewDayCount, viewDayCountSetting],
   );
   const [reviewQueueOpen, setReviewQueueOpen] = useState(false);
+  const [convertingChip, setConvertingChip] = useState<AllDayChip | null>(null);
   const today = useMemo(() => localDateKey(), []);
   const currentTimeZone = useMemo(() => defaultTimeZone(), []);
   const base = useSchedulePageBaseQueries(today, currentTimeZone);
@@ -75,11 +83,13 @@ export function useSchedulePage(): SchedulePageViewModel {
   const activePeriodId = activePeriod?.id;
 
   const period = useSchedulePagePeriodQueries(activePeriodId);
+  const timeEntries = period.timeEntriesQuery.data ?? [];
   const editor = useSchedulePageEditor({
     activePeriodId,
-    timeEntries: period.timeEntriesQuery.data ?? [],
+    timeEntries,
     createTimeEntryMutation: base.createTimeEntryMutation,
     updateTimeEntryMutation: base.updateTimeEntryMutation,
+    adjustDraftTimeEntryMutation: base.adjustDraftTimeEntryMutation,
     deleteTimeEntryMutation: base.deleteTimeEntryMutation,
     excludeEventMutation: base.excludeEventMutation,
   });
@@ -95,7 +105,7 @@ export function useSchedulePage(): SchedulePageViewModel {
         categories,
         events: period.eventsQuery.data ?? [],
         eventCategoryOverlays: period.eventCategoryOverlaysQuery.data ?? [],
-        timeEntries: period.timeEntriesQuery.data ?? [],
+        timeEntries,
         gapTimeline: period.gapTimelineQuery.data ?? [],
         reviewDecisions: period.reviewDecisionsQuery.data ?? [],
         tzSegments: period.tzSegmentsQuery.data ?? [],
@@ -111,7 +121,7 @@ export function useSchedulePage(): SchedulePageViewModel {
       editor.pendingCreate,
       period.eventsQuery.data,
       period.eventCategoryOverlaysQuery.data,
-      period.timeEntriesQuery.data,
+      timeEntries,
       period.gapTimelineQuery.data,
       period.reviewDecisionsQuery.data,
       period.tzSegmentsQuery.data,
@@ -121,6 +131,20 @@ export function useSchedulePage(): SchedulePageViewModel {
       viewDayCount,
     ],
   );
+
+  const draftingEntry = useMemo(() => {
+    if (!editor.draftingItemId) {
+      return null;
+    }
+    return derived.timeEntriesByItemId.get(editor.draftingItemId) ?? null;
+  }, [derived.timeEntriesByItemId, editor.draftingItemId]);
+
+  const draftingPlacement = useMemo(() => {
+    if (!editor.draftingItemId) {
+      return null;
+    }
+    return editor.draftPlacements[editor.draftingItemId] ?? null;
+  }, [editor.draftPlacements, editor.draftingItemId]);
 
   useEffect(() => {
     setSelectedPeriodId((current) => {
@@ -151,18 +175,163 @@ export function useSchedulePage(): SchedulePageViewModel {
   useEffect(() => {
     editor.clearForPeriodChange();
     setReviewQueueOpen(false);
+    setConvertingChip(null);
   }, [derived.activePeriodId]);
 
   const handleSelectGap = (overlay: ScheduleGapOverlay) => {
     editor.setPendingCreate(null);
     editor.setEditingItemId(null);
+    editor.setDraftingItemId(null);
     gapSuggest.handleSelectGap(overlay);
+  };
+
+  const handleConvertAllDayChip = (chip: AllDayChip) => {
+    if (!chip.convertible) {
+      return;
+    }
+    editor.setEditingItemId(null);
+    editor.setDraftingItemId(null);
+    editor.setPendingCreate(null);
+    setConvertingChip(chip);
+  };
+
+  const handleConvertAllDay = (values: {
+    day: string;
+    startMinutes: number;
+    endMinutes: number;
+    categoryId?: number;
+    description: string;
+  }) => {
+    if (!convertingChip || !activePeriodId) {
+      return;
+    }
+    base.convertAllDayEventMutation.mutate(
+      {
+        eventId: convertingChip.eventId,
+        input: {
+          periodId: activePeriodId,
+          day: values.day,
+          startMinutes: values.startMinutes,
+          endMinutes: values.endMinutes,
+          categoryId: values.categoryId,
+          description: values.description,
+          workType: "worked",
+          billableStatus: "unset",
+        },
+      },
+      {
+        onSuccess: (entry) => {
+          setConvertingChip(null);
+          editor.setDraftingItemId(timeEntryItemId(entry.id));
+        },
+      },
+    );
+  };
+
+  const handleConfirmDraft = (payload: {
+    values?: {
+      day: string;
+      startMinutes: number;
+      endMinutes: number;
+      categoryId?: number;
+      description: string;
+      workType: string;
+      projectId?: number;
+      billableStatus: string;
+    };
+    overnightPolicy?: string;
+    overlapResolution?: string;
+  }) => {
+    if (!draftingEntry) {
+      return;
+    }
+
+    const confirm = () => {
+      base.confirmTimeEntryMutation.mutate(
+        {
+          id: draftingEntry.id,
+          periodId: draftingEntry.periodId,
+          overnightPolicy: payload.overnightPolicy,
+          overlapResolution: payload.overlapResolution,
+        },
+        { onSuccess: () => editor.setDraftingItemId(null) },
+      );
+    };
+
+    if (!payload.values) {
+      confirm();
+      return;
+    }
+
+    const values = payload.values;
+    base.adjustDraftTimeEntryMutation.mutate(
+      {
+        id: draftingEntry.id,
+        periodId: draftingEntry.periodId,
+        day: values.day,
+        startMinutes: values.startMinutes,
+        endMinutes: values.endMinutes,
+        categoryId: values.categoryId,
+        description: values.description,
+        workType: values.workType,
+        billableStatus: values.billableStatus,
+        ...(typeof values.projectId === "number"
+          ? { projectId: values.projectId }
+          : {}),
+      },
+      { onSuccess: confirm },
+    );
+  };
+
+  const handleRejectDraft = () => {
+    if (!draftingEntry) {
+      return;
+    }
+    base.rejectTimeEntryMutation.mutate(
+      { id: draftingEntry.id, periodId: draftingEntry.periodId },
+      { onSuccess: () => editor.setDraftingItemId(null) },
+    );
+  };
+
+  const handleSplitDraft = (cutPoints: string[]) => {
+    if (!draftingEntry) {
+      return;
+    }
+    base.splitTimeEntryMutation.mutate(
+      {
+        id: draftingEntry.id,
+        periodId: draftingEntry.periodId,
+        cutPoints,
+      },
+      {
+        onSuccess: (entries) => {
+          const first = entries[0];
+          editor.setDraftingItemId(first ? timeEntryItemId(first.id) : null);
+        },
+      },
+    );
   };
 
   const aiLocal = base.aiClassification.data?.local ?? false;
   const aiPrivacyLabel = aiLocal
     ? "Private · on-device"
     : `Cloud · sharing ${formatPrivacySharingSummary(privacyFieldsSetting.value)}`;
+
+  const draftEditorPending =
+    base.adjustDraftTimeEntryMutation.isPending ||
+    base.confirmTimeEntryMutation.isPending ||
+    base.rejectTimeEntryMutation.isPending ||
+    base.splitTimeEntryMutation.isPending;
+
+  const draftMutationError =
+    base.adjustDraftTimeEntryMutation.error ??
+    base.confirmTimeEntryMutation.error ??
+    base.rejectTimeEntryMutation.error ??
+    base.splitTimeEntryMutation.error ??
+    null;
+  const draftEditorError = draftMutationError
+    ? errorMessage(draftMutationError)
+    : null;
 
   const status = buildSchedulePageStatus({
     loadingFlags: [
@@ -179,6 +348,11 @@ export function useSchedulePage(): SchedulePageViewModel {
       base.createGapTimeEntryMutation.isPending,
       gapSuggest.gapSuggestPending,
       base.updateTimeEntryMutation.isPending,
+      base.adjustDraftTimeEntryMutation.isPending,
+      base.confirmTimeEntryMutation.isPending,
+      base.rejectTimeEntryMutation.isPending,
+      base.splitTimeEntryMutation.isPending,
+      base.convertAllDayEventMutation.isPending,
       base.deleteTimeEntryMutation.isPending,
       base.excludeEventMutation.isPending,
     ],
@@ -196,11 +370,16 @@ export function useSchedulePage(): SchedulePageViewModel {
       base.createGapTimeEntryMutation.error,
       gapSuggest.gapSuggestError,
       base.updateTimeEntryMutation.error,
+      base.adjustDraftTimeEntryMutation.error,
+      base.confirmTimeEntryMutation.error,
+      base.rejectTimeEntryMutation.error,
+      base.splitTimeEntryMutation.error,
+      base.convertAllDayEventMutation.error,
       base.deleteTimeEntryMutation.error,
       base.excludeEventMutation.error,
     ],
     eventsCount: period.eventsQuery.data?.length ?? 0,
-    timeEntriesCount: period.timeEntriesQuery.data?.length ?? 0,
+    timeEntriesCount: timeEntries.length,
     categoriesCount: categories.length,
     reviewDecisionsCount: period.reviewDecisionsQuery.data?.length ?? 0,
   });
@@ -216,6 +395,8 @@ export function useSchedulePage(): SchedulePageViewModel {
     categories,
     projects,
     events: period.eventsQuery.data ?? [],
+    timeEntries,
+    tzSegments: period.tzSegmentsQuery.data ?? [],
     reviewDecisions: period.reviewDecisionsQuery.data ?? [],
     days: derived.days,
     items: derived.items,
@@ -239,11 +420,28 @@ export function useSchedulePage(): SchedulePageViewModel {
     handleRemoveEvent: editor.handleRemoveEvent,
     handleExcludeEvent: editor.handleExcludeEvent,
     handleExcludeAllDayChip: editor.handleExcludeAllDayChip,
+    handleConvertAllDayChip,
     handleResetDay: editor.handleResetDay,
     handleCloseEventEditor: editor.handleCloseEventEditor,
     handleSaveEventEdit: editor.handleSaveEventEdit as (
       values: ScheduleEventEditValues,
     ) => void,
+    draftingEntry,
+    draftingPlacement,
+    draftEditorPending,
+    draftEditorError,
+    handleOpenDraftEditor: editor.handleOpenDraftEditor,
+    handleCloseDraftEditor: editor.handleCloseDraftEditor,
+    handleAdjustDraft: editor.handleAdjustDraft as (
+      values: ScheduleEventEditValues,
+    ) => void,
+    handleConfirmDraft,
+    handleRejectDraft,
+    handleSplitDraft,
+    convertingChip,
+    convertAllDayPending: base.convertAllDayEventMutation.isPending,
+    handleCloseConvertAllDay: () => setConvertingChip(null),
+    handleConvertAllDay,
     reviewQueueOpen,
     setReviewQueueOpen,
     selectedGap: gapSuggest.selectedGap,

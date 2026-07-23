@@ -269,6 +269,29 @@ export interface TimeEntryResult {
   id: number;
 }
 
+export interface ConfirmTimeEntryInput {
+  id: number;
+  periodId: number;
+  overnightPolicy?: string;
+  overlapResolution?: string;
+}
+
+export interface RejectTimeEntryInput {
+  id: number;
+  periodId: number;
+}
+
+export interface SplitTimeEntryInput {
+  id: number;
+  periodId: number;
+  cutPoints: string[];
+}
+
+export interface ConvertAllDayEventInput {
+  eventId: number;
+  input: TimeEntryInput;
+}
+
 export interface ReviewDecisionAction {
   key: string;
   label: string;

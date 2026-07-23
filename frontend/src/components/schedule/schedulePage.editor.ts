@@ -51,6 +51,23 @@ interface Mutations {
       options?: { onSuccess?: () => void; onSettled?: () => void },
     ) => void;
   };
+  adjustDraftTimeEntryMutation: {
+    mutate: (
+      payload: {
+        id: number;
+        periodId: number;
+        day: string;
+        startMinutes: number;
+        endMinutes: number;
+        categoryId?: number;
+        description: string;
+        workType?: string;
+        projectId?: number;
+        billableStatus?: string;
+      },
+      options?: { onSuccess?: () => void; onSettled?: () => void },
+    ) => void;
+  };
   deleteTimeEntryMutation: {
     mutate: (
       payload: { id: number; periodId: number },
@@ -105,12 +122,14 @@ export function useSchedulePageEditor({
   timeEntries,
   createTimeEntryMutation,
   updateTimeEntryMutation,
+  adjustDraftTimeEntryMutation,
   deleteTimeEntryMutation,
   excludeEventMutation,
 }: UseSchedulePageEditorParams) {
   const [draftPlacements, setDraftPlacements] = useState<Record<string, SchedulePlacement>>({});
   const [preview, setPreview] = useState<ScheduleChange | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [draftingItemId, setDraftingItemId] = useState<string | null>(null);
   const [pendingCreate, setPendingCreate] = useState<SchedulerCreateRequest | null>(null);
   const timeEntriesByItemId = useMemo(
     () => buildTimeEntriesByItemId(timeEntries),
@@ -121,6 +140,7 @@ export function useSchedulePageEditor({
     setDraftPlacements({});
     setPreview(null);
     setEditingItemId(null);
+    setDraftingItemId(null);
     setPendingCreate(null);
   };
 
@@ -129,6 +149,7 @@ export function useSchedulePageEditor({
       return;
     }
     setEditingItemId(null);
+    setDraftingItemId(null);
     setPendingCreate(request);
   };
 
@@ -144,27 +165,30 @@ export function useSchedulePageEditor({
             endMinutes: change.endMinutes,
           },
         }));
-        updateTimeEntryMutation.mutate(
-          {
-            id: timeEntry.id,
-            periodId: timeEntry.periodId,
-            day: change.day,
-            startMinutes: change.startMinutes,
-            endMinutes: change.endMinutes,
-            categoryId: timeEntry.categoryId,
-            description: timeEntry.description ?? "",
-            ...timeEntryAllocation(timeEntry),
+        const payload = {
+          id: timeEntry.id,
+          periodId: timeEntry.periodId,
+          day: change.day,
+          startMinutes: change.startMinutes,
+          endMinutes: change.endMinutes,
+          categoryId: timeEntry.categoryId,
+          description: timeEntry.description ?? "",
+          ...timeEntryAllocation(timeEntry),
+        };
+        const clearPlacement = {
+          onSettled: () => {
+            setDraftPlacements((current) => {
+              const next = { ...current };
+              delete next[change.itemId];
+              return next;
+            });
           },
-          {
-            onSettled: () => {
-              setDraftPlacements((current) => {
-                const next = { ...current };
-                delete next[change.itemId];
-                return next;
-              });
-            },
-          },
-        );
+        };
+        if (timeEntry.attestation === "draft") {
+          adjustDraftTimeEntryMutation.mutate(payload, clearPlacement);
+        } else {
+          updateTimeEntryMutation.mutate(payload, clearPlacement);
+        }
       }
       setPreview(null);
       return;
@@ -178,16 +202,30 @@ export function useSchedulePageEditor({
   };
 
   const handleOpenEventEditor = (item: ScheduleItem) => {
-    if (!item.metadata?.mutable || !timeEntriesByItemId.has(item.id)) {
+    if (
+      item.metadata?.opensDraftEditor ||
+      !item.metadata?.mutable ||
+      !timeEntriesByItemId.has(item.id)
+    ) {
       return;
     }
     setPendingCreate(null);
+    setDraftingItemId(null);
     setEditingItemId(item.id);
+  };
+
+  const handleOpenDraftEditor = (item: ScheduleItem) => {
+    if (!item.metadata?.opensDraftEditor || !timeEntriesByItemId.has(item.id)) {
+      return;
+    }
+    setPendingCreate(null);
+    setEditingItemId(null);
+    setDraftingItemId(item.id);
   };
 
   const handleDuplicateEvent = (item: ScheduleItem) => {
     const timeEntry = timeEntriesByItemId.get(item.id);
-    if (!timeEntry) {
+    if (!timeEntry || timeEntry.attestation === "draft") {
       return;
     }
     createTimeEntryMutation.mutate({
@@ -203,7 +241,7 @@ export function useSchedulePageEditor({
 
   const handleRemoveEvent = (item: ScheduleItem) => {
     const timeEntry = timeEntriesByItemId.get(item.id);
-    if (!timeEntry) {
+    if (!timeEntry || timeEntry.attestation === "draft") {
       return;
     }
     deleteTimeEntryMutation.mutate(
@@ -243,13 +281,19 @@ export function useSchedulePageEditor({
     }
 
     const manualTimeEntries = timeEntries.filter(
-      (timeEntry) => timeEntry.localWorkDate === day && !timeEntry.method,
+      (timeEntry) =>
+        timeEntry.localWorkDate === day &&
+        !timeEntry.method &&
+        timeEntry.attestation !== "draft",
     );
 
     const deletedItemIds = new Set(
       manualTimeEntries.map((timeEntry) => timeEntryItemId(timeEntry.id)),
     );
     setEditingItemId((current) =>
+      current && deletedItemIds.has(current) ? null : current,
+    );
+    setDraftingItemId((current) =>
       current && deletedItemIds.has(current) ? null : current,
     );
 
@@ -264,6 +308,10 @@ export function useSchedulePageEditor({
   const handleCloseEventEditor = () => {
     setEditingItemId(null);
     setPendingCreate(null);
+  };
+
+  const handleCloseDraftEditor = () => {
+    setDraftingItemId(null);
   };
 
   const handleSaveEventEdit = (values: ScheduleEventEditValues) => {
@@ -290,7 +338,7 @@ export function useSchedulePageEditor({
     }
 
     const timeEntry = timeEntriesByItemId.get(editingItemId);
-    if (!timeEntry) {
+    if (!timeEntry || timeEntry.attestation === "draft") {
       return;
     }
     const itemId = editingItemId;
@@ -328,6 +376,49 @@ export function useSchedulePageEditor({
     );
   };
 
+  const handleAdjustDraft = (values: ScheduleEventEditValues) => {
+    if (!draftingItemId) {
+      return;
+    }
+    const timeEntry = timeEntriesByItemId.get(draftingItemId);
+    if (!timeEntry || timeEntry.attestation !== "draft") {
+      return;
+    }
+    const itemId = draftingItemId;
+    const description = editDescription(values);
+
+    setDraftPlacements((current) => ({
+      ...current,
+      [itemId]: {
+        day: values.day,
+        startMinutes: values.startMinutes,
+        endMinutes: values.endMinutes,
+      },
+    }));
+
+    adjustDraftTimeEntryMutation.mutate(
+      {
+        id: timeEntry.id,
+        periodId: timeEntry.periodId,
+        day: values.day,
+        startMinutes: values.startMinutes,
+        endMinutes: values.endMinutes,
+        categoryId: values.categoryId,
+        description,
+        ...allocationFields(values),
+      },
+      {
+        onSettled: () => {
+          setDraftPlacements((current) => {
+            const next = { ...current };
+            delete next[itemId];
+            return next;
+          });
+        },
+      },
+    );
+  };
+
   const setPreviewValue = setPreview as Dispatch<SetStateAction<ScheduleChange | null>>;
 
   return {
@@ -335,19 +426,24 @@ export function useSchedulePageEditor({
     preview,
     setPreview: setPreviewValue,
     editingItemId,
+    draftingItemId,
     pendingCreate,
     setEditingItemId,
+    setDraftingItemId,
     setPendingCreate,
     clearForPeriodChange,
     handleCreate,
     handleCommit,
     handleOpenEventEditor,
+    handleOpenDraftEditor,
     handleDuplicateEvent,
     handleRemoveEvent,
     handleExcludeEvent,
     handleExcludeAllDayChip,
     handleResetDay,
     handleCloseEventEditor,
+    handleCloseDraftEditor,
     handleSaveEventEdit,
+    handleAdjustDraft,
   };
 }

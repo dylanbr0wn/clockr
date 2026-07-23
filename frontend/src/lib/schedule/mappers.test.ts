@@ -211,6 +211,7 @@ describe("schedule mappers", () => {
         id: "event-12@2026-06-09",
         title: "Offsite",
         allDaySpan: "start",
+        convertible: true,
       },
     ]);
     expect(chipsByDay.get("2026-06-10")).toMatchObject([
@@ -353,6 +354,57 @@ describe("schedule mappers", () => {
         categoryColor: "#8B5CF6",
       },
     });
+  });
+
+  it("maps draft time entries as draft proposals on the canvas", () => {
+    const timeEntry: TimeEntry = {
+      id: 23,
+      periodId: 1,
+      localWorkDate: "2026-06-09",
+      start: "2026-06-09T18:00:00Z",
+      end: "2026-06-09T19:15:00Z",
+      durationMinutes: 75,
+      categoryId: 5,
+      description: "Standup",
+      attestation: "draft",
+      method: "calendar_import",
+      workType: "worked",
+      billableStatus: "unset",
+    };
+
+    expect(
+      timeEntryToSchedulerItem(timeEntry, categoriesById, tzSegments),
+    ).toMatchObject({
+      id: "time-entry-23",
+      metadata: {
+        title: "Standup",
+        kind: "draft",
+        attestation: "draft",
+        mutable: true,
+        opensDraftEditor: true,
+      },
+    });
+  });
+
+  it("hides dismissed time entries from the canvas", () => {
+    const timeEntry: TimeEntry = {
+      id: 24,
+      periodId: 1,
+      localWorkDate: "2026-06-09",
+      start: "2026-06-09T18:00:00Z",
+      end: "2026-06-09T19:15:00Z",
+      durationMinutes: 75,
+      categoryId: 5,
+      description: "Rejected",
+      attestation: "dismissed",
+      method: "calendar_import",
+      workType: "worked",
+      billableStatus: "unset",
+    };
+
+    expect(
+      timeEntryToSchedulerItem(timeEntry, categoriesById, tzSegments),
+    ).toBeNull();
   });
 
   it("maps uncovered gap intervals for the schedule overlay", () => {

@@ -7,6 +7,8 @@ import {
   categoriesForAssignPicker,
   projectsForAssignPicker,
 } from "@/lib/schedule";
+import { ConvertAllDayDialog } from "./ConvertAllDayDialog";
+import { DraftProposalDialog } from "./DraftProposalDialog";
 import { EventEditDialog } from "./EventEditDialog";
 import { GapSuggestDialog } from "./GapSuggestDialog";
 import { ReviewQueueDialog } from "./ReviewQueueDialog";
@@ -21,10 +23,18 @@ export function SchedulePage() {
     schedule.categories,
     schedule.editingEvent?.categoryId,
   );
+  const draftPickerCategories = categoriesForAssignPicker(
+    schedule.categories,
+    schedule.draftingEntry?.categoryId,
+  );
   const gapPickerCategories = categoriesForAssignPicker(schedule.categories);
   const editPickerProjects = projectsForAssignPicker(
     schedule.projects,
     schedule.editingEvent?.projectId,
+  );
+  const draftPickerProjects = projectsForAssignPicker(
+    schedule.projects,
+    schedule.draftingEntry?.projectId,
   );
   const gapPickerProjects = projectsForAssignPicker(schedule.projects);
 
@@ -51,10 +61,12 @@ export function SchedulePage() {
                 onPreviewChange: schedule.setPreview,
                 onCommitChange: schedule.handleCommit,
                 onEditItem: schedule.handleOpenEventEditor,
+                onEditDraftItem: schedule.handleOpenDraftEditor,
                 onDuplicateItem: schedule.handleDuplicateEvent,
                 onRemoveItem: schedule.handleRemoveEvent,
                 onExcludeItem: schedule.handleExcludeEvent,
                 onExcludeAllDayChip: schedule.handleExcludeAllDayChip,
+                onConvertAllDayChip: schedule.handleConvertAllDayChip,
                 onResetDay: schedule.handleResetDay,
                 onSelectGap: schedule.handleSelectGap,
                 onOpenReviewQueue: () => schedule.setReviewQueueOpen(true),
@@ -91,6 +103,42 @@ export function SchedulePage() {
           }
         }}
         onSave={schedule.handleSaveEventEdit}
+      />
+      <DraftProposalDialog
+        open={schedule.draftingEntry !== null}
+        draft={schedule.draftingEntry}
+        placement={schedule.draftingPlacement}
+        categories={draftPickerCategories}
+        projects={draftPickerProjects}
+        confirmedEntries={schedule.timeEntries}
+        tzSegments={schedule.tzSegments}
+        isSaving={schedule.draftEditorPending}
+        onOpenChange={(open) => {
+          if (!open) {
+            schedule.handleCloseDraftEditor();
+          }
+        }}
+        onAdjust={(values) =>
+          schedule.handleAdjustDraft({
+            ...values,
+            note: values.description,
+          })
+        }
+        onConfirm={schedule.handleConfirmDraft}
+        onReject={schedule.handleRejectDraft}
+        onSplit={schedule.handleSplitDraft}
+        actionError={schedule.draftEditorError}
+      />
+      <ConvertAllDayDialog
+        open={schedule.convertingChip !== null}
+        chip={schedule.convertingChip}
+        isSaving={schedule.convertAllDayPending}
+        onOpenChange={(open) => {
+          if (!open) {
+            schedule.handleCloseConvertAllDay();
+          }
+        }}
+        onConvert={schedule.handleConvertAllDay}
       />
       <GapSuggestDialog
         aiConfigured={schedule.aiConfigured}

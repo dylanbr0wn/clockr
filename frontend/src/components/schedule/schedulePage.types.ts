@@ -79,6 +79,8 @@ export interface SchedulePageViewModel {
   categories: Category[];
   projects: Project[];
   events: Event[];
+  timeEntries: TimeEntry[];
+  tzSegments: TzSegment[];
   reviewDecisions: ReviewDecision[];
   days: ScheduleDay[];
   items: ScheduleItem[];
@@ -107,9 +109,43 @@ export interface SchedulePageViewModel {
   handleRemoveEvent: (item: ScheduleItem) => void;
   handleExcludeEvent: (item: ScheduleItem) => void;
   handleExcludeAllDayChip: (chip: AllDayChip) => void;
+  handleConvertAllDayChip: (chip: AllDayChip) => void;
   handleResetDay: (day: string) => void;
   handleCloseEventEditor: () => void;
   handleSaveEventEdit: (values: ScheduleEventEditValues) => void;
+  draftingEntry: TimeEntry | null;
+  draftingPlacement: SchedulePlacement | null;
+  draftEditorPending: boolean;
+  handleOpenDraftEditor: (item: ScheduleItem) => void;
+  handleCloseDraftEditor: () => void;
+  handleAdjustDraft: (values: ScheduleEventEditValues) => void;
+  handleConfirmDraft: (payload: {
+    values?: {
+      day: string;
+      startMinutes: number;
+      endMinutes: number;
+      categoryId?: number;
+      description: string;
+      workType: string;
+      projectId?: number;
+      billableStatus: string;
+    };
+    overnightPolicy?: string;
+    overlapResolution?: string;
+  }) => void;
+  handleRejectDraft: () => void;
+  handleSplitDraft: (cutPoints: string[]) => void;
+  draftEditorError: string | null;
+  convertingChip: AllDayChip | null;
+  convertAllDayPending: boolean;
+  handleCloseConvertAllDay: () => void;
+  handleConvertAllDay: (values: {
+    day: string;
+    startMinutes: number;
+    endMinutes: number;
+    categoryId?: number;
+    description: string;
+  }) => void;
   reviewQueueOpen: boolean;
   setReviewQueueOpen: Dispatch<SetStateAction<boolean>>;
   selectedGap: SelectedGap | null;

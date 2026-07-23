@@ -35,6 +35,49 @@ export function zonedDateTimeParts(date: Date, timeZone: string) {
   };
 }
 
+/** Convert a local calendar day + minute-of-day in `timeZone` to a UTC ISO instant. */
+export function zonedDayMinutesToIso(
+  day: string,
+  minutes: number,
+  timeZone: string,
+): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isInteger(minutes)) {
+    return null;
+  }
+  if (minutes < 0 || minutes > 24 * 60) {
+    return null;
+  }
+
+  const [year, month, date] = day.split("-").map(Number);
+  // Search a ±36h UTC window around the nominal civil midnight.
+  let lo = Date.UTC(year, month - 1, date, 0, 0, 0) - 36 * 60 * 60 * 1000;
+  let hi = Date.UTC(year, month - 1, date, 0, 0, 0) + 36 * 60 * 60 * 1000;
+
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    // Snap candidate to whole minutes so we match zonedDateTimeParts granularity.
+    const snapped = mid - (mid % 60_000);
+    const parts = zonedDateTimeParts(new Date(snapped), timeZone);
+    const cmp =
+      parts.day < day
+        ? -1
+        : parts.day > day
+          ? 1
+          : parts.minutes - minutes;
+
+    if (cmp === 0) {
+      return new Date(snapped).toISOString();
+    }
+    if (cmp < 0) {
+      lo = mid + 60_000;
+    } else {
+      hi = mid - 60_000;
+    }
+  }
+
+  return null;
+}
+
 export function activeTimeZoneForDay(day: string, tzSegments: TzSegment[]) {
   if (tzSegments.length === 0) {
     return defaultTimeZone();

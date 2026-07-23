@@ -26,6 +26,10 @@ import type {
   TimeEntryDeleteInput,
   TimeEntryInput,
   TimeEntryUpdateInput,
+  ConfirmTimeEntryInput,
+  RejectTimeEntryInput,
+  SplitTimeEntryInput,
+  ConvertAllDayEventInput,
   Period,
   PeriodExportModel,
   ReviewDecision,
@@ -52,9 +56,12 @@ import {
   listPeriodsRPC,
 } from "./periodRpc";
 import {
+  adjustDraftTimeEntryRPC,
   buildPeriodExportRPC,
   computeGapsRPC,
+  confirmTimeEntryRPC,
   connectIntegrationRPC,
+  convertAllDayEventRPC,
   createCategoryRPC,
   createExportTemplateRPC,
   createGapTimeEntryRPC,
@@ -97,6 +104,7 @@ import {
   refreshGitHubReposRPC,
   refreshSlackChannelsRPC,
   refreshBitbucketResourcesRPC,
+  rejectTimeEntryRPC,
   renderPeriodExportRPC,
   resolveReviewDecisionRPC,
   setCalendarDefaultCategoryRPC,
@@ -106,6 +114,7 @@ import {
   setSlackChannelSelectedRPC,
   setBitbucketWorkspaceSelectedRPC,
   setBitbucketRepoSelectedRPC,
+  splitTimeEntryRPC,
   suggestGapFillRPC,
   syncPeriodRPC,
   updateCategoryRPC,
@@ -322,6 +331,26 @@ export function updateTimeEntry(input: TimeEntryUpdateInput) {
 
 export function deleteTimeEntry(input: TimeEntryDeleteInput) {
   return writeToPortableBackend(() => deleteTimeEntryRPC(input));
+}
+
+export function confirmTimeEntry(input: ConfirmTimeEntryInput) {
+  return writeToPortableBackend(() => confirmTimeEntryRPC(input));
+}
+
+export function rejectTimeEntry(input: RejectTimeEntryInput) {
+  return writeToPortableBackend(() => rejectTimeEntryRPC(input));
+}
+
+export function adjustDraftTimeEntry(input: TimeEntryUpdateInput) {
+  return writeToPortableBackend(() => adjustDraftTimeEntryRPC(input));
+}
+
+export function splitTimeEntry(input: SplitTimeEntryInput) {
+  return writeToPortableBackend(() => splitTimeEntryRPC(input));
+}
+
+export function convertAllDayEvent(input: ConvertAllDayEventInput) {
+  return writeToPortableBackend(() => convertAllDayEventRPC(input));
 }
 
 export function listReviewDecisions(periodId: number) {

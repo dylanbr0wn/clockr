@@ -4,7 +4,7 @@ import type {
   SchedulerChange,
 } from "@/lib/scheduler";
 
-export type ScheduleKind = "calendar" | "gap" | "manual" | "review";
+export type ScheduleKind = "calendar" | "gap" | "manual" | "draft" | "review";
 
 export type AllDaySpanPosition = "single" | "start" | "middle" | "end";
 
@@ -26,6 +26,8 @@ export interface ScheduleMetadata {
   excludable?: boolean;
   /** Review items/chips: click opens review queue. */
   opensReviewQueue?: boolean;
+  /** Draft TimeEntries: click/double-click opens confirm/reject/split/adjust. */
+  opensDraftEditor?: boolean;
 }
 
 export interface AllDayChip {
@@ -42,6 +44,8 @@ export interface AllDayChip {
   allDaySpan: AllDaySpanPosition;
   excludable?: boolean;
   opensReviewQueue?: boolean;
+  /** Normal all-day calendar chips can convert into a timed draft. */
+  convertible?: boolean;
 }
 
 export interface ScheduleDayMetadata {

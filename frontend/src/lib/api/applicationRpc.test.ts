@@ -6,12 +6,14 @@ import {
   CategorySchema,
   ProjectSchema,
   ReviewDecisionSchema,
+  TimeEntrySchema,
 } from "@/gen/shiet/app/v1/application_pb";
 import {
   mapCategory,
   mapPeriodExportModel,
   mapProject,
   mapReviewDecision,
+  mapTimeEntry,
 } from "./applicationRpc";
 
 describe("application RPC mapping", () => {
@@ -73,5 +75,37 @@ describe("application RPC mapping", () => {
         }),
       ),
     ).toThrow(/unknown review action role/);
+  });
+
+  it("maps draft time entries for confirm/reject responses", () => {
+    expect(
+      mapTimeEntry(
+        create(TimeEntrySchema, {
+          id: 9n,
+          periodId: 3n,
+          localWorkDate: "2026-06-09",
+          start: "2026-06-09T17:00:00Z",
+          end: "2026-06-09T18:00:00Z",
+          durationMinutes: 60,
+          attestation: "draft",
+          workType: "worked",
+          billableStatus: "unset",
+          description: "Proposed",
+          categoryId: 2n,
+        }),
+      ),
+    ).toEqual({
+      id: 9,
+      periodId: 3,
+      localWorkDate: "2026-06-09",
+      start: "2026-06-09T17:00:00Z",
+      end: "2026-06-09T18:00:00Z",
+      durationMinutes: 60,
+      attestation: "draft",
+      workType: "worked",
+      billableStatus: "unset",
+      description: "Proposed",
+      categoryId: 2,
+    });
   });
 });
